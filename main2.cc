@@ -93,7 +93,7 @@ int main(int argc, char** argv) {
 
         glBindTexture(GL_TEXTURE_2D, atlas.texture_id);
         glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices) , vertices, GL_STATIC_DRAW); // be sure to use glBufferSubData and not glBufferData
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices) , vertices); // be sure to use glBufferSubData and not glBufferData
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 

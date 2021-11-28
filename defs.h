@@ -77,6 +77,22 @@ class Shader {
     }
   }
 };
+struct CharacterEntry {
+  float width;
+  float height;
+  float top;
+  float left;
+  float advance;
+  float offset;
+  unsigned char* buffer;
+  char c;
+};
+struct RenderChar {
+  Vec2f pos;
+  Vec2f size;
+  Vec2f uv_pos;
+  Vec2f uv_size;
+};
 class State {
  public:
   GLuint vao, vbo;
@@ -92,22 +108,43 @@ class State {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
   }
+private:
+  void activate_entries() {
+    //pos
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, pos));
+    glEnableVertexAttribArray(0);
+
+    //size
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, size));
+    glEnableVertexAttribArray(1);
+
+    //uv_pos
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, uv_pos));
+    glEnableVertexAttribArray(2);
+
+    //uv_size
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, uv_size));
+    glEnableVertexAttribArray(3);
+
+  }
+
 };
-struct CharacterEntry {
-  float width;
-  float height;
-  float top;
-  float left;
-  float advance;
-  unsigned char* buffer;
-  char c;
-};
+
 class FontAtlas {
 public:
   std::map<char, CharacterEntry> entries;
   GLuint texture_id;
   FT_UInt atlas_width, atlas_height;
   uint32_t fs;
+  RenderChar render(char c, float x = 0.0, float y = 0.0) {
+    auto entry = entries[c];
+    RenderChar r;
+    r.pos = vec2f(x, y);
+    r.size = vec2f(entry.width, -entry.height);
+    r.uv_pos = vec2f(entry.offset, 0.0);
+    r.uv_size = vec2f(entry.width / (float) atlas_width, entry.height / atlas_height);
+    return r;
+  }
   FontAtlas(std::string path, uint32_t fontSize) {
     fs = fontSize;
     atlas_width = 0;
@@ -165,6 +202,7 @@ public:
         return;
       }
       CharacterEntry entry = entries[(char)i];
+      entries[(char)i].offset = (float) xOffset / (float) atlas_width;
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
       glTexSubImage2D(
                       GL_TEXTURE_2D,
