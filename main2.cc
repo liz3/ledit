@@ -57,47 +57,41 @@ int main(int argc, char** argv) {
 
     Shader text_shader("/Users/liz3/Projects/glfw/simple.vs", "/Users/liz3/Projects/glfw/simple.fs", {});
     text_shader.use();
-    glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(WIDTH), 0.0f, static_cast<float>(HEIGHT));
-    glUniformMatrix4fv(glGetUniformLocation(text_shader.pid, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
+    // glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(WIDTH), 0.0f, static_cast<float>(HEIGHT));
+    // glUniformMatrix4fv(glGetUniformLocation(text_shader.pid, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
         std::cout << text_shader.pid << "\n";
+    FontAtlas atlas("/Users/liz3/Downloads/Fira_Code_v5.2/ttf/FiraCode-Regular.ttf", 64);
+
     State state;
-    FontAtlas atlas("/Users/liz3/Downloads/Fira_Code_v5.2/ttf/FiraCode-Regular.ttf", 20);
-
-
     while (!glfwWindowShouldClose(window))
     {
       if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
       }
 
-      glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-      glClear(GL_COLOR_BUFFER_BIT);
+      // glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+      // glClear(GL_COLOR_BUFFER_BIT);
       text_shader.use();
-
       glActiveTexture(GL_TEXTURE0);
       glBindVertexArray(state.vao);
+      glBindTexture(GL_TEXTURE_2D, atlas.texture_id);
+      glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
+
+
       float xpos = 15;
       float ypos = HEIGHT -atlas.atlas_height-15;
-      float w = atlas.atlas_width;
-      float h = atlas.atlas_height;
-      float vertices[6][4] = {
-        { xpos,     ypos + h,   0.0f, 0.0f },
-        { xpos,     ypos,       0.0f, 1.0f },
-        { xpos + w, ypos,       1.0f, 1.0f },
+      std::vector<RenderChar> entries = {atlas.render('!', 0, -10), atlas.render('Y', 0, -10)};
 
-        { xpos,     ypos + h,   0.0f, 0.0f },
-        { xpos + w, ypos,       1.0f, 1.0f },
-        { xpos + w, ypos + h,   1.0f, 0.0f }
-      };
+//      glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
+      glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(RenderChar) *entries.size(), &entries[0]); // be sure to use glBufferSubData and not glBufferData
 
-        glBindTexture(GL_TEXTURE_2D, atlas.texture_id);
-        glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices) , vertices); // be sure to use glBufferSubData and not glBufferData
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+      glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei) 1);
+glBindTexture(GL_TEXTURE_2D, 0);
+       glBindVertexArray(0);
 
 
 

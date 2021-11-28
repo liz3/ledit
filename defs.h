@@ -92,39 +92,53 @@ struct RenderChar {
   Vec2f size;
   Vec2f uv_pos;
   Vec2f uv_size;
+  Vec4f fg_color;
+  Vec4f bg_color;
 };
 class State {
  public:
   GLuint vao, vbo;
+  RenderChar* wtf;
   State() {
     glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
     glGenBuffers(1, &vbo);
+    glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     //TODO set size of vbo base on buffer size?
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
+
+    wtf = new RenderChar[600*1000];
+    glBufferData(GL_ARRAY_BUFFER, sizeof(RenderChar) * 600 * 1000, wtf, GL_DYNAMIC_DRAW);
+    activate_entries();
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
   }
 private:
   void activate_entries() {
     //pos
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, pos));
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, pos));
+    glVertexAttribDivisor(0, 1);
 
     //size
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, size));
     glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, size));
+    glVertexAttribDivisor(1, 1);
 
     //uv_pos
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, uv_pos));
     glEnableVertexAttribArray(2);
-
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, uv_pos));
+    glVertexAttribDivisor(2, 1);
     //uv_size
-    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, uv_size));
     glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, uv_size));
+    glVertexAttribDivisor(3, 1);
+
+    glEnableVertexAttribArray(4);
+    glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, fg_color));
+    glVertexAttribDivisor(4, 1);
+    glEnableVertexAttribArray(5);
+    glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, bg_color));
+    glVertexAttribDivisor(5, 1);
 
   }
 
@@ -139,10 +153,13 @@ public:
   RenderChar render(char c, float x = 0.0, float y = 0.0) {
     auto entry = entries[c];
     RenderChar r;
-    r.pos = vec2f(x, y);
+    float x2 = x + entry.left;
+    float y2 = -y - entry.top;
+    r.pos = vec2f(x2, -y2);
     r.size = vec2f(entry.width, -entry.height);
     r.uv_pos = vec2f(entry.offset, 0.0);
     r.uv_size = vec2f(entry.width / (float) atlas_width, entry.height / atlas_height);
+    std::cout << entry.width << ":" << entry.height << "\n";
     return r;
   }
   FontAtlas(std::string path, uint32_t fontSize) {
@@ -183,6 +200,7 @@ public:
 
 
     // texture
+    glActiveTexture(GL_TEXTURE0);
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_2D, texture_id);
 
