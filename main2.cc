@@ -82,14 +82,20 @@ int main(int argc, char** argv) {
 
       float xpos = 15;
       float ypos = HEIGHT -atlas.atlas_height-15;
-      std::vector<RenderChar> entries = {atlas.render('!', 0, -10), atlas.render('Y', 0, -10)};
+      std::string text = "Hello Yoshi";
+      std::vector<RenderChar> entries;
+      std::string::const_iterator c;
+       for (c = text.begin(); c != text.end(); c++) {
+         entries.push_back(atlas.render(*c, xpos, -1));
+         xpos += atlas.getAdvance(*c);
+       }
 
 //      glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
       glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(RenderChar) *entries.size(), &entries[0]); // be sure to use glBufferSubData and not glBufferData
 
       glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-      glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei) 1);
+      glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 8, (GLsizei) entries.size());
 glBindTexture(GL_TEXTURE_2D, 0);
        glBindVertexArray(0);
 

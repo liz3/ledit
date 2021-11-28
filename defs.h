@@ -162,6 +162,9 @@ public:
     std::cout << entry.width << ":" << entry.height << "\n";
     return r;
   }
+  float getAdvance(char c) {
+    return entries[c].advance;
+  }
   FontAtlas(std::string path, uint32_t fontSize) {
     fs = fontSize;
     atlas_width = 0;
