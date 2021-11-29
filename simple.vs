@@ -15,7 +15,7 @@ out vec4 glyph_fg_color;
 out vec4 glyph_bg_color;
 uniform vec2 resolution;
 vec2 camera_project(vec2 point) {
-   return  (point) * (1 / resolution);
+return 2* (point) * (1 / resolution);
 }
 
 void main() {
@@ -23,6 +23,6 @@ void main() {
     gl_Position = vec4(camera_project(uv * (size) + (pos)), 0.0, 1.0);
     glyph_uv_pos = uv_pos;
     glyph_uv_size = uv_size;
-    glyph_fg_color = vec4(1.0);
+    glyph_fg_color = fg_color;
     glyph_bg_color = vec4(0.0);
 }

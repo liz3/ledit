@@ -108,11 +108,98 @@ class State {
   GLuint vao, vbo;
   Cursor* cursor;
   float WIDTH, HEIGHT;
+  std::string path;
+  std::string status;
+  std::string miniBuf;
+  double lastStroke;
+  int mode = 0;
   State() {}
-  State(Cursor* c, float w, float h) {
+
+  void save() {
+    if(mode != 0)
+      return;
+    if(!path.length()) {
+      saveNew();
+      return;
+    }
+    cursor->saveTo(path);
+    status = "Saved: " + path;
+  }
+  void saveNew() {
+    if(mode != 0)
+      return;
+    miniBuf = "";
+    cursor->bindTo(&miniBuf);
+    mode = 1;
+    status = "Save to: ";
+  }
+  void open() {
+    if(mode != 0)
+      return;
+    miniBuf = "";
+    cursor->bindTo(&miniBuf);
+    mode = 4;
+    status = "Open: ";
+  }
+
+  void search() {
+    if(mode != 0)
+      return;
+    miniBuf = "";
+    cursor->bindTo(&miniBuf);
+    mode = 2;
+    status = "Search: ";
+  }
+  void inform(bool success) {
+    if(success) {
+      if(mode == 1) { // save to
+        cursor->saveTo(miniBuf);
+        std::cout << miniBuf << "\n";
+        status = "Saved to: " + miniBuf;
+        if(!path.length())
+          path = miniBuf;
+      } else if (mode == 2) { // search
+        status = cursor->search(miniBuf);
+      } else if (mode == 3) { // gotoline
+        cursor->gotoLine(std::stoi(miniBuf));
+        status = "Jump to: " + miniBuf;
+      } else if (mode == 4) {
+        bool result = cursor->openFile(path, miniBuf);
+        if(result) {
+          path = miniBuf;
+          status = "Loaded: " + miniBuf;
+        } else {
+          status = "Failed to load: " + miniBuf;
+        }
+      }
+    } else {
+      status = "Aborted";
+    }
+    cursor->unbind();
+    mode = 0;
+  }
+  void renderCoords(){
+    if(mode != 0)
+      return;
+    status = std::to_string(cursor->y +1)  + ":" + std::to_string(cursor->x +1);
+  }
+  void gotoLine() {
+    if(mode != 0)
+      return;
+    miniBuf = "";
+    cursor->bindTo(&miniBuf);
+    mode = 3;
+    status = "Line: ";
+
+
+  }
+  State(Cursor* c, float w, float h, std::string path) {
+    status = path;
+    lastStroke = 0;
     cursor = c;
     WIDTH = w;
     HEIGHT = h;
+    this->path = path;
   }
   void init() {
         glGenVertexArrays(1, &vao);
@@ -165,7 +252,7 @@ public:
   GLuint texture_id;
   FT_UInt atlas_width, atlas_height, smallest_top;
   uint32_t fs;
-  RenderChar render(char c, float x = 0.0, float y = 0.0) {
+  RenderChar render(char c, float x = 0.0, float y = 0.0, Vec4f color = vec4fs(1)) {
     auto entry = entries[c];
     RenderChar r;
     float x2 = x + entry.left;
@@ -174,6 +261,7 @@ public:
     r.size = vec2f(entry.width, -entry.height);
     r.uv_pos = vec2f(entry.offset, 0.0f);
     r.uv_size = vec2f(entry.width / (float) atlas_width, entry.height / atlas_height);
+    r.fg_color = color;
     return r;
   }
   float getAdvance(char c) {

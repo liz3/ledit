@@ -3,7 +3,7 @@
 uniform vec2 resolution;
 uniform vec2 cursor_pos;
 
-#define WIDTH 2.0
+#define WIDTH 4.0
 uniform float cursor_height;
 
 out vec2 uv;
