@@ -6,6 +6,7 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include "cursor.h"
 std::string file_to_string(std::string path) {
   std::ifstream stream(path);
   std::stringstream ss;
@@ -34,6 +35,13 @@ class Shader {
      glLinkProgram(pid);
      checkCompileErrors(pid, "PROGRAM");
    }
+  void set2f(std::string name, float x, float y) {
+    glUniform2f(glGetUniformLocation(pid, name.c_str()), x, y);
+  }
+  void set1f(std::string name, float v) {
+    glUniform1f(glGetUniformLocation(pid, name.c_str()), v);
+  }
+
   void use() {
        glUseProgram(pid);
   }
@@ -98,19 +106,26 @@ struct RenderChar {
 class State {
  public:
   GLuint vao, vbo;
-  RenderChar* wtf;
-  State() {
-    glGenVertexArrays(1, &vao);
+  Cursor* cursor;
+  float WIDTH, HEIGHT;
+  State() {}
+  State(Cursor* c, float w, float h) {
+    cursor = c;
+    WIDTH = w;
+    HEIGHT = h;
+  }
+  void init() {
+        glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     //TODO set size of vbo base on buffer size?
 
-    wtf = new RenderChar[600*1000];
-    glBufferData(GL_ARRAY_BUFFER, sizeof(RenderChar) * 600 * 1000, wtf, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(RenderChar) * 600 * 1000, nullptr, GL_DYNAMIC_DRAW);
     activate_entries();
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+
   }
 private:
   void activate_entries() {
@@ -148,18 +163,17 @@ class FontAtlas {
 public:
   std::map<char, CharacterEntry> entries;
   GLuint texture_id;
-  FT_UInt atlas_width, atlas_height;
+  FT_UInt atlas_width, atlas_height, smallest_top;
   uint32_t fs;
   RenderChar render(char c, float x = 0.0, float y = 0.0) {
     auto entry = entries[c];
     RenderChar r;
     float x2 = x + entry.left;
-    float y2 = -y - entry.top;
+    float y2 = y - entry.top + (atlas_height - smallest_top);
     r.pos = vec2f(x2, -y2);
     r.size = vec2f(entry.width, -entry.height);
-    r.uv_pos = vec2f(entry.offset, 0.0);
+    r.uv_pos = vec2f(entry.offset, 0.0f);
     r.uv_size = vec2f(entry.width / (float) atlas_width, entry.height / atlas_height);
-    std::cout << entry.width << ":" << entry.height << "\n";
     return r;
   }
   float getAdvance(char c) {
@@ -169,6 +183,7 @@ public:
     fs = fontSize;
     atlas_width = 0;
     atlas_height = 0;
+    smallest_top = 1e9;
     FT_Library ft;
     if (FT_Init_FreeType(&ft)) {
         std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
@@ -187,18 +202,10 @@ public:
         std::cout << "Failed to load char: " << (char) i << "\n";
         return;
       }
-      CharacterEntry entry;
       auto bm = face->glyph->bitmap;
-      entry.width = bm.width;
-      entry.height = bm.rows;
-      entry.top = face->glyph->bitmap_top;
-      entry.left = face->glyph->bitmap_left;
-      entry.advance = face->glyph->advance.x >> 6;
-//      entry.buffer = bm.buffer;
-      entry.c = (char)i;
       atlas_width += bm.width;
       atlas_height = bm.rows > atlas_height ? bm.rows : atlas_height;
-      entries.insert(std::pair<char, CharacterEntry>(entry.c, entry));
+
     }
 
 
@@ -216,13 +223,28 @@ public:
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, (GLsizei) atlas_width, (GLsizei) atlas_height, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
-    int xOffset = 0;
+    int  xOffset = 0;
     for(int i = 0; i < 128; i++) {
       if (FT_Load_Char(face, i, FT_LOAD_RENDER)) {
         std::cout << "Failed to load char: " << (char) i << "\n";
         return;
       }
-      CharacterEntry entry = entries[(char)i];
+      CharacterEntry entry;
+      auto bm = face->glyph->bitmap;
+      entry.width = bm.width;
+      entry.height = bm.rows;
+      entry.top = face->glyph->bitmap_top;
+      entry.left = face->glyph->bitmap_left;
+      entry.advance = face->glyph->advance.x >> 6;
+//      entry.buffer = bm.buffer;
+      entry.c = (char)i;
+      if(smallest_top == 0 && entry.top > 0)
+        smallest_top = entry.top;
+      else
+        smallest_top = entry.top < smallest_top && entry.top != 0 ? entry.top : smallest_top;
+      entries.insert(std::pair<char, CharacterEntry>(entry.c, entry));
+
+
       entries[(char)i].offset = (float) xOffset / (float) atlas_width;
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
       glTexSubImage2D(
@@ -239,6 +261,14 @@ public:
       xOffset += entry.width;
 
     }
+  }
+  float getAdvance(std::string line) {
+    float v = 0;
+    std::string::const_iterator c;
+    for (c = line.begin(); c != line.end(); c++) {
+      v += entries[*c].advance;
+    }
+    return v;
   }
 };
 #endif

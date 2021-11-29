@@ -1,3 +1,7 @@
+#ifndef CURSOR_H
+#define CURSOR_H
+
+//#include <math>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -7,6 +11,14 @@ class Cursor {
   std::vector<std::string> lines;
   int x = 0;
   int y = 0;
+  int skip = 0;
+  float height = 0;
+  float lineHeight = 0;;
+
+  void setBounds(float height, float lineHeight) {
+    this->height = height;
+    this->lineHeight = lineHeight;
+  }
   std::vector<std::string> split(std::string base, std::string delimiter) {
     std::vector<std::string> final;
     size_t pos = 0;
@@ -23,6 +35,9 @@ class Cursor {
   Cursor() {
     lines.push_back("");
   }
+  // Cursor(std::vector<std::string> contents) {
+  //   lines = contents;
+
    Cursor(std::string path) {
      std::stringstream ss;
      std::ifstream stream(path);
@@ -34,7 +49,9 @@ class Cursor {
   void append(char c) {
     if(c == '\n') {
       auto pos = lines.begin() + y;
-      lines.insert(pos, "");
+      std::string* current = &lines[y];
+      bool isEnd = x == current->length();
+      lines.insert(isEnd ? pos+1: pos, "");
       y++;
       x = 0;
     }else {
@@ -53,8 +70,6 @@ class Cursor {
     if(x == 0) {
       if(y == 0)
         return;
-
-
         std::string* copyTarget = &lines[y-1];
         int xTarget = copyTarget->length();
         if (target->length() > 0) {
@@ -121,13 +136,29 @@ class Cursor {
   }
 
   std::string getContent() {
+    int maxLines = std::floor(height / lineHeight)-1;
+    int end = skip + maxLines;
+    if(end >= lines.size()) {
+      end = lines.size();
+      skip = end-maxLines;
+    }
+    if(y == end && end < (lines.size())) {
+
+      skip++;
+      end++;
+
+    } else if(y == skip && skip > 0) {
+      skip--;
+      end--;
+    }
     std::stringstream ss;
-    for(size_t i = 0; i < lines.size(); i++) {
+    for(size_t i = skip; i < end; i++) {
       ss << lines[i];
-      if(i < lines.size() -1)
+      if(i < end -1)
         ss << "\n";
     }
     return ss.str();
   }
 
 };
+#endif

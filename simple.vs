@@ -13,14 +13,14 @@ out vec2 glyph_uv_pos;
 out vec2 glyph_uv_size;
 out vec4 glyph_fg_color;
 out vec4 glyph_bg_color;
-
+uniform vec2 resolution;
 vec2 camera_project(vec2 point) {
-     return 2.0 * (point) / vec2(1280.0, 720.0);
+   return  (point) * (1 / resolution);
 }
 
 void main() {
     uv = vec2(float(gl_VertexID & 1), float((gl_VertexID >> 1) & 1));
-    gl_Position = vec4(camera_project(uv * size + pos), 0.0, 1.0);
+    gl_Position = vec4(camera_project(uv * (size) + (pos)), 0.0, 1.0);
     glyph_uv_pos = uv_pos;
     glyph_uv_size = uv_size;
     glyph_fg_color = vec4(1.0);

@@ -6,7 +6,7 @@ uniform vec2 resolution;
 vec2 camera_project(vec2 point)
 {
 
-      camera_scale = 1.0;
-      camera_pos = vec2(0);
-    return 2.0 * (point - camera_pos) * camera_scale / resolution;
+  camera_scale = 1.0;
+  camera_pos = vec2(0);
+  return  (point - camera_pos) * camera_scale / resolution;
 }

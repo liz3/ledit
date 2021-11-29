@@ -11,6 +11,6 @@ in vec4 glyph_bg_color;
 out vec4 color;
 void main() {
      vec2 t = glyph_uv_pos + glyph_uv_size * uv;
-     color = vec4(texture(font, t).x, 0.0,0.0, 1.0);
-//     color = vec4(1.0);
+     vec4 sampled = vec4(1.0, 1.0, 1.0, texture(font, t).x);
+     color = vec4(vec3(0,0.5,1.0), 1.0) * sampled;
 }
