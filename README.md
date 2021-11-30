@@ -17,7 +17,7 @@ ledit has some dependencies you will need to build it:
 
 (Homebrew) To get the required dependencies, do:
 ```
-brew install glfw freetype2 glm
+brew install glfw freetype2
 ```
 
 You will also need CMake.
