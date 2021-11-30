@@ -71,7 +71,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
   bool alt_pressed = glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS;
   Cursor* cursor = gState->cursor;
   bool isPress = action == GLFW_PRESS || action == GLFW_REPEAT;
-
+  
   if(ctrl_pressed) {
 
     if(x_pressed) {
@@ -127,7 +127,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
       }
   } else {
-      gState->lastStroke = glfwGetTime();
+    if(isPress && key == GLFW_KEY_RIGHT)
+      cursor->moveRight();
+    if(isPress && key == GLFW_KEY_LEFT)
+      cursor->moveLeft();
+    if (isPress && key == GLFW_KEY_UP)
+      cursor->moveUp();
+    if (isPress && key == GLFW_KEY_DOWN)
+      cursor->moveDown();
+    gState->lastStroke = glfwGetTime();
     if(isPress && key == GLFW_KEY_ENTER) {
       if(gState->mode != 0) {
         gState->inform(true);
