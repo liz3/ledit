@@ -12,7 +12,9 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
-#include "defs.h"
+#include "state.h"
+#include "shader.h"
+#include "font_atlas.h"
 #include "cursor.h"
 
 State* gState = nullptr;
@@ -31,6 +33,21 @@ void character_callback(GLFWwindow* window, unsigned int codepoint)
 {
   if(gState == nullptr)
     return;
+  bool alt_pressed = glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS;
+  if(alt_pressed) {
+    if(glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
+      gState->cursor->advanceWord();
+      return;
+    }
+    if(glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) {
+      gState->cursor->advanceWordBackwards();
+      return;
+    }
+    if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+      gState->cursor->deleteWord();
+      return;
+    }
+  }
   gState->cursor->append((char) codepoint);
   gState->lastStroke = glfwGetTime();
   gState->renderCoords();
@@ -58,8 +75,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
       if(action == GLFW_PRESS && key == GLFW_KEY_S) {
         gState->save();
       }
-      if(action == GLFW_PRESS && key == GLFW_KEY_F) {
+      if(action == GLFW_PRESS && key == GLFW_KEY_O) {
         gState->open();
+      }
+      if(action == GLFW_PRESS && key == GLFW_KEY_K) {
+        gState->switchBuffer();
       }
       if(action == GLFW_PRESS && key == GLFW_KEY_N) {
         gState->saveNew();
@@ -78,8 +98,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
       return;
     }
      if (key == GLFW_KEY_S && action == GLFW_PRESS) {
-      gState->search();
-     }    else {
+       gState->search();
+     } else if (key == GLFW_KEY_Z && isPress) {
+       gState->undo();
+     } else {
        if (!isPress)
          return;
        gState->lastStroke = glfwGetTime();
@@ -130,7 +152,7 @@ int main(int argc, char** argv) {
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
-    GLFWwindow* window = glfwCreateWindow(state.WIDTH, state.HEIGHT, "textedit", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(state.WIDTH, state.HEIGHT, "ledit", nullptr, nullptr);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -157,23 +179,23 @@ int main(int argc, char** argv) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     state.init();
 
-    Shader text_shader("/Users/liz3/Projects/glfw/simple.vs", "/Users/liz3/Projects/glfw/simple.fs", {});
+    Shader text_shader("./shaders/simple.vs", "./shaders/simple.fs", {});
     text_shader.use();
-    Shader cursor_shader("/Users/liz3/Projects/glfw/cursor.vert", "/Users/liz3/Projects/glfw/cursor.frag", {"/Users/liz3/Projects/glfw/camera.vert"});
-    // glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(WIDTH), 0.0f, static_cast<float>(HEIGHT));
-    // glUniformMatrix4fv(glGetUniformLocation(text_shader.pid, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    Shader cursor_shader("./shaders/cursor.vert", "./shaders/cursor.frag", {"./shaders/camera.vert"});
 
-    std::cout << text_shader.pid << "\n";
-    float fontSize = 64;
-    FontAtlas atlas("/Users/liz3/Downloads/Fira_Code_v5.2/ttf/FiraCode-Regular.ttf", fontSize);
-
-
+    float fontSize = 40;
+    FontAtlas atlas("./fonts/FiraCode-Regular.ttf", fontSize);
     float toOffset = atlas.atlas_height;
-    std::cout << toOffset << "\n";
+    float xscale, yscale;
+    glfwGetWindowContentScale(window, &xscale, &yscale);
+    state.WIDTH *= xscale;
+    state.HEIGHT *= yscale;
+
     while (!glfwWindowShouldClose(window))
     {
       float WIDTH = state.WIDTH;
       float HEIGHT = state.HEIGHT;
+      bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7;
       cursor.setBounds(HEIGHT, atlas.atlas_height);
       glClearColor(0.0, 0.0,0.0, 1.0);
       glClear(GL_COLOR_BUFFER_BIT);
@@ -206,10 +228,9 @@ int main(int argc, char** argv) {
       ypos = -(float)HEIGHT/2 + 15;
       xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
 
-      std::string content = cursor.getContent();
+      std::string content = cursor.getContent(&atlas, WIDTH - 20 - linesAdvance -50);
       for (c = content.begin(); c != content.end(); c++) {
         if(*c == '\n') {
-
           xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
           ypos += toOffset;
           continue;
@@ -254,15 +275,25 @@ int main(int argc, char** argv) {
       cursor_shader.set2f("resolution", (float) WIDTH,(float) HEIGHT);
       if(state.mode != 0) {
         // use cursor for minibuffer
-        float cursorX = -(int32_t)(WIDTH/2) + 15 + (atlas.getAdvance(cursor.getCurrentAdvance())) + 10 + statusAdvance;
-        float cursorY = ((int32_t)(HEIGHT/2) - 15);
+        float cursorX = -(int32_t)(WIDTH/2) + 15 + (atlas.getAdvance(cursor.getCurrentAdvance())) + 5 + statusAdvance;
+        float cursorY = ((int32_t)(HEIGHT/2) - 10);
         cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
-      } else {
-      float cursorX = -(int32_t)(WIDTH/2) + 15 + (atlas.getAdvance(cursor.getCurrentAdvance())) + linesAdvance + 4;
-        float cursorY = -(int32_t)(HEIGHT/2) +  15 + (toOffset - (atlas.atlas_height *  0.15)) + (toOffset * (cursor.y - cursor.skip));
-      cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
+
+      glBindVertexArray(state.vao);
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+      glBindVertexArray(0);
+      glBindTexture(GL_TEXTURE_2D, 0);
 
       }
+
+      if(isSearchMode || state.mode == 0){
+        float cursorX = -(int32_t)(WIDTH/2) + 15 + (atlas.getAdvance(cursor.getCurrentAdvance(isSearchMode))) + linesAdvance + 4 - cursor.xSkip;
+        if(cursorX > WIDTH / 2)
+          cursorX = (WIDTH / 2) - 3;
+      float cursorY = -(int32_t)(HEIGHT/2) +  15 + (toOffset - (atlas.atlas_height *  0.15)) + (toOffset * (cursor.y - cursor.skip));
+
+      cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
+
 
       glBindVertexArray(state.vao);
       glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -270,7 +301,7 @@ int main(int argc, char** argv) {
       glBindTexture(GL_TEXTURE_2D, 0);
 
 
-
+      }
       glfwSwapBuffers(window);
       glfwPollEvents();
 
