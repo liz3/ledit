@@ -15,6 +15,11 @@ ledit has some dependencies you will need to build it:
 * GLFW3: used to create the window.
 * freetype2: required for font rendering.
 
+(Homebrew) To get the required dependencies, do:
+```
+brew install glfw freetype2 glm
+```
+
 You will also need CMake.
 
 To build the binary on mac:
