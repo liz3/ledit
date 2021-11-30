@@ -52,7 +52,7 @@ class Shader {
   }
  private:
    GLuint compileSimple(GLuint type, std::string path) {
-    std::string content = file_to_string(path);
+    std::string content = path;
     auto id = glCreateShader(type);
     const char* contentp = content.c_str();
     glShaderSource(id, 1, &contentp, nullptr);

@@ -9,5 +9,4 @@ target_link_directories(ledit PUBLIC /usr/local/lib /opt/homebrew/opt/freetype/l
 include_directories(/opt/homebrew/Cellar/glfw/3.3.5/include/ /opt/homebrew/Cellar/glm/0.9.9.8/include)
 target_link_directories(ledit PUBLIC /opt/homebrew/Cellar/glfw/3.3.5/lib/ /opt/homebrew/Cellar/glm/0.9.9.8/lib)
 target_link_libraries(ledit PUBLIC glfw freetype)
-file(COPY shaders DESTINATION .)
 file(COPY fonts DESTINATION .)

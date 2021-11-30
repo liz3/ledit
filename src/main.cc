@@ -16,6 +16,8 @@
 #include "shader.h"
 #include "font_atlas.h"
 #include "cursor.h"
+#include "shaders.h"
+#include "fira_code.h"
 
 State* gState = nullptr;
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -179,12 +181,12 @@ int main(int argc, char** argv) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     state.init();
 
-    Shader text_shader("./shaders/simple.vs", "./shaders/simple.fs", {});
+    Shader text_shader(text_shader_vert, text_shader_frag, {});
     text_shader.use();
-    Shader cursor_shader("./shaders/cursor.vert", "./shaders/cursor.frag", {"./shaders/camera.vert"});
+    Shader cursor_shader(cursor_shader_vert, cursor_shader_frag, {camera_shader_vert});
 
     float fontSize = 40;
-    FontAtlas atlas("./fonts/FiraCode-Regular.ttf", fontSize);
+    FontAtlas atlas(std::string(fira_code), fontSize);
     float toOffset = atlas.atlas_height;
     float xscale, yscale;
     glfwGetWindowContentScale(window, &xscale, &yscale);

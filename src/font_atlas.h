@@ -1,6 +1,7 @@
 #ifndef FONT_ATLAS_H
 #define FONT_ATLAS_H
 #include <vector>
+#include "base64.h"
 class FontAtlas {
 public:
   std::map<char, CharacterEntry> entries;
@@ -22,7 +23,7 @@ public:
   float getAdvance(char c) {
     return entries[c].advance;
   }
-  FontAtlas(std::string path, uint32_t fontSize) {
+  FontAtlas(std::string content, uint32_t fontSize) {
     fs = fontSize;
     atlas_width = 0;
     atlas_height = 0;
@@ -32,8 +33,10 @@ public:
         std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
         return;
     }
+    std::string decoded;
+    std::string d = Base64::decode(content, decoded);
     FT_Face face;
-    if (FT_New_Face(ft, path.c_str(), 0, &face)) {
+    if (FT_New_Memory_Face(ft, (const FT_Byte *) decoded.c_str(), decoded.length(), 0, &face)) {
       std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
       return;
     }
