@@ -6,7 +6,7 @@ With keybinds inspired by emacs.
 The base motivation was just simply that i wanted to have a look into OpenGL and doing GPU accelerated things, i did not plan to create a text editor from the get go.  
 After starting to experiment a bit i decided to call this a small side Project and implement a proper editor.
 
-[image](https://github.com/liz3/ledit/blob/master/assets/screenshot.png?raw=true)
+![image](https://github.com/liz3/ledit/blob/master/assets/screenshot.png?raw=true)
 
 ## Building
 Right now i only tested on macOS but i will try to build this on all GNU/linux & windows.  
