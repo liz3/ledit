@@ -1,3 +1,4 @@
+#include <math.h>
 #include <iostream>
 #include <map>
 #include <string>
@@ -5,11 +6,6 @@
 #include "la.h"
 #include "glad.h"
 #include <GLFW/glfw3.h>
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include "state.h"
@@ -18,7 +14,8 @@
 #include "cursor.h"
 #include "shaders.h"
 #include "fira_code.h"
-
+#include "highlighting.h"
+#include "languages.h"
 State* gState = nullptr;
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -127,6 +124,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         else if (key == GLFW_KEY_N && isPress)
           cursor->moveDown();
         gState->renderCoords();
+
       }
   } else {
       gState->lastStroke = glfwGetTime();
@@ -187,7 +185,6 @@ int main(int argc, char** argv) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     state.init();
-
     Shader text_shader(text_shader_vert, text_shader_frag, {});
     text_shader.use();
     Shader cursor_shader(cursor_shader_vert, cursor_shader_frag, {camera_shader_vert});
@@ -199,6 +196,7 @@ int main(int argc, char** argv) {
     glfwGetWindowContentScale(window, &xscale, &yscale);
     state.WIDTH *= xscale;
     state.HEIGHT *= yscale;
+
 
     while (!glfwWindowShouldClose(window))
     {
@@ -237,19 +235,56 @@ int main(int argc, char** argv) {
       }
       ypos = -(float)HEIGHT/2 + 15;
       xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
+      Vec4f color = vec4fs(0.95);
       auto maxRenderWidth = WIDTH - 20 - linesAdvance -50;
       auto allLines = cursor.getContent(&atlas, maxRenderWidth);
-      for(size_t x = 0; x < allLines.size(); x++) {
-        auto content = allLines[x];
-        for (c = content.begin(); c != content.end(); c++) {
-          entries.push_back(atlas.render(*c, xpos,ypos, vec4fs(0.95)));
-          xpos += atlas.getAdvance(*c);
-          if(xpos > maxRenderWidth)
-            break;
+      if(state.hasHighlighting) {
+        auto* colored = state.highlighter.get();
+        int cOffset = cursor.getTotalOffset();
+        for(size_t x = 0; x < allLines.size(); x++) {
+          auto content = allLines[x];
+          if((*colored).count(cOffset))
+            color = (*colored)[cOffset];
+          int charAdvance = 0;
+          for (c = content.begin(); c != content.end(); c++) {
+            if((*colored).count(cOffset))
+              color = (*colored)[cOffset];
+            cOffset++;
+            charAdvance++;
+            entries.push_back(atlas.render(*c, xpos,ypos, color));
+            xpos += atlas.getAdvance(*c);
+            if(xpos > maxRenderWidth) {
+              cOffset += content.length() - charAdvance;
+              break;
+            }
+          }
+          if (x < allLines.size() -1) {
+            if((*colored).count(cOffset))
+              color = (*colored)[cOffset];
+
+            cOffset++;
+
+            xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
+            ypos += toOffset;
+
+          }
+
         }
-        if (x < allLines.size() -1) {
-          xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
-          ypos += toOffset;
+      } else {
+        for(size_t x = 0; x < allLines.size(); x++) {
+          auto content = allLines[x];
+          for (c = content.begin(); c != content.end(); c++) {
+            entries.push_back(atlas.render(*c, xpos,ypos, color));
+            xpos += atlas.getAdvance(*c);
+            if(xpos > maxRenderWidth) {
+              break;
+            }
+          }
+          if (x < allLines.size() -1) {
+            xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
+            ypos += toOffset;
+
+          }
 
         }
 

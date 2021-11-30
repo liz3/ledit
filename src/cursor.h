@@ -31,11 +31,13 @@ class Cursor {
   float height = 0;
   float lineHeight = 0;
   int maxLines = 0;
+  int totalCharOffset = 0;
+  int cachedY = 0;
   std::string* bind = nullptr;
   void setBounds(float height, float lineHeight) {
     this->height = height;
     this->lineHeight = lineHeight;
-    float next = std::floor(height / lineHeight) -1;
+    float next = floor(height / lineHeight) -1;
     if(maxLines != 0) {
       if(next < maxLines) {
         skip += maxLines -next;
@@ -537,6 +539,20 @@ class Cursor {
       }
     }
     return prepare;
+  }
+  void calcTotalOffset() {
+    int offset = 0;
+    for(int i = 0; i < skip; i++) {
+      offset += lines[i].length()+1;
+    }
+    totalCharOffset = offset;
+  }
+  int getTotalOffset() {
+    if(cachedY != y) {
+      calcTotalOffset();
+      cachedY =y;
+    }
+    return totalCharOffset;
   }
   std::vector<std::string> getSaveLocKeys() {
     std::vector<std::string> ls;

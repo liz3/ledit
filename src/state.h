@@ -8,12 +8,15 @@
 #include <sstream>
 #include "shader.h"
 #include "cursor.h"
-
+#include "highlighting.h"
+#include "languages.h"
 class State {
  public:
   GLuint vao, vbo;
   Cursor* cursor;
+  Highlighter highlighter;
   float WIDTH, HEIGHT;
+  bool hasHighlighting;
   std::string path;
   std::string fileName;
   std::string status;
@@ -117,6 +120,16 @@ class State {
           path = miniBuf;
           auto split = cursor->split(path, "/");
           fileName = split[split.size() -1];
+          std::vector<std::string> fileParts = cursor->split(fileName, ".");
+          std::string ext = fileParts[fileParts.size()-1];
+          const Language* lang = has_language(ext);
+          if(lang) {
+            highlighter.setLanguage(*lang, lang->modeName);
+            highlighter.highlight(cursor->lines);
+            hasHighlighting = true;
+          } else {
+            hasHighlighting = false;
+          }
 
           status = "Loaded: " + miniBuf;
         } else {
@@ -132,7 +145,8 @@ class State {
   void renderCoords(){
     if(mode != 0)
       return;
-    status = std::to_string(cursor->y +1)  + ":" + std::to_string(cursor->x +1) + " ["  + fileName + "] History Size: " + std::to_string(cursor->history.size());
+    highlighter.highlight(cursor->lines);
+    status = std::to_string(cursor->y +1)  + ":" + std::to_string(cursor->x +1) + " ["  + fileName + ": " + (hasHighlighting ? highlighter.languageName : "Text")  + "] History Size: " + std::to_string(cursor->history.size());
   }
   void gotoLine() {
     if(mode != 0)
@@ -154,8 +168,19 @@ class State {
     if(path.length()) {
       auto split = cursor->split(path, "/");
       fileName = split[split.size() -1];
+      std::vector<std::string> fileParts = cursor->split(fileName, ".");
+      std::string ext = fileParts[fileParts.size()-1];
+      const Language* lang = has_language(ext);
+      if(lang) {
+        highlighter.setLanguage(*lang, lang->modeName);
+        highlighter.highlight(cursor->lines);
+        hasHighlighting = true;
+      } else {
+        hasHighlighting = false;
+      }
     } else {
       fileName = "New File";
+      hasHighlighting = false;
       renderCoords();
     }
 
