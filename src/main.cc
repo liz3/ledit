@@ -50,6 +50,10 @@ void character_callback(GLFWwindow* window, unsigned int codepoint)
       return;
     }
   }
+  if(codepoint < 32 || codepoint > 127) {
+    gState->status = "Unknown character: " + std::to_string(codepoint);
+    return;
+  }
   gState->cursor->append((char) codepoint);
   gState->lastStroke = glfwGetTime();
   gState->renderCoords();
@@ -107,10 +111,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
        if (!isPress)
          return;
        gState->lastStroke = glfwGetTime();
+
         if (key == GLFW_KEY_A && action == GLFW_PRESS)
           cursor->jumpStart();
         else if (key == GLFW_KEY_F && isPress)
           cursor->moveRight();
+        else if (key == GLFW_KEY_D && isPress)
+          cursor->removeBeforeCursor();
         else if (key == GLFW_KEY_E && isPress)
           cursor->jumpEnd();
         else if (key == GLFW_KEY_B && isPress)
@@ -214,6 +221,7 @@ int main(int argc, char** argv) {
       int start = cursor.skip;
       float linesAdvance = 0;
       int maxLines = cursor.skip + cursor.maxLines <= cursor.lines.size() ? cursor.skip + cursor.maxLines : cursor.lines.size();
+//      std::cout << start<< "\n";
       int biggestLine = std::to_string(maxLines).length();
       for (int i = start; i < maxLines; i++) {
         std::string value = std::to_string(i+1);
@@ -229,16 +237,22 @@ int main(int argc, char** argv) {
       }
       ypos = -(float)HEIGHT/2 + 15;
       xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
-
-      std::string content = cursor.getContent(&atlas, WIDTH - 20 - linesAdvance -50);
-      for (c = content.begin(); c != content.end(); c++) {
-        if(*c == '\n') {
+      auto maxRenderWidth = WIDTH - 20 - linesAdvance -50;
+      auto allLines = cursor.getContent(&atlas, maxRenderWidth);
+      for(size_t x = 0; x < allLines.size(); x++) {
+        auto content = allLines[x];
+        for (c = content.begin(); c != content.end(); c++) {
+          entries.push_back(atlas.render(*c, xpos,ypos, vec4fs(0.95)));
+          xpos += atlas.getAdvance(*c);
+          if(xpos > maxRenderWidth)
+            break;
+        }
+        if (x < allLines.size() -1) {
           xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
           ypos += toOffset;
-          continue;
+
         }
-        entries.push_back(atlas.render(*c, xpos,ypos, vec4fs(0.95)));
-        xpos += atlas.getAdvance(*c);
+
       }
       xpos =( -(int32_t)WIDTH/2) + 15;
       ypos = (float)HEIGHT/2 - toOffset;

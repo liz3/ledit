@@ -5,6 +5,8 @@
 class FontAtlas {
 public:
   std::map<char, CharacterEntry> entries;
+  std::map<int, std::vector<float>> linesCache;
+  std::map<int, std::string> contentCache;
   GLuint texture_id;
   FT_UInt atlas_width, atlas_height, smallest_top;
   uint32_t fs;
@@ -116,13 +118,21 @@ public:
     }
     return v;
   }
-  std::vector<float> getAllAdvance(std::string line) {
+
+  std::vector<float>* getAllAdvance(std::string line, int y) {
+    if (linesCache.count(y)) {
+      if(contentCache[y] == line) {
+        return &linesCache[y];
+      }
+    }
     std::vector<float> values;
     std::string::const_iterator c;
     for (c = line.begin(); c != line.end(); c++) {
       values.push_back(entries[*c].advance);
     }
-    return values;
+    linesCache[y] = values;
+    contentCache[y] = line;
+    return &linesCache[y];
   }
 
 };
