@@ -54,6 +54,26 @@ class State {
       miniBuf = cursor->getSaveLocKeys()[round];
     }
   }
+  void tryPaste() {
+    const char* contents = glfwGetClipboardString(NULL);
+    if(contents) {
+      std::string str = std::string(contents);
+      cursor->appendWithLines(str);
+      if(hasHighlighting)
+        highlighter.highlight(cursor->lines);
+      status = "Pasted " + std::to_string(str.length()) + " Characters";
+    }
+  }
+  void tryCopy() {
+    if(!cursor->selection.active) { 
+      status = "Aborted: No selection";
+      return;
+    }
+    std::string content = cursor->getSelection();
+    glfwSetClipboardString(NULL, content.c_str());
+    cursor->selection.stop();
+    status = "Copied " + std::to_string(content.length()) + " Characters";
+  }
   void save() {
     if(mode != 0)
       return;

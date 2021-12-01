@@ -39,6 +39,10 @@ void character_callback(GLFWwindow* window, unsigned int codepoint)
       gState->cursor->advanceWord();
       return;
     }
+    if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+      gState->tryCopy();
+      return;
+    }
     if(glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) {
       gState->cursor->advanceWordBackwards();
       return;
@@ -111,6 +115,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
        gState->undo();
      } else if (key == GLFW_KEY_SPACE && isPress) {
        gState->toggleSelection();
+     } else if (key == GLFW_KEY_C && action == GLFW_PRESS) {
+        gState->tryCopy();
+      } else if ((key == GLFW_KEY_V || key == GLFW_KEY_Y) && isPress) {
+         gState->tryPaste();
      } else {
        if (!isPress)
          return;
@@ -208,7 +216,7 @@ int main(int argc, char** argv) {
     Shader cursor_shader(cursor_shader_vert, cursor_shader_frag, {camera_shader_vert});
     Shader selection_shader(selection_shader_vert, selection_shader_frag, {});
 
-    float fontSize = 40;
+    float fontSize = 30;
     FontAtlas atlas(std::string(fira_code), fontSize);
     float toOffset = atlas.atlas_height;
     float xscale, yscale;

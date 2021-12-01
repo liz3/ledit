@@ -52,6 +52,25 @@ class Cursor {
     maxLines = next;
 
   }
+  std::string getSelection() {
+    std::stringstream ss;
+    if(selection.yStart == selection.yEnd) {
+       ss << lines[selection.yStart].substr(selection.getXSmaller(), selection.getXBigger());
+    } else {
+       int ySmall = selection.getYSmaller();
+       int yBig = selection.getYBigger();
+       bool isStart = ySmall == selection.yStart;
+       ss << lines[ySmall].substr(isStart ? selection.xStart : selection.xEnd);
+       ss << "\n";
+       for(int i = ySmall + 1; i < yBig; i++) {
+          ss << lines[i];
+          if(i != yBig)
+            ss << "\n";
+       }
+      ss << lines[yBig].substr(0, isStart ? selection.xEnd : selection.xStart);
+    }
+   return ss.str();
+  }
   int getSelectionSize() {
     if(!selection.active)
       return 0;
@@ -219,6 +238,24 @@ class Cursor {
         (&lines[y])->insert(x, entry.content);
         break;
       }
+      case 15: {
+        if(!entry.extra.size()) {
+            y = entry.y;
+            x = entry.x;
+            (&lines[y])->erase(x,entry.content.length());
+        } else {
+          int toDelete = entry.extra.size()-1;
+          y = entry.y - toDelete;
+          while(toDelete > 0) {
+           lines.erase(lines.begin()+y+toDelete);
+           toDelete--;
+         }
+          lines[y] = entry.content;
+          lines[y+1] = entry.extra[entry.extra.size()-1];
+          x = entry.x;
+        }
+        break;
+      }
       default:
         return false;
     }
@@ -376,6 +413,45 @@ class Cursor {
       target->insert(x, content);
       historyPush(8, 1, content);
       x++;
+    }
+  }
+void appendWithLines(std::string content) {
+    if(bind) {
+      append(content);
+      return;
+    }
+    bool hasSave = false;
+    std::string save;
+    std::vector<std::string> historyExtra;
+    auto contentLines = split(content, "\n");
+    int saveX = 0;
+    int count = 0;
+    for(int i = 0; i < contentLines.size(); i++) {
+       if(i == 0) {
+         if(contentLines.size() == 1) {
+         (&lines[y])->insert(x, contentLines[i]);
+          historyPush(15, contentLines[i].length(), contentLines[i]);
+        } else {
+          hasSave = true;   
+          save = lines[y];
+          lines[y] = contentLines[i];          
+          saveX = x;
+        }
+         x += contentLines[i].length();
+         continue;
+       }else {
+        historyExtra.push_back(contentLines[i]);
+        lines.insert(lines.begin()+y+1, contentLines[i]);
+        count++;
+        y++;
+        x = contentLines[i].length();
+      }
+    }
+    if(hasSave) {
+      historyExtra.push_back(lines[y+1]);
+      (&lines[y])->insert(x, save);
+      historyPushWithExtra(15, save.length(),save, historyExtra);
+      history[history.size()-1].x = xSave;
     }
   }
   void append(std::string content) {
