@@ -10,12 +10,14 @@
 #include "cursor.h"
 #include "highlighting.h"
 #include "languages.h"
+#include "providers.h"
 class State {
  public:
   GLuint vao, vbo;
   GLuint sel_vao, sel_vbo;
   Cursor* cursor;
   Highlighter highlighter;
+  Provider provider;
   float WIDTH, HEIGHT;
   bool hasHighlighting;
   std::string path;
@@ -74,6 +76,7 @@ class State {
     if(mode != 0)
       return;
     miniBuf = "";
+    provider.lastProvidedFolder = "";
     cursor->bindTo(&miniBuf);
     mode = 4;
     status = "Open: ";
@@ -155,6 +158,15 @@ class State {
     }
     cursor->unbind();
     mode = 0;
+  }
+  void provideComplete() {
+    if (mode == 4) {
+      std::string e = provider.getFileToOpen(miniBuf == provider.getLast() ? provider.lastProvidedFolder : miniBuf);
+      if(!e.length())
+        return;
+      std::string p = provider.lastProvidedFolder;
+      miniBuf = e;
+    }
   }
   void renderCoords(){
     if(mode != 0)

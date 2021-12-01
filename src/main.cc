@@ -151,7 +151,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         cursor->append('\n');
     }
     if(isPress && key == GLFW_KEY_TAB) {
-      cursor->append("  ");
+      if(gState->mode != 0)
+        gState->provideComplete();
+      else
+        cursor->append("  ");
     }
     if(isPress && key == GLFW_KEY_BACKSPACE) {
       cursor->removeOne();
