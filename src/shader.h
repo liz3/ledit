@@ -19,7 +19,10 @@ struct RenderChar {
   Vec4f fg_color;
   Vec4f bg_color;
 };
-
+struct SelectionEntry {
+  Vec2f pos;
+  Vec2f size;
+};
 class Shader {
  public:
   GLuint pid;
@@ -42,6 +45,9 @@ class Shader {
    }
   void set2f(std::string name, float x, float y) {
     glUniform2f(glGetUniformLocation(pid, name.c_str()), x, y);
+  }
+  void set4f(std::string name, float x, float y, float z, float w) {
+    glUniform4f(glGetUniformLocation(pid, name.c_str()), x, y, z, w);
   }
   void set1f(std::string name, float v) {
     glUniform1f(glGetUniformLocation(pid, name.c_str()), v);

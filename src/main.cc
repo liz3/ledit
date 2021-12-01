@@ -105,6 +105,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
        gState->search();
      } else if (key == GLFW_KEY_Z && isPress) {
        gState->undo();
+     } else if (key == GLFW_KEY_SPACE && isPress) {
+       gState->toggleSelection();
      } else {
        if (!isPress)
          return;
@@ -197,6 +199,7 @@ int main(int argc, char** argv) {
     Shader text_shader(text_shader_vert, text_shader_frag, {});
     text_shader.use();
     Shader cursor_shader(cursor_shader_vert, cursor_shader_frag, {camera_shader_vert});
+    Shader selection_shader(selection_shader_vert, selection_shader_frag, {});
 
     float fontSize = 40;
     FontAtlas atlas(std::string(fira_code), fontSize);
@@ -233,7 +236,6 @@ int main(int argc, char** argv) {
       int start = cursor.skip;
       float linesAdvance = 0;
       int maxLines = cursor.skip + cursor.maxLines <= cursor.lines.size() ? cursor.skip + cursor.maxLines : cursor.lines.size();
-//      std::cout << start<< "\n";
       int biggestLine = std::to_string(maxLines).length();
       for (int i = start; i < maxLines; i++) {
         std::string value = std::to_string(i+1);
@@ -403,7 +405,7 @@ int main(int argc, char** argv) {
 
       }
 
-      if(isSearchMode || state.mode == 0){
+      if(isSearchMode || state.mode == 0) {
         float cursorX = -(int32_t)(WIDTH/2) + 15 + (atlas.getAdvance(cursor.getCurrentAdvance(isSearchMode))) + linesAdvance + 4 - cursor.xSkip;
         if(cursorX > WIDTH / 2)
           cursorX = (WIDTH / 2) - 3;
@@ -416,9 +418,114 @@ int main(int argc, char** argv) {
       glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
       glBindVertexArray(0);
       glBindTexture(GL_TEXTURE_2D, 0);
+      }
 
+      if(cursor.selection.active){
+        std::vector<SelectionEntry> selectionBoundaries;
+        if(cursor.selection.getYSmaller() < cursor.skip && cursor.selection.getYBigger() > cursor.skip + cursor.maxLines) {
+          // select everything
+        } else {
+
+          int yStart = cursor.selection.getYStart();
+          int yEnd = cursor.selection.getYEnd();
+          if(cursor.selection.yStart == cursor.selection.yEnd) {
+            if(cursor.selection.xStart != cursor.selection.xEnd) {
+              int smallerX = cursor.selection.getXSmaller();
+              if(smallerX >= cursor.xOffset) {
+
+                float renderDistance = atlas.getAdvance((*allLines)[yEnd-cursor.skip].second.substr(0, smallerX-cursor.xOffset));
+                float renderDistanceBigger = atlas.getAdvance((*allLines)[yEnd-cursor.skip].second.substr(0, cursor.selection.getXBigger()-cursor.xOffset));
+                if (renderDistance < maxRenderWidth) {
+                  float start = ((float)HEIGHT/2) - 15 -  (toOffset *( (yEnd - cursor.skip)+1));
+                  selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance + renderDistance, start), vec2f(renderDistanceBigger - renderDistance, toOffset)});
+                } else {
+                  std::cout << renderDistance << "\n";
+                float renderDistance = atlas.getAdvance((*allLines)[yEnd-cursor.skip].second.substr(0, smallerX-cursor.xOffset));
+                float renderDistanceBigger = atlas.getAdvance((*allLines)[yEnd-cursor.skip].second.substr(0, cursor.selection.getXBigger()-cursor.xOffset));
+                float start = ((float)HEIGHT/2) - 15 -  (toOffset *( (yEnd - cursor.skip)+1));
+                selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance + (maxRenderWidth - renderDistanceBigger), start), vec2f(maxRenderWidth - renderDistanceBigger, toOffset)});
+
+                }
+              } else {
+                float renderDistanceBigger = atlas.getAdvance((*allLines)[yEnd-cursor.skip].second.substr(0, cursor.selection.getXBigger()-cursor.xOffset));
+                float start = ((float)HEIGHT/2) - 15 -  (toOffset *( (yEnd - cursor.skip)+1));
+                  selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance, start), vec2f(renderDistanceBigger, toOffset)});
+              }
+            }
+          } else {
+            if(yStart >= cursor.skip && yStart <= cursor.skip + cursor.maxLines) {
+              int yEffective = cursor.selection.getYStart() - cursor.skip;
+              int xStart = cursor.selection.getXStart();
+              if(xStart >= cursor.xOffset) {
+                float renderDistance = atlas.getAdvance((*allLines)[yEffective].second.substr(0, xStart-cursor.xOffset));
+                if (renderDistance < maxRenderWidth) {
+                  if (yStart < yEnd) {
+
+                    float start = ((float)HEIGHT/2) - 15 - (toOffset * (yEffective +1));
+                    selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance + renderDistance, start), vec2f((maxRenderWidth * 2) - renderDistance, toOffset)});
+                  }else {
+                    float start = ((float)HEIGHT/2) - 15 - (toOffset * (yEffective+1));
+                    selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance, start), vec2f(renderDistance, toOffset)});
+                  }
+                }
+              }
+            }
+            if(yEnd >= cursor.skip && yEnd <= cursor.skip + cursor.maxLines) {
+              int yEffective = cursor.selection.getYEnd() - cursor.skip;
+              int xStart = cursor.selection.getXEnd();
+              if(xStart >= cursor.xOffset) {
+                float renderDistance = atlas.getAdvance((*allLines)[yEffective].second.substr(0, xStart-cursor.xOffset));
+                if (renderDistance < maxRenderWidth) {
+                  if(yEnd < yStart) {
+                    float start = ((float)HEIGHT/2) - 15 - (toOffset * (yEffective+1));
+                    selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance + renderDistance, start), vec2f((maxRenderWidth *2) - renderDistance, toOffset)});
+                  } else {
+                    float start = ((float)HEIGHT/2) - 15 - (toOffset * (yEffective+1));
+                    selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance, start), vec2f(renderDistance, toOffset)});
+
+                  }
+                }
+              }
+            }
+            bool found = false;
+            int offset = 0;
+            int count = 0;
+            for(int i = cursor.selection.getYSmaller(); i < cursor.selection.getYBigger()-1; i++) {
+              if(i > cursor.skip + cursor.maxLines)
+                break;
+              if(i >= cursor.skip -1) {
+                if(!found) {
+                  found = true;
+                  offset = i - cursor.skip;
+                }
+                count++;
+              }
+            }
+            if(found) {
+              float start = (float)HEIGHT/2 - 15 - (toOffset * (offset +1));
+              selectionBoundaries.push_back({vec2f( (-(int32_t)WIDTH/2) + 20 + linesAdvance, start), vec2f(maxRenderWidth * 2,- (count * toOffset))});
+            }
+          }
 
       }
+        if(selectionBoundaries.size()) {
+          selection_shader.use();
+          glBindVertexArray(state.sel_vao);
+          selection_shader.set4f("selection_color", 0.7,0.7,0.8, 0.5);
+          selection_shader.set2f("resolution", (float) WIDTH,(float) HEIGHT);
+          glBindBuffer(GL_ARRAY_BUFFER, state.sel_vbo);
+
+          glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(SelectionEntry) *selectionBoundaries.size(), &selectionBoundaries[0]);
+
+          glBindBuffer(GL_ARRAY_BUFFER, 0);
+          glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 6, (GLsizei)selectionBoundaries.size());
+
+        }
+      }
+      glBindVertexArray(0);
+      glBindTexture(GL_TEXTURE_2D, 0);
+
+
       glfwSwapBuffers(window);
       glfwPollEvents();
 

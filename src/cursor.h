@@ -7,6 +7,7 @@
 #include <sstream>
 #include <fstream>
 #include "font_atlas.h"
+#include "selection.h"
 #include <deque>
 struct PosEntry {
   int x,y, skip;
@@ -23,6 +24,7 @@ class Cursor {
   std::vector<std::string> lines;
   std::map<std::string, PosEntry> saveLocs;
   std::deque<HistoryEntry> history;
+  Selection selection;
   int x = 0;
   int y = 0;
   int xSave = 0;
@@ -426,6 +428,7 @@ class Cursor {
    int targetX = target->length() < x ? target->length() : x;
    x = targetX;
    y--;
+   selection.diff(x,y);
   }
   void moveDown() {
     if(bind || y == lines.size()-1)
@@ -434,10 +437,12 @@ class Cursor {
    int targetX = target->length() < x ? target->length() : x;
    x = targetX;
    y++;
+   selection.diff(x,y);
   }
 
   void jumpStart() {
     x = 0;
+    selection.diffX(x);
   }
 
   void jumpEnd() {
@@ -445,6 +450,7 @@ class Cursor {
       x = bind->length();
     else
       x = lines[y].length();
+    selection.diffX(x);
   }
 
 
@@ -458,6 +464,7 @@ class Cursor {
     } else {
       x++;
     }
+    selection.diff(x, y);
   }
   void moveLeft() {
     std::string* current = bind ? bind :  &lines[y];
@@ -470,6 +477,7 @@ class Cursor {
     } else {
       x--;
     }
+    selection.diff(x, y);
   }
   bool saveTo(std::string path) {
     std::ofstream stream(path,  std::ofstream::out);

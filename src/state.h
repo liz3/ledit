@@ -13,6 +13,7 @@
 class State {
  public:
   GLuint vao, vbo;
+  GLuint sel_vao, sel_vbo;
   Cursor* cursor;
   Highlighter highlighter;
   float WIDTH, HEIGHT;
@@ -25,7 +26,12 @@ class State {
   int mode = 0;
   int round = 0;
   State() {}
-
+  void toggleSelection() {
+    if(cursor->selection.active)
+      cursor->selection.stop();
+    else
+      cursor->selection.activate(cursor->x, cursor->y);
+  }
   void switchBuffer() {
     if(mode != 0  && mode != 5)
       return;
@@ -204,6 +210,23 @@ class State {
     activate_entries();
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+
+    // //selection buffer;
+    glGenVertexArrays(1, &sel_vao);
+    glGenBuffers(1, &sel_vbo);
+    glBindVertexArray(sel_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, sel_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(SelectionEntry) * 16, nullptr, GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(SelectionEntry), (void*)offsetof(SelectionEntry, pos));
+    glVertexAttribDivisor(0, 1);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(SelectionEntry), (void*)offsetof(SelectionEntry, size));
+    glVertexAttribDivisor(1, 1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
 
   }
 private:
