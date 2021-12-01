@@ -72,8 +72,16 @@ class State {
     mode = 4;
     status = "Open: ";
   }
+  void reHighlight() {
+  if(hasHighlighting)
+    highlighter.highlight(cursor->lines);
+
+  }
   void undo() {
-    status = cursor->undo() ? "Undo" : "Undo failed";
+    bool result = cursor->undo();
+    status = result ? "Undo" : "Undo failed";
+    if(result)
+      reHighlight();
   }
   void search() {
     if(mode != 0)

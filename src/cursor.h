@@ -27,12 +27,16 @@ class Cursor {
   int y = 0;
   int xSave = 0;
   int skip = 0;
+  int xOffset = 0;
   float xSkip = 0;
   float height = 0;
   float lineHeight = 0;
   int maxLines = 0;
   int totalCharOffset = 0;
   int cachedY = 0;
+  int cachedX = 0;
+  int cachedMaxLines = 0;
+  std::vector<std::pair<int, std::string>> prepare;
   std::string* bind = nullptr;
   void setBounds(float height, float lineHeight) {
     this->height = height;
@@ -481,9 +485,8 @@ class Cursor {
     stream.close();
     return true;
   }
-  std::vector<std::string> getContent(FontAtlas* atlas, float maxWidth) {
-
-    std::vector<std::string> prepare;
+  std::vector<std::pair<int, std::string>>* getContent(FontAtlas* atlas, float maxWidth) {
+    prepare.clear();
     int end = skip + maxLines;
     if(end >= lines.size()) {
       end = lines.size();
@@ -492,7 +495,6 @@ class Cursor {
         skip = 0;
     }
     if(y == end && end < (lines.size())) {
-
       skip++;
       end++;
 
@@ -503,26 +505,24 @@ class Cursor {
     int maxSupport = 0;
     for(size_t i = skip; i < end; i++) {
       auto s = lines[i];
-      prepare.push_back(s);
-
+      prepare.push_back(std::pair<int, std::string>(s.length(), s));
     }
     float neededAdvance = atlas->getAdvance(lines[y].substr(0,x));
     float totalAdvance = atlas->getAdvance(lines[y]);
     int xOffset = 0;
-    if(neededAdvance > maxWidth) {
+    if(neededAdvance> maxWidth) {
       auto* all = atlas->getAllAdvance(lines[y], y - skip);
+      auto len = lines[y].length();
       float acc = 0;
       xSkip = 0;
       for(auto value : *all) {
         if(acc > neededAdvance){
-          xSkip += value;
-          xOffset++;
+
           break;
         }
-        // fk me
-        if(acc > maxWidth) {
+        if(acc > maxWidth * 2) {
           xOffset++;
-          xSkip += value;
+            xSkip += value;
         }
         acc += value;
       }
@@ -531,14 +531,15 @@ class Cursor {
     }
     if(xOffset > 0) {
       for(size_t i = 0; i < prepare.size(); i++) {
-        auto a = prepare[i];
+        auto a = prepare[i].second;
         if(a.length() > xOffset)
-          prepare[i] =  a.substr(xOffset);
+          prepare[i].second =  a.substr(xOffset);
         else
-          prepare[i] = "";
+          prepare[i].second = "";
       }
     }
-    return prepare;
+    this->xOffset = xOffset;
+    return &prepare;
   }
   void calcTotalOffset() {
     int offset = 0;
@@ -548,9 +549,11 @@ class Cursor {
     totalCharOffset = offset;
   }
   int getTotalOffset() {
-    if(cachedY != y) {
+    if(cachedY != y || cachedX != x || cachedMaxLines != maxLines) {
       calcTotalOffset();
+      cachedMaxLines = maxLines;
       cachedY =y;
+      cachedX = x;
     }
     return totalCharOffset;
   }

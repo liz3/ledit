@@ -5,7 +5,7 @@
 #include "la.h"
 const Language CPP = {
   "C++",
-  {"for", "while", "if", "int", "float", "return", "double", "true", "false", "else", "void", "delete", "struct", "class"},
+  {"for", "while", "if", "int", "float", "return", "double", "true", "false", "else", "void", "delete", "struct", "class", "case", "break", "const", "nullptr", "auto", "bool", "new", "auto*"},
   {"#include", "std::", "#ifdef", "#define", "#endif"},
   "//",
   {"/*", "*/"},

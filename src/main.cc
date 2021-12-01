@@ -27,6 +27,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
       gState->WIDTH = (float)width;
       gState->HEIGHT = (float)height;
     }
+
 }
 void character_callback(GLFWwindow* window, unsigned int codepoint)
 {
@@ -71,7 +72,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
   bool alt_pressed = glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS;
   Cursor* cursor = gState->cursor;
   bool isPress = action == GLFW_PRESS || action == GLFW_REPEAT;
-  
+
   if(ctrl_pressed) {
 
     if(x_pressed) {
@@ -205,11 +206,16 @@ int main(int argc, char** argv) {
     state.WIDTH *= xscale;
     state.HEIGHT *= yscale;
 
-
+    float WIDTH;
+    float HEIGHT;
     while (!glfwWindowShouldClose(window))
     {
-      float WIDTH = state.WIDTH;
-      float HEIGHT = state.HEIGHT;
+      bool changed = false;
+      if(HEIGHT != state.HEIGHT || WIDTH != state.WIDTH) {
+         WIDTH = state.WIDTH;
+          HEIGHT = state.HEIGHT;
+          changed = true;
+      }
       bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7;
       cursor.setBounds(HEIGHT, atlas.atlas_height);
       glClearColor(0.0, 0.0,0.0, 1.0);
@@ -244,43 +250,95 @@ int main(int argc, char** argv) {
       ypos = -(float)HEIGHT/2 + 15;
       xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
       Vec4f color = vec4fs(0.95);
-      auto maxRenderWidth = WIDTH - 20 - linesAdvance -50;
+      auto maxRenderWidth = (WIDTH /2) - 20 - linesAdvance;
       auto allLines = cursor.getContent(&atlas, maxRenderWidth);
+      if(changed) {
+        state.reHighlight();
+      }
       if(state.hasHighlighting) {
+        auto highlighter = state.highlighter;
+        int lineOffset = cursor.skip;
         auto* colored = state.highlighter.get();
         int cOffset = cursor.getTotalOffset();
-        for(size_t x = 0; x < allLines.size(); x++) {
-          auto content = allLines[x];
-          if((*colored).count(cOffset))
+        int cxOffset = cursor.xOffset;
+//        std::cout << cxOffset << "\n";
+
+
+        for(size_t x = 0; x < allLines->size(); x++) {
+          auto content = (*allLines)[x].second;
+          auto hasColorIndex = highlighter.lineIndex.count(x+lineOffset);
+          if(content.length())
+            cOffset += cxOffset;
+          else
+            cOffset += (*allLines)[x].first;
+          if(cxOffset > 0) {
+            if(hasColorIndex) {
+              auto entry = highlighter.lineIndex[x+lineOffset];
+              auto start = colored->begin();
+              std::advance(start, entry.first);
+              auto end = colored->begin();
+              std::advance(end, entry.second);
+              for(std::map<int, Vec4f>::iterator it = start; it != end; ++it) {
+                int xx = it->first;
+                if(xx >= cOffset)
+                  break;
+                color = it->second;
+              }
+            }
+          }
+          if((*colored).count(cOffset)) {
             color = (*colored)[cOffset];
+          }
           int charAdvance = 0;
           for (c = content.begin(); c != content.end(); c++) {
-            if((*colored).count(cOffset))
+            if((*colored).count(cOffset)) {
               color = (*colored)[cOffset];
+            }
+
             cOffset++;
             charAdvance++;
             entries.push_back(atlas.render(*c, xpos,ypos, color));
             xpos += atlas.getAdvance(*c);
-            if(xpos > maxRenderWidth) {
-              cOffset += content.length() - charAdvance;
+            if(xpos > (maxRenderWidth+ atlas.getAdvance(*c)) && c != content.end()) {
+              int remaining = content.length() - (charAdvance ) ;
+
+              if(remaining > 0) {
+                if(hasColorIndex) {
+                  auto entry = highlighter.lineIndex[x+lineOffset];
+                  auto start = colored->begin();
+                  std::advance(start, entry.first);
+                  auto end = colored->begin();
+                  std::advance(end, entry.second);
+                  for(std::map<int, Vec4f>::iterator it = start; it != end; ++it) {
+                    int xx = it->first;
+                    if(xx > cOffset + remaining)
+                      break;
+                    if(xx >= cOffset)
+                    color = it->second;
+                  }
+
+                }
+                cOffset += remaining;
+              }
+
               break;
             }
           }
-          if (x < allLines.size() -1) {
-            if((*colored).count(cOffset))
+
+          if (x < allLines->size() -1) {
+            if((*colored).count(cOffset)) {
               color = (*colored)[cOffset];
-
+            }
             cOffset++;
-
-            xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
+            xpos = -maxRenderWidth;
             ypos += toOffset;
 
           }
 
         }
       } else {
-        for(size_t x = 0; x < allLines.size(); x++) {
-          auto content = allLines[x];
+        for(size_t x = 0; x < allLines->size(); x++) {
+          auto content = (*allLines)[x].second;
           for (c = content.begin(); c != content.end(); c++) {
             entries.push_back(atlas.render(*c, xpos,ypos, color));
             xpos += atlas.getAdvance(*c);
@@ -288,7 +346,7 @@ int main(int argc, char** argv) {
               break;
             }
           }
-          if (x < allLines.size() -1) {
+          if (x < allLines->size() -1) {
             xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
             ypos += toOffset;
 

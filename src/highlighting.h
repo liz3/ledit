@@ -29,7 +29,7 @@ struct HighlighterState {
   char stringChar;
 };
 class Highlighter {
- public:
+public:
   std::string languageName;
   Language language;
   const std::string whitespace = " \t\n[]{}();.,";
@@ -38,6 +38,7 @@ class Highlighter {
   }
   std::string cachedContent = "";
   std::map<int, Vec4f> cached;
+  std::map<int, std::pair<int, int>> lineIndex;
   bool wasCached = false;
   void setLanguage(Language lang, std::string name) {
     languageName = name;
@@ -60,6 +61,9 @@ class Highlighter {
     if(wasCached && raw == cachedContent)
       return &cached;
     HighlighterState state {0, false, false, 0, "", 0};
+    int startIndex = 0;
+    int y = 0;
+    lineIndex.clear();
     Vec4f string_color = language.string_color;
     Vec4f default_color = language.default_color;
     Vec4f keyword_color = language.keyword_color;
@@ -70,7 +74,12 @@ class Highlighter {
     size_t i;
     for(i = 0; i < raw.length(); i++) {
       char current = raw[i];
+      if(current == '\n') {
+        int endIndex = entries.size();
+        lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);
+        startIndex = endIndex;
 
+      }
       if(language.stringCharacters.find(current) != std::string::npos && (last != language.escapeChar || (last == language.escapeChar && i >1 && raw[i-2] == language.escapeChar))) {
         if(state.mode == 0 && !state.busy) {
           state.mode = 1;
@@ -93,18 +102,18 @@ class Highlighter {
         state.busy = false;
         state.mode = 0;
         entries[i] = default_color;
-      } else if (hasEnding(state.buffer+current, language.singleLineComment)) {
+      } else if (hasEnding(state.buffer+current, language.singleLineComment) && !state.busy) {
 
-          entries[i  - (language.singleLineComment.length()-1)] = comment_color;
-          state.busy = true;
-          state.mode = 2;
-          state.buffer = "";
-        }else if (hasEnding(state.buffer, language.multiLineComment.first)) {
-          entries[i- language.multiLineComment.first.length()] = comment_color;
-          state.buffer = "";
-          state.busy = true;
-          state.mode = 3;
-        } else if(isNonChar(current) && !state.busy && state.buffer.length() && !state.wasReset) {
+        entries[i  - (language.singleLineComment.length()-1)] = comment_color;
+        state.busy = true;
+        state.mode = 2;
+        state.buffer = "";
+      }else if (hasEnding(state.buffer, language.multiLineComment.first) && !state.busy) {
+        entries[i- language.multiLineComment.first.length()] = comment_color;
+        state.buffer = "";
+        state.busy = true;
+        state.mode = 3;
+      } else if(isNonChar(current) && !state.busy && state.buffer.length() && !state.wasReset) {
 
         if (std::find(language.keyWords.begin(), language.keyWords.end(), state.buffer)!= language.keyWords.end()) {
 
@@ -128,9 +137,10 @@ class Highlighter {
       state.buffer += current;
       last = current;
 
-      }
-//        std::cout << "lol: " << state.buffer << "end\n";
-      if(state.buffer.length()) {
+    }
+
+    //        std::cout << "lol: " << state.buffer << "end\n";
+    if(state.buffer.length()) {
 
       if (std::find(language.keyWords.begin(), language.keyWords.end(), state.buffer)!= language.keyWords.end() && nextIsValid(raw, i)) {
         entries[state.start] = keyword_color;
@@ -153,13 +163,14 @@ class Highlighter {
         state.mode = 3;
       }
     }
-
+    int endIndex = entries.size();
+    lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);
     cached = entries;
     cachedContent = raw;
     wasCached = true;
     return &cached;
   }
- private:
+private:
   bool nextIsValid(std::string str, int i) {
     return i >= str.length()-1 || isNonChar(str[i+1]);
   }
