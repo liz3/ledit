@@ -52,6 +52,20 @@ class Cursor {
     maxLines = next;
 
   }
+  int getSelectionSize() {
+    if(!selection.active)
+      return 0;
+    if(selection.yStart == selection.yEnd)
+      return selection.getXBigger() - selection.getXSmaller();
+    int offset = (lines[selection.yStart].length() - selection.xStart) + selection.xEnd;
+    for(int w = selection.getYSmaller(); w < selection.getYBigger(); w++) {
+      if(w == selection.getYSmaller() || w == selection.getYBigger()) {
+        continue;
+      }
+      offset += lines[w].length()+1;
+    }
+    return offset;
+  }
   void bindTo(std::string* entry) {
     bind = entry;
     xSave = x;
@@ -118,7 +132,7 @@ class Cursor {
       x = target->length();
     else
       x+= offset;
-
+    selection.diffX(x);
   }
   std::string deleteWord() {
     std::string* target = bind ? bind : &lines[y];
@@ -219,7 +233,7 @@ class Cursor {
       x = 0;
     else
       x -= offset;
-
+    selection.diffX(x);
   }
 
   void gotoLine(int l) {
@@ -228,6 +242,7 @@ class Cursor {
     x = 0;
     xSave = 0;
     y = l-1;
+    selection.diff(x,y);
     center(l);
   }
   void center(int l) {

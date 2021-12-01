@@ -161,6 +161,8 @@ class State {
       return;
     highlighter.highlight(cursor->lines);
     status = std::to_string(cursor->y +1)  + ":" + std::to_string(cursor->x +1) + " ["  + fileName + ": " + (hasHighlighting ? highlighter.languageName : "Text")  + "] History Size: " + std::to_string(cursor->history.size());
+    if(cursor->selection.active)
+      status += " Selected: [" + std::to_string(cursor->getSelectionSize()) + "]";
   }
   void gotoLine() {
     if(mode != 0)
