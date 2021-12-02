@@ -3,10 +3,13 @@
 #include <map>
 #include <string>
 #include <vector>
+#ifndef __APPLE__
+#include <algorithm>
+#endif
 #include "la.h"
 #include "glad.h"
-#include <GLFW/glfw3.h>
-#include <ft2build.h>
+#include "../third-party/glfw/include/GLFW/glfw3.h"
+#include "../third-party/freetype2/include/ft2build.h"
 #include FT_FREETYPE_H
 #include "state.h"
 #include "shader.h"
@@ -88,6 +91,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
       if(action == GLFW_PRESS && key == GLFW_KEY_S) {
         gState->save();
       }
+      if(action == GLFW_PRESS && key == GLFW_KEY_L) {
+        gState->showLineNumbers = !gState->showLineNumbers;
+      }
       if(action == GLFW_PRESS && key == GLFW_KEY_O) {
         gState->open();
       }
@@ -116,7 +122,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     } else  if(key == GLFW_KEY_N && isPress) {
        gState->cursor->moveLine(1);
     }
-      gState->renderCoords();  
+      gState->renderCoords();
       return;
     }
      if (key == GLFW_KEY_S && action == GLFW_PRESS) {
@@ -199,13 +205,15 @@ int main(int argc, char** argv) {
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
-    GLFWwindow* window = glfwCreateWindow(state.WIDTH, state.HEIGHT, "ledit", nullptr, nullptr);
+    const std::string window_name = "ledit: " + (x.length() ? x : "New File");
+    GLFWwindow* window = glfwCreateWindow(state.WIDTH, state.HEIGHT, window_name.c_str(), nullptr, nullptr);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return -1;
     }
+    state.window = window;
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetKeyCallback(window, key_callback);
@@ -268,18 +276,20 @@ int main(int argc, char** argv) {
       int start = cursor.skip;
       float linesAdvance = 0;
       int maxLines = cursor.skip + cursor.maxLines <= cursor.lines.size() ? cursor.skip + cursor.maxLines : cursor.lines.size();
-      int biggestLine = std::to_string(maxLines).length();
-      for (int i = start; i < maxLines; i++) {
-        std::string value = std::to_string(i+1);
-        linesAdvance = 0;
-        for (c = value.begin(); c != value.end(); c++) {
-          entries.push_back(atlas.render(*c, xpos,ypos, vec4fs(0.8)));
-          xpos += atlas.getAdvance(*c);
-          linesAdvance += atlas.getAdvance(*c);
+      if(state.showLineNumbers) {
+        int biggestLine = std::to_string(maxLines).length();
+        for (int i = start; i < maxLines; i++) {
+          std::string value = std::to_string(i+1);
+          linesAdvance = 0;
+          for (c = value.begin(); c != value.end(); c++) {
+            entries.push_back(atlas.render(*c, xpos,ypos, vec4fs(0.8)));
+            xpos += atlas.getAdvance(*c);
+            linesAdvance += atlas.getAdvance(*c);
 
+          }
+          xpos =  -(int32_t)WIDTH/2 + 10;
+          ypos += toOffset;
         }
-        xpos =  -(int32_t)WIDTH/2 + 10;
-        ypos += toOffset;
       }
       auto maxRenderWidth = (WIDTH /2) - 20 - linesAdvance;
       auto allLines = cursor.getContent(&atlas, maxRenderWidth);

@@ -19,6 +19,7 @@ class State {
   Highlighter highlighter;
   Provider provider;
   FontAtlas* atlas;
+  GLFWwindow* window;
   float WIDTH, HEIGHT;
   bool hasHighlighting;
   std::string path;
@@ -26,6 +27,7 @@ class State {
   std::string status;
   std::string miniBuf;
   double lastStroke;
+  bool showLineNumbers = true;
   int mode = 0;
   int round = 0;
   int fontSize;
@@ -52,6 +54,7 @@ class State {
       cursor->selection.stop();
     else
       cursor->selection.activate(cursor->x, cursor->y);
+    renderCoords();
   }
   void switchBuffer() {
     if(mode != 0  && mode != 5)
@@ -162,6 +165,8 @@ class State {
           path = miniBuf;
           auto split = cursor->split(path, "/");
           fileName = split[split.size() -1];
+          std::string window_name = "ledit: " + fileName;
+          glfwSetWindowTitle(window, window_name.c_str());
           tryEnableHighlighting();
         }
         } else {
@@ -187,6 +192,8 @@ class State {
       } else if (mode == 4 || mode == 5) {
         bool result = cursor->openFile(path, miniBuf);
         path = miniBuf;
+        std::string window_name = "ledit: " + path;
+        glfwSetWindowTitle(window, window_name.c_str());
         auto split = cursor->split(path, "/");
         fileName = split[split.size() -1];
         tryEnableHighlighting();
