@@ -187,7 +187,6 @@ class Cursor {
     int offset = findAnyOf(target->substr(x), " \t\n[]{}/\\*()=_-.,");
     if(offset == -1)
       offset = target->length() -x;
-    offset++;
     std::string w = target->substr(x,offset);
     target->erase(x, offset);
     historyPush(3, w.length(), w);

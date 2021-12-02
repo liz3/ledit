@@ -118,9 +118,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
      } else if (key == GLFW_KEY_C && action == GLFW_PRESS) {
         gState->tryCopy();
 
-     }   else if (key == GLFW_KEY_EQUAL && action == GLFW_PRESS) {
+     }   else if (key == GLFW_KEY_EQUAL && isPress) {
             gState->increaseFontSize(2);
-     }   else if (key == GLFW_KEY_MINUS && action == GLFW_PRESS) {
+     }   else if (key == GLFW_KEY_MINUS && isPress) {
             gState->increaseFontSize(-2);
       } else if ((key == GLFW_KEY_V || key == GLFW_KEY_Y) && isPress) {
          gState->tryPaste();
@@ -235,7 +235,6 @@ int main(int argc, char** argv) {
       if(HEIGHT != state.HEIGHT || WIDTH != state.WIDTH || fontSize != state.fontSize) {
          WIDTH = state.WIDTH;
          fontSize = state.fontSize;
-         cursor.interruptCache = true;
          state.highlighter.wasCached = false;
          HEIGHT = state.HEIGHT;
          changed = true;
