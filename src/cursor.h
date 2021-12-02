@@ -43,7 +43,7 @@ class Cursor {
   void setBounds(float height, float lineHeight) {
     this->height = height;
     this->lineHeight = lineHeight;
-    float next = floor(height / lineHeight) -1;
+    float next = floor(height / lineHeight);
     if(maxLines != 0) {
       if(next < maxLines) {
         skip += maxLines -next;
@@ -187,7 +187,6 @@ class Cursor {
     int offset = findAnyOf(target->substr(x), " \t\n[]{}/\\*()=_-.,");
     if(offset == -1)
       offset = target->length() -x;
-    offset++;
     std::string w = target->substr(x,offset);
     target->erase(x, offset);
     historyPush(3, w.length(), w);

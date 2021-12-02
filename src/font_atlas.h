@@ -10,6 +10,10 @@ public:
   GLuint texture_id;
   FT_UInt atlas_width, atlas_height, smallest_top;
   uint32_t fs;
+  FT_Library ft;
+  bool wasGenerated = false;
+  FT_Face face;
+  std::string decoded;
   RenderChar render(char c, float x = 0.0, float y = 0.0, Vec4f color = vec4fs(1)) {
     auto entry = entries[c];
     RenderChar r;
@@ -26,22 +30,27 @@ public:
     return entries[c].advance;
   }
   FontAtlas(std::string content, uint32_t fontSize) {
-    fs = fontSize;
-    atlas_width = 0;
-    atlas_height = 0;
-    smallest_top = 1e9;
-    FT_Library ft;
     if (FT_Init_FreeType(&ft)) {
         std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
         return;
     }
-    std::string decoded;
     std::string d = Base64::decode(content, decoded);
-    FT_Face face;
     if (FT_New_Memory_Face(ft, (const FT_Byte *) decoded.c_str(), decoded.length(), 0, &face)) {
       std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
       return;
     }
+    renderFont(fontSize);
+  }
+  void renderFont(uint32_t fontSize) {
+   if(wasGenerated) {
+      glDeleteTextures(1, &texture_id);
+      entries.clear();
+      linesCache.clear();
+    }   
+    fs = fontSize;
+    atlas_width = 0;
+    atlas_height = 0;
+    smallest_top = 1e9;    
     FT_Set_Pixel_Sizes(face, 0, fontSize);
     // TODO should this be here?
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -108,7 +117,8 @@ public:
 
       xOffset += entry.width;
 
-    }
+   }    
+   wasGenerated = true;
   }
   float getAdvance(std::string line) {
     float v = 0;
