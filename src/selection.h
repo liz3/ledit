@@ -12,10 +12,8 @@ class Selection {
     yStart =y;
     yEnd = y;
     active = true;
-   std::cout << "active" << "\n";
   }
   void stop() {
-    std::cout << "deactivate" << "\n";
     active = false;
   }
   void diffX(int diff) {

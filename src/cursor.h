@@ -52,6 +52,35 @@ class Cursor {
     maxLines = next;
 
   }
+  void deleteSelection() {
+    if(selection.yStart == selection.yEnd) {
+      auto line = lines[y];
+      historyPush(16, line.length(), line);
+      auto start = line.substr(0, selection.getXSmaller());
+      auto end = line.substr(selection.getXBigger());
+      lines[y] = start + end;
+      x = start.length();
+    } else {
+       int ySmall = selection.getYSmaller();
+       int yBig = selection.getYBigger();
+       bool isStart = ySmall == selection.yStart;
+       std::string save = lines[ySmall];
+       std::vector<std::string> toSave;
+       lines[ySmall] = lines[ySmall].substr(0, isStart ? selection.xStart : selection.xEnd);
+       for(int i = 0; i < yBig-ySmall; i++) {
+         toSave.push_back(lines[ySmall+1]);
+         if(i == yBig - ySmall-1) {
+           std::cout << lines[ySmall+1] << "\n";
+           x = lines[ySmall].length();
+           lines[ySmall] += lines[ySmall+1].substr(isStart ? selection.xEnd : selection.xStart);
+         }
+         lines.erase(lines.begin()+ySmall+1);
+       }
+       y = ySmall;
+       historyPushWithExtra(16, save.length(), save, toSave);
+    }
+  }
+
   std::string getSelection() {
     std::stringstream ss;
     if(selection.yStart == selection.yEnd) {
@@ -256,6 +285,22 @@ class Cursor {
         }
         break;
       }
+    case 16: {
+      if(entry.extra.size()) {
+        y = entry.y;
+        x = entry.x;
+        lines[y] = entry.content;
+        for(int i = 0; i < entry.extra.size(); i++) {
+          lines.insert(lines.begin()+y+i+1, entry.extra[i]);
+        }
+
+      } else {
+        y = entry.y;
+        x = entry.x;
+        lines[y] = entry.content;
+      }
+        break;
+    }
       default:
         return false;
     }
@@ -432,9 +477,9 @@ void appendWithLines(std::string content) {
          (&lines[y])->insert(x, contentLines[i]);
           historyPush(15, contentLines[i].length(), contentLines[i]);
         } else {
-          hasSave = true;   
+          hasSave = true;
           save = lines[y];
-          lines[y] = contentLines[i];          
+          lines[y] = contentLines[i];
           saveX = x;
         }
          x += contentLines[i].length();
@@ -489,6 +534,11 @@ void appendWithLines(std::string content) {
 
   }
   void removeOne() {
+    if(selection.active) {
+      deleteSelection();
+      selection.stop();
+      return;
+    }
     std::string* target = bind ? bind :  &lines[y];
     if(x == 0) {
       if(y == 0 || bind)

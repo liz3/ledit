@@ -65,7 +65,7 @@ class State {
     }
   }
   void tryCopy() {
-    if(!cursor->selection.active) { 
+    if(!cursor->selection.active) {
       status = "Aborted: No selection";
       return;
     }
@@ -120,6 +120,19 @@ class State {
     mode = 2;
     status = "Search: ";
   }
+  void tryEnableHighlighting() {
+    std::vector<std::string> fileParts = cursor->split(fileName, ".");
+    std::string ext = fileParts[fileParts.size()-1];
+    const Language* lang = has_language(ext);
+    if(lang) {
+      highlighter.setLanguage(*lang, lang->modeName);
+      highlighter.highlight(cursor->lines);
+      hasHighlighting = true;
+    } else {
+      hasHighlighting = false;
+    }
+
+  }
   void inform(bool success) {
     if(success) {
       if(mode == 1) { // save to
@@ -130,6 +143,7 @@ class State {
           path = miniBuf;
           auto split = cursor->split(path, "/");
           fileName = split[split.size() -1];
+          tryEnableHighlighting();
         }
         } else {
           status = "Failed to save to: " + miniBuf;
@@ -153,25 +167,11 @@ class State {
         status = "Jump to: " + miniBuf;
       } else if (mode == 4 || mode == 5) {
         bool result = cursor->openFile(path, miniBuf);
-        if(result) {
           path = miniBuf;
           auto split = cursor->split(path, "/");
           fileName = split[split.size() -1];
-          std::vector<std::string> fileParts = cursor->split(fileName, ".");
-          std::string ext = fileParts[fileParts.size()-1];
-          const Language* lang = has_language(ext);
-          if(lang) {
-            highlighter.setLanguage(*lang, lang->modeName);
-            highlighter.highlight(cursor->lines);
-            hasHighlighting = true;
-          } else {
-            hasHighlighting = false;
-          }
-
-          status = "Loaded: " + miniBuf;
-        } else {
-          status = "Failed to load: " + miniBuf;
-        }
+          tryEnableHighlighting();
+          status = (result ? "Loaded: " : "New File: ") + miniBuf;
       }
     } else {
       status = "Aborted";
@@ -216,16 +216,7 @@ class State {
     if(path.length()) {
       auto split = cursor->split(path, "/");
       fileName = split[split.size() -1];
-      std::vector<std::string> fileParts = cursor->split(fileName, ".");
-      std::string ext = fileParts[fileParts.size()-1];
-      const Language* lang = has_language(ext);
-      if(lang) {
-        highlighter.setLanguage(*lang, lang->modeName);
-        highlighter.highlight(cursor->lines);
-        hasHighlighting = true;
-      } else {
-        hasHighlighting = false;
-      }
+      tryEnableHighlighting();
     } else {
       fileName = "New File";
       hasHighlighting = false;
