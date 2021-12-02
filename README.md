@@ -76,10 +76,12 @@ C-x-g - asks for a line number to jump to.
 Search:
 C-s will prompt for input and with enter its then possible to search that term case sensitive!
 
-pManipulation:
+Manipulation:
 
 C-d - delete character after the cursor
 M-d - delete the next word including a whitespace.
+C-shift-p - move current line up
+C-shift-n - move current line down
 # more soon!!!
 
 Operations:
