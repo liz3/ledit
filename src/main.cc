@@ -437,7 +437,7 @@ int main(int argc, char** argv) {
       if(state.mode != 0) {
         // use cursor for minibuffer
         float cursorX = -(int32_t)(WIDTH/2) + 15 + (atlas.getAdvance(cursor.getCurrentAdvance())) + 5 + statusAdvance;
-        float cursorY = ((int32_t)(HEIGHT/2) - 10);
+        float cursorY = ((int32_t)(HEIGHT/2) - 6);
         cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
 
       glBindVertexArray(state.vao);
