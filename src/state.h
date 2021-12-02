@@ -21,6 +21,7 @@ class State {
   FontAtlas* atlas;
   float WIDTH, HEIGHT;
   bool hasHighlighting;
+  bool hasExitState;
   std::string path;
   std::string fileName;
   std::string status;

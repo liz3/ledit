@@ -70,12 +70,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
     if(gState->mode != 0)
       gState->inform(false);
-    if(gState->status != "You sure, that you want to exit?")
-      gState->status = "You sure, that you want to exit?";
-    else
+    if(gState->hasExitState == true)
       glfwSetWindowShouldClose(window, true);
-    return;
-
+    else {
+      gState->status = "Are you sure that you want to exit? Click ESC again to exit.";
+      gState->hasExitState = true;
+      return;
+    } 
   }
   bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
   bool x_pressed = glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS;
