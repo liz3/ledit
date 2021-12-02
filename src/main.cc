@@ -70,6 +70,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
     if(gState->mode != 0)
       gState->inform(false);
+    if(gState->status != "You sure, that you want to exit?")
+      gState->status = "You sure, that you want to exit?";
     else
       glfwSetWindowShouldClose(window, true);
     return;
