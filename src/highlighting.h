@@ -102,13 +102,13 @@ public:
         state.busy = false;
         state.mode = 0;
         entries[i] = default_color;
-      } else if (hasEnding(state.buffer+current, language.singleLineComment) && !state.busy) {
+      } else if (language.singleLineComment.length() && hasEnding(state.buffer+current, language.singleLineComment) && !state.busy) {
 
         entries[i  - (language.singleLineComment.length()-1)] = comment_color;
         state.busy = true;
         state.mode = 2;
         state.buffer = "";
-      }else if (hasEnding(state.buffer, language.multiLineComment.first) && !state.busy) {
+      } else if (language.multiLineComment.first.length() && hasEnding(state.buffer, language.multiLineComment.first) && !state.busy) {
         entries[i- language.multiLineComment.first.length()] = comment_color;
         state.buffer = "";
         state.busy = true;

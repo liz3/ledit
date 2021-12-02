@@ -15,13 +15,16 @@ public:
       return "";
     return folderEntries[offset];
   }
-std::string getFileToOpen(std::string path) {
+std::string getFileToOpen(std::string path, bool reverse) {
   if(!fs::exists(path) || !fs::is_directory(path))
     return "";
   if(lastProvidedFolder == path) {
-    offset++;
+    offset += reverse ? -1 : 1;
+    
     if(offset == folderEntries.size())
       offset = 0;
+    else if (offset == -1)
+      offset = folderEntries.size() -1;
     return folderEntries[offset];
   }
   folderEntries.clear();

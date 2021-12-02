@@ -46,6 +46,8 @@ class State {
     atlas->renderFont(fontSize);
   }
   void toggleSelection() {
+    if(mode != 0)
+      return;
     if(cursor->selection.active)
       cursor->selection.stop();
     else
@@ -184,11 +186,15 @@ class State {
         status = "Jump to: " + miniBuf;
       } else if (mode == 4 || mode == 5) {
         bool result = cursor->openFile(path, miniBuf);
-          path = miniBuf;
-          auto split = cursor->split(path, "/");
-          fileName = split[split.size() -1];
-          tryEnableHighlighting();
-          status = (result ? "Loaded: " : "New File: ") + miniBuf;
+        path = miniBuf;
+        auto split = cursor->split(path, "/");
+        fileName = split[split.size() -1];
+        tryEnableHighlighting();
+        status = (result ? "Loaded: " : "New File: ") + miniBuf;
+        if(!result) {
+           cursor->reset();
+           atlas->linesCache.clear();
+        }
       }
     } else {
       status = "Aborted";
@@ -196,9 +202,9 @@ class State {
     cursor->unbind();
     mode = 0;
   }
-  void provideComplete() {
+  void provideComplete(bool reverse) {
     if (mode == 4) {
-      std::string e = provider.getFileToOpen(miniBuf == provider.getLast() ? provider.lastProvidedFolder : miniBuf);
+      std::string e = provider.getFileToOpen(miniBuf == provider.getLast() ? provider.lastProvidedFolder : miniBuf, reverse);
       if(!e.length())
         return;
       std::string p = provider.lastProvidedFolder;
