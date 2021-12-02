@@ -16,7 +16,11 @@
 #include "font_atlas.h"
 #include "cursor.h"
 #include "shaders.h"
+#ifdef _WIN32
+#include "fira_code_windows.h"
+#else
 #include "fira_code.h"
+#endif
 #include "highlighting.h"
 #include "languages.h"
 State* gState = nullptr;
@@ -215,6 +219,7 @@ int main(int argc, char** argv) {
     }
     state.window = window;
     glfwMakeContextCurrent(window);
+    glfwSwapInterval(1);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetKeyCallback(window, key_callback);
     glfwSetCharCallback(window, character_callback);
@@ -237,7 +242,11 @@ int main(int argc, char** argv) {
     text_shader.use();
     Shader cursor_shader(cursor_shader_vert, cursor_shader_frag, {camera_shader_vert});
     Shader selection_shader(selection_shader_vert, selection_shader_frag, {});
+#ifdef _WIN32
+    FontAtlas atlas(std::string(get_fira_code()), state.fontSize);
+    #else
     FontAtlas atlas(std::string(fira_code), state.fontSize);
+#endif
     state.atlas = &atlas;
     float xscale, yscale;
     glfwGetWindowContentScale(window, &xscale, &yscale);

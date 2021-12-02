@@ -2,10 +2,14 @@
 
 Vec2f vec2f(float x, float y)
 {
+#ifdef _WIN32
+    return {x,y};
+#else
     return (Vec2f) {
         .x = x,
         .y = y,
     };
+#endif
 }
 
 Vec2f vec2fs(float x)
@@ -42,10 +46,14 @@ Vec2f vec2f_div(Vec2f a, Vec2f b)
 
 Vec2i vec2i(int x, int y)
 {
+#ifdef _WIN32
+    return {x,y};
+#else
     return (Vec2i) {
         .x = x,
         .y = y,
     };
+#endif
 }
 
 Vec2i vec2is(int x)
@@ -82,12 +90,16 @@ Vec2i vec2i_div(Vec2i a, Vec2i b)
 
 Vec4f vec4f(float x, float y, float z, float w)
 {
+    #ifdef _WIN32
+    return {x,y,z,w};
+#else
     return (Vec4f) {
         .x = x,
         .y = y,
         .z = z,
         .w = w,
     };
+#endif
 }
 
 Vec4f vec4fs(float x)
