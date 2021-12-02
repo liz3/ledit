@@ -52,6 +52,15 @@ class Cursor {
     maxLines = next;
 
   }
+  void reset() {
+    x = 0;
+    y = 0;
+    xSave = 0;
+    skip = 0;
+    prepare.clear();
+    history.clear();
+    lines = {""};
+  }
   void deleteSelection() {
     if(selection.yStart == selection.yEnd) {
       auto line = lines[y];
@@ -70,7 +79,6 @@ class Cursor {
        for(int i = 0; i < yBig-ySmall; i++) {
          toSave.push_back(lines[ySmall+1]);
          if(i == yBig - ySmall-1) {
-           std::cout << lines[ySmall+1] << "\n";
            x = lines[ySmall].length();
            lines[ySmall] += lines[ySmall+1].substr(isStart ? selection.xEnd : selection.xStart);
          }
@@ -84,7 +92,8 @@ class Cursor {
   std::string getSelection() {
     std::stringstream ss;
     if(selection.yStart == selection.yEnd) {
-       ss << lines[selection.yStart].substr(selection.getXSmaller(), selection.getXBigger());
+       
+       ss << lines[selection.yStart].substr(selection.getXSmaller(), selection.getXBigger() - selection.getXSmaller());
     } else {
        int ySmall = selection.getYSmaller();
        int yBig = selection.getYBigger();
@@ -137,6 +146,7 @@ class Cursor {
         y = x;
         // we are in non 0 mode here, set savex
         xSave = where;
+        this->x = where;
         center(i);
         return "[At: " + std::to_string(y + 1) + ":" + std::to_string(where + 1) + "]: ";
       }
@@ -392,15 +402,16 @@ class Cursor {
 
   bool openFile(std::string oldPath, std::string path) {
     std::ifstream stream(path);
-    if(!stream.is_open()) {
-      return false;
-    }
     if(oldPath.length()) {
       PosEntry entry;
       entry.x = xSave;
       entry.y = y;
       entry.skip = skip;
       saveLocs[oldPath] = entry;
+    }
+
+    if(!stream.is_open()) {
+      return false;
     }
     if(saveLocs.count(path)) {
         PosEntry savedEntry = saveLocs[path];
@@ -688,6 +699,21 @@ void appendWithLines(std::string content) {
     }
     this->xOffset = xOffset;
     return &prepare;
+  }
+  void moveLine(int diff) {
+    int targetY = y + diff;
+    if(targetY < 0 || targetY == lines.size())
+      return;
+   if(targetY < y ) {
+      std::string toOffset = lines[y-1];
+      lines[y-1] = lines[y];
+      lines[y] = toOffset;
+    } else {
+      std::string toOffset = lines[y+1];
+      lines[y+1] = lines[y];
+      lines[y] = toOffset;
+    }
+    y = targetY;
   }
   void calcTotalOffset() {
     int offset = 0;

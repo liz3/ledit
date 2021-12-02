@@ -79,6 +79,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     } 
   }
   bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
+  bool shift_pressed = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
   bool x_pressed = glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS;
   bool alt_pressed = glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS;
   Cursor* cursor = gState->cursor;
@@ -110,6 +111,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         cursor->gotoLine(cursor->lines.size());
         gState->renderCoords();
       }
+      return;
+    }
+     if (shift_pressed) {
+    if(key == GLFW_KEY_P && isPress) {
+       gState->cursor->moveLine(-1);
+    } else  if(key == GLFW_KEY_N && isPress) {
+       gState->cursor->moveLine(1);
+    }
+      gState->renderCoords();  
       return;
     }
      if (key == GLFW_KEY_S && action == GLFW_PRESS) {
@@ -167,7 +177,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
     if(isPress && key == GLFW_KEY_TAB) {
       if(gState->mode != 0)
-        gState->provideComplete();
+        gState->provideComplete(shift_pressed);
       else
         cursor->append("  ");
     }
@@ -472,7 +482,7 @@ int main(int argc, char** argv) {
               } else {
                 float renderDistanceBigger = atlas.getAdvance((*allLines)[yEnd-cursor.skip].second.substr(0, cursor.selection.getXBigger()-cursor.xOffset));
                 float start = ((float)HEIGHT/2) - 15 -  (toOffset *( (yEnd - cursor.skip)+1));
-                  selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance, start), vec2f(renderDistanceBigger > maxRenderWidth ? maxRenderWidth : renderDistanceBigger, toOffset)});
+                  selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance, start), vec2f(renderDistanceBigger > maxRenderWidth*2 ? maxRenderWidth*2 : renderDistanceBigger, toOffset)});
               }
             }
           } else {
