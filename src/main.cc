@@ -117,13 +117,17 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
        gState->toggleSelection();
      } else if (key == GLFW_KEY_C && action == GLFW_PRESS) {
         gState->tryCopy();
+
+     }   else if (key == GLFW_KEY_EQUAL && action == GLFW_PRESS) {
+            gState->increaseFontSize(2);
+     }   else if (key == GLFW_KEY_MINUS && action == GLFW_PRESS) {
+            gState->increaseFontSize(-2);
       } else if ((key == GLFW_KEY_V || key == GLFW_KEY_Y) && isPress) {
          gState->tryPaste();
      } else {
        if (!isPress)
          return;
        gState->lastStroke = glfwGetTime();
-
         if (key == GLFW_KEY_A && action == GLFW_PRESS)
           cursor->jumpStart();
         else if (key == GLFW_KEY_F && isPress)
@@ -175,7 +179,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 int main(int argc, char** argv) {
   std::string x = argc >=2 ?std::string(argv[1]) : "";
   Cursor cursor = argc >= 2 ? Cursor(x) : Cursor();
-    State state(&cursor, 1280, 720, x);
+    State state(&cursor, 1280, 720, x, 30);
     gState = &state;
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -215,27 +219,31 @@ int main(int argc, char** argv) {
     text_shader.use();
     Shader cursor_shader(cursor_shader_vert, cursor_shader_frag, {camera_shader_vert});
     Shader selection_shader(selection_shader_vert, selection_shader_frag, {});
-
-    float fontSize = 30;
-    FontAtlas atlas(std::string(fira_code), fontSize);
-    float toOffset = atlas.atlas_height;
+    FontAtlas atlas(std::string(fira_code), state.fontSize);
+    state.atlas = &atlas;
     float xscale, yscale;
     glfwGetWindowContentScale(window, &xscale, &yscale);
     state.WIDTH *= xscale;
     state.HEIGHT *= yscale;
-
+    int fontSize;
     float WIDTH;
     float HEIGHT;
     while (!glfwWindowShouldClose(window))
     {
+//      glfwPollEvents();
       bool changed = false;
-      if(HEIGHT != state.HEIGHT || WIDTH != state.WIDTH) {
+      if(HEIGHT != state.HEIGHT || WIDTH != state.WIDTH || fontSize != state.fontSize) {
          WIDTH = state.WIDTH;
-          HEIGHT = state.HEIGHT;
-          changed = true;
+         fontSize = state.fontSize;
+         cursor.interruptCache = true;
+         state.highlighter.wasCached = false;
+         HEIGHT = state.HEIGHT;
+         changed = true;
       }
+      float toOffset = atlas.atlas_height;
+//      std::cout << atlas.atlas_height << "\n";
       bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7;
-      cursor.setBounds(HEIGHT, atlas.atlas_height);
+      cursor.setBounds(HEIGHT - state.atlas->atlas_height - 6, state.atlas->atlas_height);
       glClearColor(0.0, 0.0,0.0, 1.0);
       glClear(GL_COLOR_BUFFER_BIT);
       text_shader.use();
@@ -264,11 +272,11 @@ int main(int argc, char** argv) {
         xpos =  -(int32_t)WIDTH/2 + 10;
         ypos += toOffset;
       }
+      auto maxRenderWidth = (WIDTH /2) - 20 - linesAdvance;
+      auto allLines = cursor.getContent(&atlas, maxRenderWidth);
       ypos = -(float)HEIGHT/2 + 15;
       xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
       Vec4f color = vec4fs(0.95);
-      auto maxRenderWidth = (WIDTH /2) - 20 - linesAdvance;
-      auto allLines = cursor.getContent(&atlas, maxRenderWidth);
       if(changed) {
         state.reHighlight();
       }
@@ -278,7 +286,7 @@ int main(int argc, char** argv) {
         auto* colored = state.highlighter.get();
         int cOffset = cursor.getTotalOffset();
         int cxOffset = cursor.xOffset;
-//        std::cout << cxOffset << "\n";
+//        std::cout << cxOffset << ":" << lineOffset << "\n";
 
 
         for(size_t x = 0; x < allLines->size(); x++) {
@@ -541,7 +549,6 @@ int main(int argc, char** argv) {
 
       glfwSwapBuffers(window);
       glfwPollEvents();
-
     }
     glfwTerminate();
   return 0;

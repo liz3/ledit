@@ -18,6 +18,7 @@ class State {
   Cursor* cursor;
   Highlighter highlighter;
   Provider provider;
+  FontAtlas* atlas;
   float WIDTH, HEIGHT;
   bool hasHighlighting;
   std::string path;
@@ -27,7 +28,23 @@ class State {
   double lastStroke;
   int mode = 0;
   int round = 0;
+  int fontSize;
   State() {}
+  void increaseFontSize(int value) {
+    fontSize += value;
+    if(fontSize > 260) {
+      fontSize = 260;
+      status = "Max font size reached [260]";
+      return;
+    } else if (fontSize < 10) {
+      fontSize = 10;
+      status = "Min font size reached [10]";
+      return;
+    } else {
+      status = "resize: [" + std::to_string(fontSize) + "]";
+    }
+    atlas->renderFont(fontSize);
+  }
   void toggleSelection() {
     if(cursor->selection.active)
       cursor->selection.stop();
@@ -191,6 +208,7 @@ class State {
   void renderCoords(){
     if(mode != 0)
       return;
+    if(hasHighlighting)
     highlighter.highlight(cursor->lines);
     status = std::to_string(cursor->y +1)  + ":" + std::to_string(cursor->x +1) + " ["  + fileName + ": " + (hasHighlighting ? highlighter.languageName : "Text")  + "] History Size: " + std::to_string(cursor->history.size());
     if(cursor->selection.active)
@@ -206,8 +224,9 @@ class State {
 
 
   }
-  State(Cursor* c, float w, float h, std::string path) {
+  State(Cursor* c, float w, float h, std::string path, int fontSize) {
     status = path;
+    this->fontSize = fontSize;
     lastStroke = 0;
     cursor = c;
     WIDTH = w;

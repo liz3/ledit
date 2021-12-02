@@ -43,7 +43,7 @@ class Cursor {
   void setBounds(float height, float lineHeight) {
     this->height = height;
     this->lineHeight = lineHeight;
-    float next = floor(height / lineHeight) -1;
+    float next = floor(height / lineHeight);
     if(maxLines != 0) {
       if(next < maxLines) {
         skip += maxLines -next;
