@@ -14,7 +14,6 @@ public:
   FT_Library ft;
   bool wasGenerated = false;
   FT_Face face;
-  std::string decoded;
   RenderChar render(char c, float x = 0.0, float y = 0.0, Vec4f color = vec4fs(1)) {
     auto entry = entries[c];
     RenderChar r;
@@ -35,16 +34,15 @@ public:
         std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
         return;
     }
-//    std::string d = Base64::decode(content, decoded);
     readFont(path, fontSize);
   }
   void readFont(std::string path, uint32_t fontSize) {
     if(wasGenerated) {
        FT_Done_Face(face);
     }
-    decoded = file_to_string(path);
-    if (FT_New_Memory_Face(ft, (const FT_Byte *) decoded.c_str(), decoded.length(), 0, &face)) {
-      std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
+    int x = FT_New_Face(ft,  path.c_str(), 0, &face);
+    if (x) {
+      std::cout << "ERROR::FREETYPE: Failed to load font " << x << std::endl;
       return;
     }
     renderFont(fontSize);

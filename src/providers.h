@@ -78,15 +78,19 @@ public:
     return e;
   }
   const std::string getDefaultFontPath() {
-#ifdef __WIN32
-    return (getDefaultFontDir() / "Consolas.ttf").generic_string();
+#ifdef _WIN32
+    return (getDefaultFontDir() / "consola.ttf").generic_string();
 #endif
+#ifdef __APPLE__
     return (getDefaultFontDir() / "Monaco.ttf").generic_string();
+#else
+// todo implement
+#endif
   }
   const fs::path getDefaultFontDir() {
 // no idea how to do this differently
 #ifdef _WIN32
-  return "C:\Windows\Fonts";
+  return "C:\\Windows\\Fonts";
 #endif
 #ifdef __APPLE__
   return "/System/Library/Fonts";
