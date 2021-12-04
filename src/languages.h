@@ -11,11 +11,6 @@ const Language CPP = {
   {"/*", "*/"},
   "\"'",
   '\\',
-  vec4f(0.2, 0.6, 0.4, 1.0),
-  vec4fs(0.95),
-  vec4f(0.6, 0.1, 0.2, 1.0),
-  vec4f(0.2, 0.2, 0.8, 1.0),
-  vec4fs(0.5),
   {"cc", "h", "cpp", "hpp"}
 };
 const Language JavaScript = {
@@ -26,11 +21,6 @@ const Language JavaScript = {
   {"/*", "*/"},
   "\"'`",
   '\\',
-  vec4f(0.2, 0.6, 0.4, 1.0),
-  vec4fs(0.95),
-  vec4f(0.6, 0.1, 0.2, 1.0),
-  vec4f(0.2, 0.2, 0.8, 1.0),
-  vec4fs(0.5),
   {"js"}
 };
 const Language Python = {
@@ -41,11 +31,6 @@ const Language Python = {
   {"\"\"\"", "\"\"\""},
   "\"'",
   '\\',
-  vec4f(0.2, 0.6, 0.4, 1.0),
-  vec4fs(0.95),
-  vec4f(0.6, 0.1, 0.2, 1.0),
-  vec4f(0.2, 0.2, 0.8, 1.0),
-  vec4fs(0.5),
   {"py"}
 };
 

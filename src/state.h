@@ -82,7 +82,7 @@ class State {
       std::string str = std::string(contents);
       cursor->appendWithLines(str);
       if(hasHighlighting)
-        highlighter.highlight(cursor->lines);
+        highlighter.highlight(cursor->lines, &provider.colors);
       status = "Pasted " + std::to_string(str.length()) + " Characters";
     }
   }
@@ -114,6 +114,15 @@ class State {
     mode = 1;
     status = "Save to: ";
   }
+  void changeFont() {
+    if(mode != 0)
+      return;
+    miniBuf = provider.fontPath;
+    cursor->bindTo(&miniBuf);
+    mode = 15;
+    status = "Set font: ";
+        
+  }
   void open() {
     if(mode != 0)
       return;
@@ -125,7 +134,7 @@ class State {
   }
   void reHighlight() {
   if(hasHighlighting)
-    highlighter.highlight(cursor->lines);
+    highlighter.highlight(cursor->lines, &provider.colors);
 
   }
   void undo() {
@@ -148,7 +157,7 @@ class State {
     const Language* lang = has_language(ext);
     if(lang) {
       highlighter.setLanguage(*lang, lang->modeName);
-      highlighter.highlight(cursor->lines);
+      highlighter.highlight(cursor->lines, &provider.colors);
       hasHighlighting = true;
     } else {
       hasHighlighting = false;
@@ -202,6 +211,11 @@ class State {
            cursor->reset();
            atlas->linesCache.clear();
         }
+      } else if (mode == 15) {
+         atlas->readFont(miniBuf, fontSize);
+         provider.fontPath = miniBuf;
+         provider.writeConfig();
+         status = "Loaded font: " + miniBuf;
       }
     } else {
       status = "Aborted";
@@ -210,7 +224,7 @@ class State {
     mode = 0;
   }
   void provideComplete(bool reverse) {
-    if (mode == 4) {
+    if (mode == 4 || mode == 15) {
       std::string e = provider.getFileToOpen(miniBuf == provider.getLast() ? provider.lastProvidedFolder : miniBuf, reverse);
       if(!e.length())
         return;
@@ -222,7 +236,7 @@ class State {
     if(mode != 0)
       return;
     if(hasHighlighting)
-    highlighter.highlight(cursor->lines);
+    highlighter.highlight(cursor->lines, &provider.colors);
     status = std::to_string(cursor->y +1)  + ":" + std::to_string(cursor->x +1) + " ["  + fileName + ": " + (hasHighlighting ? highlighter.languageName : "Text")  + "] History Size: " + std::to_string(cursor->history.size());
     if(cursor->selection.active)
       status += " Selected: [" + std::to_string(cursor->getSelectionSize()) + "]";

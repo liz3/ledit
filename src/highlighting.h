@@ -1,6 +1,7 @@
 #ifndef HIGHLIGHTING_H
 #define HIGHLIGHTING_H
 #include "la.h"
+#include "providers.h"
 #include <string>
 #include <map>
 #include <sstream>
@@ -12,11 +13,6 @@ struct Language {
   std::pair<std::string, std::string> multiLineComment;
   std::string stringCharacters;
   char escapeChar;
-  Vec4f string_color;
-  Vec4f default_color;
-  Vec4f keyword_color;
-  Vec4f special_color;
-  Vec4f comment_color;
   std::vector<std::string> fileExtensions;
 
 };
@@ -45,30 +41,30 @@ public:
     wasCached = false;
     language = lang;
   }
-  std::map<int, Vec4f>* highlight(std::vector<std::string>& lines) {
+  std::map<int, Vec4f>* highlight(std::vector<std::string>& lines, EditorColors* colors) {
     std::stringstream stream;
     for(size_t i = 0; i < lines.size(); i++) {
       stream << lines[i];
       if(i < lines.size() -1)
         stream << "\n";
     }
-    return highlight(stream.str());
+    return highlight(stream.str(), colors);
   }
   std::map<int, Vec4f>* get() {
     return &cached;
   }
-  std::map<int, Vec4f>* highlight(std::string raw) {
+  std::map<int, Vec4f>* highlight(std::string raw, EditorColors* colors) {
     if(wasCached && raw == cachedContent)
       return &cached;
     HighlighterState state {0, false, false, 0, "", 0};
     int startIndex = 0;
     int y = 0;
     lineIndex.clear();
-    Vec4f string_color = language.string_color;
-    Vec4f default_color = language.default_color;
-    Vec4f keyword_color = language.keyword_color;
-    Vec4f special_color = language.special_color;
-    Vec4f comment_color = language.comment_color;
+    Vec4f string_color = colors->string_color;
+    Vec4f default_color = colors->default_color;
+    Vec4f keyword_color = colors->keyword_color;
+    Vec4f special_color = colors->special_color;
+    Vec4f comment_color = colors->comment_color;
     char last = 0;
     std::map<int, Vec4f> entries;
     size_t i;
