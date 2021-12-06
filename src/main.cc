@@ -21,8 +21,6 @@
 State* gState = nullptr;
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    // make sure the viewport matches the new window dimensions; note that width and
-    // height will be significantly larger than specified on retina displays.
 
     glViewport(0, 0, width, height);
     if(gState != nullptr) {
@@ -31,6 +29,19 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     }
 
 }
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+      double xpos, ypos;
+      glfwGetCursorPos(window, &xpos, &ypos);
+    float xscale, yscale;
+    glfwGetWindowContentScale(window, &xscale, &yscale);
+      gState->cursor->setPosFromMouse((float)xpos * xscale, (float) ypos * yscale, gState->atlas);
+
+
+    }
+}
+
 void character_callback(GLFWwindow* window, unsigned int codepoint)
 {
   if(gState == nullptr)
@@ -225,6 +236,11 @@ int main(int argc, char** argv) {
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetKeyCallback(window, key_callback);
     glfwSetCharCallback(window, character_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    GLFWcursor* mouseCursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+    glfwSetCursor(window, mouseCursor);
+
+
 
 
 
@@ -320,6 +336,7 @@ int main(int argc, char** argv) {
       auto* allLines = cursor.getContent(&atlas, maxRenderWidth);
       ypos = -(float)HEIGHT/2 + 15;
       xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
+      cursor.setRenderStart( 20+linesAdvance, 15);
       Vec4f color = vec4fs(0.95);
       if(changed) {
         state.reHighlight();

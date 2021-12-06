@@ -39,6 +39,9 @@ class Cursor {
   int cachedY = 0;
   int cachedX = 0;
   int cachedMaxLines = 0;
+
+  float startX = 0;
+  float startY = 0;
   std::vector<std::pair<int, std::u16string>> prepare;
   std::u16string* bind = nullptr;
   void setBounds(float height, float lineHeight) {
@@ -51,6 +54,37 @@ class Cursor {
       }
     }
     maxLines = next;
+
+  }
+  void setRenderStart(float x, float y) {
+    startX = x;
+    startY = y;
+  }
+  void setPosFromMouse(float mouseX, float mouseY, FontAtlas* atlas) {
+    if(bind != nullptr)
+      return;
+    if(mouseY < startY)
+      return;
+    int targetY = floor((mouseY - startY) / lineHeight);
+    if(skip + targetY >= lines.size())
+      targetY = lines.size()-1;
+    else
+      targetY += skip;
+    auto* line = &lines[targetY];
+    int targetX = 0;
+    if(mouseX > startX) {
+      mouseX -= startX;
+      auto* advances = atlas->getAllAdvance(*line, targetY);
+      float acc = 0;
+      for(auto& entry : *advances) {
+        acc += entry;
+        if(acc  > mouseX)
+          break;
+        targetX++;
+      }
+    }
+    x = targetX;
+    y = targetY;
 
   }
   void reset() {
