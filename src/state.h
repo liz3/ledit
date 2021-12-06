@@ -11,10 +11,12 @@
 #include "highlighting.h"
 #include "languages.h"
 #include "providers.h"
+#include "u8String.h"
 class State {
  public:
   GLuint vao, vbo;
   GLuint sel_vao, sel_vbo;
+  GLuint highlight_vao, highlight_vbo;
   Cursor* cursor;
   Highlighter highlighter;
   Provider provider;
@@ -23,11 +25,12 @@ class State {
   float WIDTH, HEIGHT;
   bool hasHighlighting;
   std::string path;
-  std::string fileName;
-  std::string status;
-  std::string miniBuf;
+  std::u16string fileName;
+  std::u16string status;
+  std::u16string miniBuf;
   double lastStroke;
   bool showLineNumbers = true;
+  bool highlightLine = true;
   int mode = 0;
   int round = 0;
   int fontSize;
@@ -36,14 +39,14 @@ class State {
     fontSize += value;
     if(fontSize > 260) {
       fontSize = 260;
-      status = "Max font size reached [260]";
+      status = u"Max font size reached [260]";
       return;
     } else if (fontSize < 10) {
       fontSize = 10;
-      status = "Min font size reached [10]";
+      status = u"Min font size reached [10]";
       return;
     } else {
-      status = "resize: [" + std::to_string(fontSize) + "]";
+      status = u"resize: [" + numberToString(fontSize) + u"]";
     }
     atlas->renderFont(fontSize);
   }
@@ -61,40 +64,40 @@ class State {
       return;
     if(mode == 0) {
       if(cursor->saveLocs.size() == 0) {
-        status = "No other buffers in cache";
+        status = u"No other buffers in cache";
         return;
       }
       round = 0;
-      miniBuf = cursor->getSaveLocKeys()[0];
+      miniBuf = create(cursor->getSaveLocKeys()[0]);
       cursor->bindTo(&miniBuf);
       mode = 5;
-      status = "Switch to: ";
+      status = u"Switch to: ";
     } else {
       round++;
       if(round == cursor->saveLocs.size())
         round = 0;
-      miniBuf = cursor->getSaveLocKeys()[round];
+      miniBuf = create(cursor->getSaveLocKeys()[round]);
     }
   }
   void tryPaste() {
     const char* contents = glfwGetClipboardString(NULL);
     if(contents) {
-      std::string str = std::string(contents);
+      std::u16string str = create(std::string(contents));
       cursor->appendWithLines(str);
       if(hasHighlighting)
-        highlighter.highlight(cursor->lines, &provider.colors);
-      status = "Pasted " + std::to_string(str.length()) + " Characters";
+        highlighter.highlight(cursor->lines, &provider.colors, cursor->skip + cursor->maxLines);
+      status = u"Pasted " + numberToString(str.length()) + u" Characters";
     }
   }
   void tryCopy() {
     if(!cursor->selection.active) {
-      status = "Aborted: No selection";
+      status = u"Aborted: No selection";
       return;
     }
     std::string content = cursor->getSelection();
     glfwSetClipboardString(NULL, content.c_str());
     cursor->selection.stop();
-    status = "Copied " + std::to_string(content.length()) + " Characters";
+    status = u"Copied " + numberToString(content.length()) + u" Characters";
   }
   void save() {
     if(mode != 0)
@@ -104,60 +107,60 @@ class State {
       return;
     }
     cursor->saveTo(path);
-    status = "Saved: " + path;
+    status = u"Saved: " + create(path);
   }
   void saveNew() {
     if(mode != 0)
       return;
-    miniBuf = "";
+    miniBuf = u"";
     cursor->bindTo(&miniBuf);
     mode = 1;
-    status = "Save to: ";
+    status = u"Save to: ";
   }
   void changeFont() {
     if(mode != 0)
       return;
-    miniBuf = provider.fontPath;
+    miniBuf = create(provider.fontPath);
     cursor->bindTo(&miniBuf);
     mode = 15;
-    status = "Set font: ";
-        
+    status = u"Set font: ";
+
   }
   void open() {
     if(mode != 0)
       return;
-    miniBuf = "";
+    miniBuf = u"";
     provider.lastProvidedFolder = "";
     cursor->bindTo(&miniBuf);
     mode = 4;
-    status = "Open: ";
+    status = u"Open: ";
   }
   void reHighlight() {
   if(hasHighlighting)
-    highlighter.highlight(cursor->lines, &provider.colors);
+    highlighter.highlight(cursor->lines, &provider.colors, cursor->skip + cursor->maxLines);
 
   }
   void undo() {
     bool result = cursor->undo();
-    status = result ? "Undo" : "Undo failed";
+    status = result ? u"Undo" : u"Undo failed";
     if(result)
       reHighlight();
   }
   void search() {
     if(mode != 0)
       return;
-    miniBuf = "";
+    miniBuf = u"";
     cursor->bindTo(&miniBuf);
     mode = 2;
-    status = "Search: ";
+    status = u"Search: ";
   }
   void tryEnableHighlighting() {
-    std::vector<std::string> fileParts = cursor->split(fileName, ".");
-    std::string ext = fileParts[fileParts.size()-1];
+    std::vector<std::u16string> fileParts = cursor->split(fileName, u".");
+    std::string ext = convert_str(fileParts[fileParts.size()-1]);
     const Language* lang = has_language(ext);
     if(lang) {
       highlighter.setLanguage(*lang, lang->modeName);
-      highlighter.highlight(cursor->lines, &provider.colors);
+      highlighter.highlight(cursor->lines, &provider.colors, cursor->skip + cursor->maxLines);
       hasHighlighting = true;
     } else {
       hasHighlighting = false;
@@ -167,92 +170,94 @@ class State {
   void inform(bool success) {
     if(success) {
       if(mode == 1) { // save to
-        bool result = cursor->saveTo(miniBuf);
+        bool result = cursor->saveTo(convert_str(miniBuf));
         if(result) {
-        status = "Saved to: " + miniBuf;
+        status = u"Saved to: " + miniBuf;
         if(!path.length()) {
-          path = miniBuf;
+          path = convert_str(miniBuf);
           auto split = cursor->split(path, "/");
-          fileName = split[split.size() -1];
-          std::string window_name = "ledit: " + fileName;
+          std::string fName = split[split.size() -1];
+          fileName = create(fName);
+          std::string window_name = "ledit: " + fName;
           glfwSetWindowTitle(window, window_name.c_str());
           tryEnableHighlighting();
         }
         } else {
-          status = "Failed to save to: " + miniBuf;
+          status = u"Failed to save to: " + miniBuf;
         }
       } else if (mode == 2 || mode == 7) { // search
         status = cursor->search(miniBuf, false, mode != 7);
         if(mode == 7)
           mode = 2;
         // hacky shit
-        if(status != "[Not found]: ")
+        if(status != u"[Not found]: ")
           mode = 6;
         return;
       } else if (mode == 6) { // search
         status = cursor->search(miniBuf, true);
-        if(status == "[No further matches]: ") {
+        if(status == u"[No further matches]: ") {
           mode=7;
         }
         return;
       } else if (mode == 3) { // gotoline
-        cursor->gotoLine(std::stoi(miniBuf));
-        status = "Jump to: " + miniBuf;
+        cursor->gotoLine(std::stoi(convert_str(miniBuf)));
+        status = u"Jump to: " + miniBuf;
       } else if (mode == 4 || mode == 5) {
-        bool result = cursor->openFile(path, miniBuf);
-        path = miniBuf;
+        bool result = cursor->openFile(path, convert_str(miniBuf));
+        path = convert_str(miniBuf);
         std::string window_name = "ledit: " + path;
         glfwSetWindowTitle(window, window_name.c_str());
         auto split = cursor->split(path, "/");
-        fileName = split[split.size() -1];
+        fileName = create(split[split.size() -1]);
         tryEnableHighlighting();
-        status = (result ? "Loaded: " : "New File: ") + miniBuf;
+        status = (result ? u"Loaded: " : u"New File: ") + miniBuf;
         if(!result) {
            cursor->reset();
            atlas->linesCache.clear();
         }
       } else if (mode == 15) {
-         atlas->readFont(miniBuf, fontSize);
-         provider.fontPath = miniBuf;
+         atlas->readFont(convert_str(miniBuf), fontSize);
+         provider.fontPath = convert_str(miniBuf);
          provider.writeConfig();
-         status = "Loaded font: " + miniBuf;
+         status = u"Loaded font: " + miniBuf;
       }
     } else {
-      status = "Aborted";
+      status = u"Aborted";
     }
     cursor->unbind();
     mode = 0;
   }
   void provideComplete(bool reverse) {
     if (mode == 4 || mode == 15) {
-      std::string e = provider.getFileToOpen(miniBuf == provider.getLast() ? provider.lastProvidedFolder : miniBuf, reverse);
+      std::string convert = convert_str(miniBuf);
+      std::string e = provider.getFileToOpen(convert == provider.getLast() ? provider.lastProvidedFolder : convert, reverse);
       if(!e.length())
         return;
       std::string p = provider.lastProvidedFolder;
-      miniBuf = e;
+      miniBuf = create(e);
     }
   }
   void renderCoords(){
     if(mode != 0)
       return;
     if(hasHighlighting)
-    highlighter.highlight(cursor->lines, &provider.colors);
-    status = std::to_string(cursor->y +1)  + ":" + std::to_string(cursor->x +1) + " ["  + fileName + ": " + (hasHighlighting ? highlighter.languageName : "Text")  + "] History Size: " + std::to_string(cursor->history.size());
+    highlighter.highlight(cursor->lines, &provider.colors, cursor->skip + cursor->maxLines);
+    status = numberToString(cursor->y +1)  + u":" + numberToString(cursor->x +1) + u" ["  + fileName + u": " + (hasHighlighting ? highlighter.languageName : u"Text")  + u"] History Size: " + numberToString(cursor->history.size());
     if(cursor->selection.active)
-      status += " Selected: [" + std::to_string(cursor->getSelectionSize()) + "]";
+      status += u" Selected: [" + numberToString(cursor->getSelectionSize()) + u"]";
   }
   void gotoLine() {
     if(mode != 0)
       return;
-    miniBuf = "";
+    miniBuf = u"";
     cursor->bindTo(&miniBuf);
     mode = 3;
-    status = "Line: ";
+    status = u"Line: ";
 
 
   }
   State(Cursor* c, float w, float h, std::string path, int fontSize) {
-    status = path;
+    status = create(path);
     this->fontSize = fontSize;
     lastStroke = 0;
     cursor = c;
@@ -261,10 +266,10 @@ class State {
     this->path = path;
     if(path.length()) {
       auto split = cursor->split(path, "/");
-      fileName = split[split.size() -1];
+      fileName = create(split[split.size() -1]);
       tryEnableHighlighting();
     } else {
-      fileName = "New File";
+      fileName = u"New File";
       hasHighlighting = false;
       renderCoords();
     }
@@ -294,6 +299,21 @@ class State {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(SelectionEntry), (void*)offsetof(SelectionEntry, size));
     glVertexAttribDivisor(1, 1);
+
+
+    // //selection buffer;
+    glGenVertexArrays(1, &highlight_vao);
+    glGenBuffers(1, &highlight_vbo);
+    glBindVertexArray(highlight_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, highlight_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(SelectionEntry) , nullptr, GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(SelectionEntry), (void*)offsetof(SelectionEntry, pos));
+    glVertexAttribDivisor(0, 1);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(SelectionEntry), (void*)offsetof(SelectionEntry, size));
+    glVertexAttribDivisor(1, 1);
+
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);

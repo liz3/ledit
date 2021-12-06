@@ -54,11 +54,12 @@ void character_callback(GLFWwindow* window, unsigned int codepoint)
       return;
     }
   }
-  if(codepoint < 32 || codepoint > 127) {
-    gState->status = "Unknown character: " + std::to_string(codepoint);
-    return;
-  }
-  gState->cursor->append((char) codepoint);
+  // if(codepoint < 32 || codepoint > 127) {
+  //   gState->status = u"Unknown character: " + numberToString(codepoint);
+  //   return;
+  // }
+//  std::cout << codepoint << "\n";
+  gState->cursor->append((char16_t) codepoint);
   gState->lastStroke = glfwGetTime();
   gState->renderCoords();
 }
@@ -184,7 +185,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
       if(gState->mode != 0)
         gState->provideComplete(shift_pressed);
       else
-        cursor->append("  ");
+        cursor->append(u"  ");
     }
     if(isPress && key == GLFW_KEY_BACKSPACE) {
       cursor->removeOne();
@@ -266,6 +267,22 @@ int main(int argc, char** argv) {
       cursor.setBounds(HEIGHT - state.atlas->atlas_height - 6, toOffset);
       glClearColor(0.0, 0.0,0.0, 1.0);
       glClear(GL_COLOR_BUFFER_BIT);
+
+      if(state.highlightLine) {
+        selection_shader.use();
+        glBindVertexArray(state.highlight_vao);
+        selection_shader.set4f("selection_color", 0.7,0.7,0.7, 0.15);
+        selection_shader.set2f("resolution", (float) WIDTH,(float) HEIGHT);
+        glBindBuffer(GL_ARRAY_BUFFER, state.highlight_vbo);
+        SelectionEntry entry{vec2f((-(int32_t)WIDTH/2) +10,  (float)HEIGHT/2 - 10 - toOffset - ((cursor.y - cursor.skip) * toOffset)), vec2f((((int32_t)WIDTH/2) * 2) - 20, toOffset)};
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(SelectionEntry), &entry);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 6, 1);
+
+
+
+      }
       text_shader.use();
       text_shader.set2f("resolution", (float) WIDTH,(float) HEIGHT);
       glActiveTexture(GL_TEXTURE0);
@@ -273,7 +290,8 @@ int main(int argc, char** argv) {
       glBindTexture(GL_TEXTURE_2D, atlas.texture_id);
       glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
       std::vector<RenderChar> entries;
-      std::string::const_iterator c;
+      std::u16string::const_iterator c;
+      std::string::const_iterator cc;
       float xpos =( -(int32_t)WIDTH/2) + 10;
       float ypos = -(float)HEIGHT/2 + 15;
       int start = cursor.skip;
@@ -284,10 +302,11 @@ int main(int argc, char** argv) {
         for (int i = start; i < maxLines; i++) {
           std::string value = std::to_string(i+1);
           linesAdvance = 0;
-          for (c = value.begin(); c != value.end(); c++) {
-            entries.push_back(atlas.render(*c, xpos,ypos, vec4fs(0.8)));
-            xpos += atlas.getAdvance(*c);
-            linesAdvance += atlas.getAdvance(*c);
+          for (cc = value.begin(); cc != value.end(); cc++) {
+            entries.push_back(atlas.render(*cc, xpos,ypos, vec4fs(0.8)));
+            auto advance = atlas.getAdvance(*cc);
+            xpos += advance;
+            linesAdvance += advance;
 
           }
           xpos =  -(int32_t)WIDTH/2 + 10;
@@ -295,7 +314,7 @@ int main(int argc, char** argv) {
         }
       }
       auto maxRenderWidth = (WIDTH /2) - 20 - linesAdvance;
-      auto allLines = cursor.getContent(&atlas, maxRenderWidth);
+      auto* allLines = cursor.getContent(&atlas, maxRenderWidth);
       ypos = -(float)HEIGHT/2 + 15;
       xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
       Vec4f color = vec4fs(0.95);
@@ -404,7 +423,7 @@ int main(int argc, char** argv) {
       }
       xpos =( -(int32_t)WIDTH/2) + 15;
       ypos = (float)HEIGHT/2 - toOffset;
-      std::string status = state.status;
+      std::u16string status = state.status;
       for (c = status.begin(); c != status.end(); c++) {
         entries.push_back(atlas.render(*c, xpos,ypos, vec4f(0.8,0.8,1.0, 0.9)));
         xpos += atlas.getAdvance(*c);
@@ -414,7 +433,7 @@ int main(int argc, char** argv) {
         // draw minibuffer
         xpos =( -(int32_t)WIDTH/2) + 20 + statusAdvance;
         ypos = (float)HEIGHT/2 - toOffset;
-        std::string status = state.miniBuf;
+        std::u16string status = state.miniBuf;
         for (c = status.begin(); c != status.end(); c++) {
           entries.push_back(atlas.render(*c, xpos,ypos, vec4fs(1.0)));
           xpos += atlas.getAdvance(*c);
@@ -425,13 +444,11 @@ int main(int argc, char** argv) {
 
       glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
       glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(RenderChar) *entries.size(), &entries[0]); // be sure to use glBufferSubData and not glBufferData
-
       glBindBuffer(GL_ARRAY_BUFFER, 0);
-
       glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 6, (GLsizei) entries.size());
 
-      glBindTexture(GL_TEXTURE_2D, 0);
-       glBindVertexArray(0);
+      // glBindTexture(GL_TEXTURE_2D, 0);
+      //  glBindVertexArray(0);
        cursor_shader.use();
       cursor_shader.set1f("cursor_height", atlas.atlas_height);
       cursor_shader.set1f("last_stroke", state.lastStroke);
@@ -454,7 +471,7 @@ int main(int argc, char** argv) {
         float cursorX = -(int32_t)(WIDTH/2) + 15 + (atlas.getAdvance(cursor.getCurrentAdvance(isSearchMode))) + linesAdvance + 4 - cursor.xSkip;
         if(cursorX > WIDTH / 2)
           cursorX = (WIDTH / 2) - 3;
-      float cursorY = -(int32_t)(HEIGHT/2) +  15 + (toOffset - (atlas.atlas_height *  0.15)) + (toOffset * (cursor.y - cursor.skip));
+      float cursorY = -(int32_t)(HEIGHT/2) +  15 + (toOffset - (atlas.atlas_height *  0.25)) + (toOffset * (cursor.y - cursor.skip));
 
       cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
 
@@ -470,7 +487,7 @@ int main(int argc, char** argv) {
         if(cursor.selection.getYSmaller() < cursor.skip && cursor.selection.getYBigger() > cursor.skip + cursor.maxLines) {
           // select everything
         } else {
-          maxRenderWidth += atlas.getAdvance(" ");
+          maxRenderWidth += atlas.getAdvance(u" ");
           int yStart = cursor.selection.getYStart();
           int yEnd = cursor.selection.getYEnd();
           if(cursor.selection.yStart == cursor.selection.yEnd) {

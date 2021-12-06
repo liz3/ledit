@@ -9,7 +9,9 @@ struct CharacterEntry {
   float left;
   float advance;
   float offset;
-  char c;
+  uint8_t* data = nullptr;
+  int xPos;
+  char16_t c;
 };
 struct RenderChar {
   Vec2f pos;
