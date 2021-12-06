@@ -107,7 +107,7 @@ public:
         int endIndex = entries.size();
         lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);
         startIndex = endIndex;
-        if(lCount++ > skip)
+        if(lCount++ > skip && wasCached)
           break;
       }
       if(language.stringCharacters.find(current) != std::string::npos && (last != language.escapeChar || (last == language.escapeChar && i >1 && raw[i-2] == language.escapeChar))) {
