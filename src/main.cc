@@ -284,7 +284,8 @@ int main(int argc, char** argv) {
 //      std::cout << atlas.atlas_height << "\n";
       bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7;
       cursor.setBounds(HEIGHT - state.atlas->atlas_height - 6, toOffset);
-      glClearColor(0.0, 0.0,0.0, 1.0);
+      auto be_color = state.provider.colors.background_color;
+      glClearColor(be_color.x, be_color.y, be_color.z, be_color.w);
       glClear(GL_COLOR_BUFFER_BIT);
 
       if(state.highlightLine) {

@@ -21,6 +21,7 @@ struct EditorColors {
   Vec4f keyword_color = vec4f(0.6, 0.1, 0.2, 1.0);
   Vec4f special_color = vec4f(0.2, 0.2, 0.8, 1.0);
   Vec4f comment_color = vec4fs(0.5);
+  Vec4f background_color = vec4f(0,0,0,1.0);
 
 };
 class Provider {
@@ -105,6 +106,7 @@ public:
       colors.keyword_color = getVecOrDefault(configColors, "keyword_color", colors.keyword_color);
       colors.special_color = getVecOrDefault(configColors, "special_color", colors.special_color);
       colors.comment_color = getVecOrDefault(configColors, "comment_color", colors.comment_color);
+      colors.background_color = getVecOrDefault(configColors, "background_color", colors.background_color);
     }
     fontPath = getPathOrDefault(*configRoot, "font_face", fontPath);
   }
