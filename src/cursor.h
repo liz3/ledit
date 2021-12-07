@@ -505,8 +505,13 @@ class Cursor {
     std::stringstream ss;
     ss << stream.rdbuf();
     std::string c = ss.str();
-    std::u16string converted = create(c);
-    lines = split(converted, u"\n");
+     auto parts = splitNewLine(&c);
+     lines = std::vector<std::u16string>(parts.size());
+     size_t count = 0;
+     for(const auto& ref : parts) {
+       lines[count] = create(ref);
+       count++;
+     }
     if(skip > lines.size() - maxLines)
       skip = 0;
     stream.close();
