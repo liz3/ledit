@@ -45,6 +45,10 @@ public:
   std::map<int, Vec4f> cached;
   std::map<int, std::pair<int, int>> lineIndex;
   Vec4f lastEntry;
+  int lastSkip = 0;
+  int lastMax = 0;
+  int lastY = 0;
+  HighlighterState savedState;
   bool wasCached = false;
   void setLanguage(Language lang, std::string name) {
     language.modeName = create(lang.modeName);
@@ -72,22 +76,30 @@ public:
     languageName = create(name);
     wasCached = false;
   }
-  std::map<int, Vec4f>* highlight(std::vector<std::u16string>& lines, EditorColors* colors, int skip) {
+  std::map<int, Vec4f>* highlight(std::vector<std::u16string>& lines, EditorColors* colors, int skip, int maxLines, int y) {
     std::u16string str;
     for(size_t i = 0; i < lines.size(); i++) {
       str += lines[i];
       if(i < lines.size() -1)
         str += u"\n";
     }
-    return highlight(str, colors, skip);
+    return highlight(str, colors, skip, maxLines, y);
   }
   std::map<int, Vec4f>* get() {
     return &cached;
   }
-  std::map<int, Vec4f>* highlight(std::u16string raw, EditorColors* colors, int skip) {
-    if(wasCached && raw == cachedContent)
+  std::map<int, Vec4f>* highlight(std::u16string raw, EditorColors* colors, int skip, int maxLines, int yPassed) {
+    if(wasCached && raw == cachedContent && skip == lastSkip)
       return &cached;
-    HighlighterState state {0, false, false, 0, u"", 0};
+     std::map<int, Vec4f> entries;
+    // if(skip != lastSkip) {
+    //   wasCached = false;
+    // } else {
+    //   entries = cached;
+    // }
+    HighlighterState state =  {0, false, false, 0, u"", 0};
+    // if(skip > 0 && wasCached)
+    //   state = savedState;
     int startIndex = 0;
     int y = 0;
     lineIndex.clear();
@@ -97,18 +109,30 @@ public:
     Vec4f special_color = colors->special_color;
     Vec4f comment_color = colors->comment_color;
     char16_t last = 0;
-    std::map<int, Vec4f> entries;
+
     size_t i;
     size_t lCount = 0;
+    int last_entry = -1;
     bool wasTrigered = false;
     for(i = 0; i < raw.length(); i++) {
       char16_t current = raw[i];
       if(current == '\n') {
+        // if(!wasCached && skip > 0 && lCount == skip) {
+        //   this->lastEntry = last_entry == -1 ? default_color :  entries[last_entry];
+        //   savedState = state;
+        //   std::cout << last_entry << "\n";
+        // } else if(skip > 0 && lCount == skip) {
+        //   if(wasCached)
+        //     entries[i+1] = lastEntry;
+        // }
         int endIndex = entries.size();
         lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);
         startIndex = endIndex;
-        if(lCount++ > skip && wasCached)
+        if(lCount++ > skip + maxLines && wasCached)
           break;
+      }
+      if(wasCached && lCount < skip) {
+        continue;
       }
       if(language.stringCharacters.find(current) != std::string::npos && (last != language.escapeChar || (last == language.escapeChar && i >1 && raw[i-2] == language.escapeChar))) {
         if(state.mode == 0 && !state.busy) {
@@ -117,29 +141,35 @@ public:
           state.start = i;
           state.stringChar = current;
           entries[i] = string_color;
+          last_entry = i;
         } else if (state.mode == 1 && current == state.stringChar) {
           state.busy = false;
           state.mode = 0;
           state.start = 0;
           entries[i+1] = default_color;
+          last_entry = i+1;
         }
       } else if (state.busy && state.mode == 3 && hasEnding(state.buffer, language.multiLineComment.second)) {
         state.mode = 0;
         state.busy = false;
         entries[i] = default_color;
+        last_entry = i;
       } else if (state.busy && state.mode == 2 && current == '\n') {
         state.buffer = u"";
         state.busy = false;
         state.mode = 0;
         entries[i] = default_color;
+        last_entry = i;
       } else if (language.singleLineComment.length() && hasEnding(state.buffer+current, language.singleLineComment) && !state.busy) {
 
         entries[i  - (language.singleLineComment.length()-1)] = comment_color;
+        last_entry = i- (language.singleLineComment.length()-1);
         state.busy = true;
         state.mode = 2;
         state.buffer = u"";
       } else if (language.multiLineComment.first.length() && hasEnding(state.buffer, language.multiLineComment.first) && !state.busy) {
         entries[i- language.multiLineComment.first.length()] = comment_color;
+        last_entry = i- (language.multiLineComment.first.length());
         state.buffer = u"";
         state.busy = true;
         state.mode = 3;
@@ -149,11 +179,13 @@ public:
 
           entries[state.start] = keyword_color;
           entries[i] = default_color;
+          last_entry = i;
           state.wasReset = true;
           state.buffer = u"";
         } else if (std::find(language.specialWords.begin(), language.specialWords.end(), state.buffer)!= language.specialWords.end()) {
           entries[state.start] = special_color;
           entries[i] = default_color;
+          last_entry = i;
           state.wasReset = true;
           state.buffer = u"";
         }
@@ -195,7 +227,10 @@ public:
     }
     int endIndex = entries.size();
     lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);
+    lastSkip = skip;
+    lastMax = maxLines;
     cached = entries;
+    lastY = yPassed;;
     cachedContent = raw;
     wasCached = true;
     return &cached;

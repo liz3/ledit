@@ -85,7 +85,7 @@ class State {
       std::u16string str = create(std::string(contents));
       cursor->appendWithLines(str);
       if(hasHighlighting)
-        highlighter.highlight(cursor->lines, &provider.colors, cursor->skip + cursor->maxLines);
+        highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y);
       status = u"Pasted " + numberToString(str.length()) + u" Characters";
     }
   }
@@ -137,7 +137,7 @@ class State {
   }
   void reHighlight() {
   if(hasHighlighting)
-    highlighter.highlight(cursor->lines, &provider.colors, cursor->skip + cursor->maxLines);
+    highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y);
 
   }
   void undo() {
@@ -160,7 +160,7 @@ class State {
     const Language* lang = has_language(ext);
     if(lang) {
       highlighter.setLanguage(*lang, lang->modeName);
-      highlighter.highlight(cursor->lines, &provider.colors, cursor->skip + cursor->maxLines);
+      highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y);
       hasHighlighting = true;
     } else {
       hasHighlighting = false;
@@ -241,7 +241,7 @@ class State {
     if(mode != 0)
       return;
     if(hasHighlighting)
-    highlighter.highlight(cursor->lines, &provider.colors, cursor->skip + cursor->maxLines);
+    highlighter.highlight(cursor->lines, &provider.colors, cursor->skip,  cursor->maxLines, cursor->y);
     status = numberToString(cursor->y +1)  + u":" + numberToString(cursor->x +1) + u" ["  + fileName + u": " + (hasHighlighting ? highlighter.languageName : u"Text")  + u"] History Size: " + numberToString(cursor->history.size());
     if(cursor->selection.active)
       status += u" Selected: [" + numberToString(cursor->getSelectionSize()) + u"]";
