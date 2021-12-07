@@ -514,6 +514,10 @@ class Cursor {
      }
     if(skip > lines.size() - maxLines)
       skip = 0;
+    if(y > lines.size()-1)
+        y = lines.size()-1;
+    if(x > lines[y].length())
+      x = lines[y].length();
     stream.close();
     return true;
   }
