@@ -1,6 +1,7 @@
 # Ledit
 Very simple GPU Rendered text editor without any bullshit.  
-With keybinds inspired by emacs.
+With keybinds inspired by emacs.  
+Ledit runs on all 3 major operating systems: GNU/linux, macOS and Windows.
 
 ## Motivation
 The base motivation was just simply that i wanted to have a look into OpenGL and doing GPU accelerated things, i did not plan to create a text editor from the get go.  
@@ -8,7 +9,7 @@ After starting to experiment a bit i decided to call this a small side Project a
 
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot.png?raw=true)
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot2.png?raw=true)
-
+![image](https://github.com/liz3/ledit/blob/master/assets/screenshot3.png?raw=true)
 ## Building
 To build ledit you only need [CMake](https://cmake.org/) and a C/C++ compiler which supports C++17.
 ledit requires GLFW and freetype2 but these are included in the [third-party](/third-party) folder.
@@ -25,6 +26,7 @@ Then you can build the executable with
 For debug builds use `build_debug.sh`
 
 ### Windows
+Ledit builds with MSVC and does not require a unix betewen layer like Cgywin.
 You will need at least a recent version of the windows MSVC C++ compiler, its better to install entire visual studio for the sake of the case that vs installer might leave out needed components.
 then run in a CMD in the folder:
 ```
@@ -50,7 +52,35 @@ what to render and where. and implements all logic components for manipulation.
 - languages.h - contains language profiles for auto complete
 - third-party - ledit dependencies
 ```
-
+## Config
+ledit can have a config in your home directory `~/.ledit/config.json`.  
+The following values can be set(without the comments)  
+For the colors there are default values, for the font face either remove it completely or make sure its a valid path.
+```¯
+{
+  "colors": {
+    "comment_color": [
+      127, 127, 127, 127 // Comment color if a active mode is present, in RGBA (0-255)
+    ],
+    "default_color": [
+      242, 242, 242, 242 // Default color if a active mode is present, in RGBA (0-255)
+    ],
+    "keyword_color": [
+      153, 25, 51, 255 // Keyword color if a active mode is present, in RGBA (0-255)
+    ],
+    "special_color": [
+      51, 51, 204, 255 // Special words color if a active mode is present, in RGBA (0-255)
+    ],
+    "string_color": [
+      51, 153, 102, 255 // String literak color if a active mode is present, in RGBA (0-255)
+    ],
+   "background_color": [
+     0, 0, 0, 255   // Editor background color
+    ]
+  },
+  "font_face": "/Users/liz3/Library/Fonts/FiraCode-Regular.ttf" // TTF font face path
+}
+```
 ## Keybinds
 C stands for CTRL, M for alt/meta.
 ```
@@ -101,7 +131,8 @@ Misc:
 C-x-l - Toggle Line numbers.
 C-+   - Increase font size
 C--(-)- decrease font size
-
+C-x-0 - Load new font file, note that doing this will persist it in the config.
+C-x-h - Toggle highlighting of the active line.
 
 
 ```
