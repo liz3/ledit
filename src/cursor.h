@@ -395,6 +395,7 @@ class Cursor {
   }
   std::vector<std::string> split(std::string base, std::string delimiter) {
     std::vector<std::string> final;
+    final.reserve(base.length() / 76);
     size_t pos = 0;
     std::string token;
     while ((pos = base.find(delimiter)) != std::string::npos) {
@@ -403,6 +404,25 @@ class Cursor {
       base.erase(0, pos + delimiter.length());
     }
     final.push_back(base);
+    return final;
+  }
+  std::vector<std::string> splitNewLine(std::string* base) {
+    std::vector<std::string> final;
+    std::string::const_iterator c;
+    std::stringstream stream;
+    stream.str("");
+    stream.clear();
+    for(c = base->begin(); c != base->end(); c++) {
+      const char e = *c;
+      if(e == '\n') {
+        final.push_back(stream.str());
+        stream.str("");
+        stream.clear();
+      } else {
+        stream << e;
+      }
+    }
+    final.push_back(stream.str());
     return final;
   }
   Cursor() {
@@ -414,7 +434,7 @@ class Cursor {
      std::ifstream stream(path);
      ss << stream.rdbuf();
      std::string c = ss.str();
-     auto parts = split(c, "\n");
+     auto parts = splitNewLine(&c);
      lines = std::vector<std::u16string>(parts.size());
      size_t count = 0;
      for(const auto& ref : parts) {

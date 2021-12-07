@@ -428,12 +428,12 @@ int main(int argc, char** argv) {
           for (c = content.begin(); c != content.end(); c++) {
             entries.push_back(atlas.render(*c, xpos,ypos, color));
             xpos += atlas.getAdvance(*c);
-            if(xpos > maxRenderWidth) {
+            if(xpos > maxRenderWidth+ atlas.getAdvance(*c)) {
               break;
             }
           }
           if (x < allLines->size() -1) {
-            xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
+            xpos = -maxRenderWidth;
             ypos += toOffset;
 
           }
