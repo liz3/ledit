@@ -131,7 +131,7 @@ public:
         if(lCount++ > skip + maxLines && wasCached)
           break;
       }
-      if(wasCached && lCount < skip-1) {
+      if(skip > 0 && wasCached && lCount < skip-1) {
         continue;
       }
       if(language.stringCharacters.find(current) != std::string::npos && (last != language.escapeChar || (last == language.escapeChar && i >1 && raw[i-2] == language.escapeChar))) {
