@@ -3,6 +3,9 @@
 
 #include <string>
 #include <codecvt>
+#ifdef __linux__
+#include <locale>
+#endif
 typedef union char_s {
   char16_t value;
   uint8_t arr[2];

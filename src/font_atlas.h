@@ -110,7 +110,7 @@ public:
       entry.advance = face->glyph->advance.x >> 6;
       entry.xPos = xOffset;
       entry.c = (char16_t)i;
-      (&entry)->data = new uint8_t[entry.width * entry.height];
+      (&entry)->data = new uint8_t[(int)entry.width * (int)entry.height];
       memcpy(entry.data, face->glyph->bitmap.buffer, entry.width * entry.height);
       if(smallest_top == 0 && entry.top > 0)
         smallest_top = entry.top;
@@ -203,7 +203,7 @@ public:
     glDeleteTextures(1, &texture_id);
     texture_id = new_tex_id;
     entry.c = (char16_t)c;
-    (&entry)->data = new uint8_t[entry.width * entry.height];
+    (&entry)->data = new uint8_t[(int)entry.width * (int)entry.height];
     memcpy(entry.data, face->glyph->bitmap.buffer, entry.width * entry.height);
     xOffset += entry.width;
     entries.insert(std::pair<char16_t, CharacterEntry>(entry.c, entry));

@@ -13,6 +13,14 @@
 #include "la.h"
 #include "utils.h"
 #include "../third-party/json/json.hpp"
+#ifdef __linux__
+#include <fontconfig/fontconfig.h>
+struct FontEntry {
+  std::string path;
+  std::string name;
+  std::string type;
+};
+#endif
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 struct EditorColors {
@@ -85,7 +93,35 @@ public:
 #ifdef __APPLE__
     return (getDefaultFontDir() / "Monaco.ttf").generic_string();
 #else
-// todo implement
+  FcConfig* config = FcInitLoadConfigAndFonts();
+  FcPattern* pat = FcPatternCreate();
+  FcObjectSet* objectSet = FcObjectSetBuild(FC_FAMILY, FC_STYLE, FC_LANG, FC_FILE, FC_SPACING, nullptr);
+  FcFontSet* fSet = FcFontList(config, pat, objectSet);
+  std::vector<FontEntry> results;
+  for(int i = 0; fSet && i < fSet->nfont; i++) {
+    FcPattern* font = fSet->fonts[i];
+    FcChar8 *file, *family, *style;
+    int spacing;
+    if(FcPatternGetString(font, FC_FILE, 0, &file) == FcResultMatch &&
+       FcPatternGetInteger(font, FC_SPACING, 0, &spacing) == FcResultMatch &&
+       FcPatternGetString(font, FC_FAMILY, 0, &family) == FcResultMatch &&
+       FcPatternGetString(font, FC_STYLE, 0, &style) == FcResultMatch) {
+      if(spacing == 100)
+        results.push_back({std::string((const char*)file), std::string((const char*)family), std::string((const char*)style)});
+    }
+
+ }
+  if (fSet)
+    FcFontSetDestroy(fSet);
+  for(auto& entry : results) {
+    if(entry.name == "Hack" && entry.type == "Regular")
+      return entry.path;
+  }
+  for(auto& entry : results) {
+    if(entry.type == "Regular")
+      return entry.path;
+  }
+  return results[0].path;
 #endif
   }
   const fs::path getDefaultFontDir() {
@@ -96,6 +132,8 @@ public:
 #ifdef __APPLE__
   return "/System/Library/Fonts";
 #else
+  // fontconfig used
+  return "";
 #endif
   }
   void parseConfig(json* configRoot) {
