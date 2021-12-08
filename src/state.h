@@ -24,6 +24,7 @@ class State {
   GLFWwindow* window;
   float WIDTH, HEIGHT;
   bool hasHighlighting;
+  bool ctrlPressed = false;
   std::string path;
   std::u16string fileName;
   std::u16string status;
@@ -240,8 +241,8 @@ class State {
   void renderCoords(){
     if(mode != 0)
       return;
-    if(hasHighlighting)
-    highlighter.highlight(cursor->lines, &provider.colors, cursor->skip,  cursor->maxLines, cursor->y);
+    // if(hasHighlighting)
+    // highlighter.highlight(cursor->lines, &provider.colors, cursor->skip,  cursor->maxLines, cursor->y);
     status = numberToString(cursor->y +1)  + u":" + numberToString(cursor->x +1) + u" ["  + fileName + u": " + (hasHighlighting ? highlighter.languageName : u"Text")  + u"] History Size: " + numberToString(cursor->history.size());
     if(cursor->selection.active)
       status += u" Selected: [" + numberToString(cursor->getSelectionSize()) + u"]";

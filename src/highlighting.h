@@ -32,6 +32,11 @@ struct HighlighterState {
   std::u16string buffer;
   char stringChar;
 };
+struct SavedState {
+  HighlighterState state;
+  Vec4f color;
+  bool loaded = false;
+};
 class Highlighter {
 public:
   std::u16string languageName;
@@ -48,7 +53,7 @@ public:
   int lastSkip = 0;
   int lastMax = 0;
   int lastY = 0;
-  HighlighterState savedState;
+  SavedState savedState;
   bool wasCached = false;
   void setLanguage(Language lang, std::string name) {
     language.modeName = create(lang.modeName);
@@ -91,10 +96,11 @@ public:
   std::map<int, Vec4f>* highlight(std::u16string raw, EditorColors* colors, int skip, int maxLines, int yPassed) {
     if(wasCached && raw == cachedContent && skip == lastSkip)
       return &cached;
+
      std::map<int, Vec4f> entries;
-    // if(skip != lastSkip) {
-    //   wasCached = false;
-    // } else {
+    if(skip != lastSkip) {
+      wasCached = false;
+    }
     //   entries = cached;
     // }
     HighlighterState state =  {0, false, false, 0, u"", 0};
@@ -109,7 +115,6 @@ public:
     Vec4f special_color = colors->special_color;
     Vec4f comment_color = colors->comment_color;
     char16_t last = 0;
-
     size_t i;
     size_t lCount = 0;
     int last_entry = -1;
@@ -117,6 +122,21 @@ public:
     for(i = 0; i < raw.length(); i++) {
       char16_t current = raw[i];
       if(current == '\n') {
+        bool cont = false;
+        if(skip > 0) {
+//          std::cout << "wtf" << "\n";
+          if(lCount == skip-1) {
+            if(!wasCached && skip != lastSkip) {
+              savedState = {state, last_entry == -1 ? default_color : entries[last_entry], true};
+//              entries[i+1] = savedState.color;
+            } else if(wasCached  && savedState.loaded) {
+              entries[i+1] = savedState.color;
+              state = savedState.state;
+              cont = true;
+            }
+          }
+        }
+
         // if(!wasCached && skip > 0 && lCount == skip) {
         //   this->lastEntry = last_entry == -1 ? default_color :  entries[last_entry];
         //   savedState = state;
@@ -130,6 +150,8 @@ public:
         startIndex = endIndex;
         if(lCount++ > skip + maxLines && wasCached)
           break;
+        if(cont)
+          continue;
       }
       if(skip > 0 && wasCached && lCount < skip-1) {
         continue;
@@ -227,12 +249,14 @@ public:
     }
     int endIndex = entries.size();
     lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);
-    lastSkip = skip;
+
     lastMax = maxLines;
     cached = entries;
     lastY = yPassed;;
-    cachedContent = raw;
+
     wasCached = true;
+    lastSkip = skip;
+    cachedContent = raw;
     return &cached;
   }
 private:

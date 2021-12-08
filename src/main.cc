@@ -90,6 +90,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
   }
   bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
+  gState->ctrlPressed = ctrl_pressed;
   bool shift_pressed = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
   bool x_pressed = glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS;
   bool alt_pressed = glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS;
@@ -334,14 +335,13 @@ int main(int argc, char** argv) {
         }
       }
       auto maxRenderWidth = (WIDTH /2) - 20 - linesAdvance;
+      auto skipNow = cursor.skip;
       auto* allLines = cursor.getContent(&atlas, maxRenderWidth);
+        state.reHighlight();
       ypos = -(float)HEIGHT/2 + 15;
       xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
       cursor.setRenderStart( 20+linesAdvance, 15);
       Vec4f color = vec4fs(0.95);
-      if(changed) {
-        state.reHighlight();
-      }
       if(state.hasHighlighting) {
         auto highlighter = state.highlighter;
         int lineOffset = cursor.skip;
