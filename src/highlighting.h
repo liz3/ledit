@@ -94,8 +94,8 @@ public:
     return &cached;
   }
   std::map<int, Vec4f>* highlight(std::u16string raw, EditorColors* colors, int skip, int maxLines, int yPassed) {
-    if(wasCached && raw == cachedContent && skip == lastSkip)
-      return &cached;
+    // if(wasCached && raw == cachedContent && skip == lastSkip)
+    //   return &cached;
 
      std::map<int, Vec4f> entries;
     if(skip != lastSkip) {
@@ -118,40 +118,15 @@ public:
     size_t i;
     size_t lCount = 0;
     int last_entry = -1;
-    bool wasTrigered = false;
+    bool wasTriggered = false;
     for(i = 0; i < raw.length(); i++) {
       char16_t current = raw[i];
       if(current == '\n') {
-        bool cont = false;
-        if(skip > 0) {
-//          std::cout << "wtf" << "\n";
-          if(lCount == skip-1) {
-            if(!wasCached && skip != lastSkip) {
-              savedState = {state, last_entry == -1 ? default_color : entries[last_entry], true};
-//              entries[i+1] = savedState.color;
-            } else if(wasCached  && savedState.loaded) {
-              entries[i+1] = savedState.color;
-              state = savedState.state;
-              cont = true;
-            }
-          }
-        }
-
-        // if(!wasCached && skip > 0 && lCount == skip) {
-        //   this->lastEntry = last_entry == -1 ? default_color :  entries[last_entry];
-        //   savedState = state;
-        //   std::cout << last_entry << "\n";
-        // } else if(skip > 0 && lCount == skip) {
-        //   if(wasCached)
-        //     entries[i+1] = lastEntry;
-        // }
         int endIndex = entries.size();
         lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);
         startIndex = endIndex;
         if(lCount++ > skip + maxLines && wasCached)
           break;
-        if(cont)
-          continue;
       }
       if(skip > 0 && wasCached && lCount < skip-1) {
         continue;
@@ -220,7 +195,24 @@ public:
 
       state.buffer += current;
       last = current;
+      if(current == '\n') {
+        bool cont = false;
+        if(skip > 0) {
+          if(lCount == skip) {
+        if(!wasCached && skip != lastSkip) {
+          savedState = {state, last_entry == -1 ? default_color : entries[last_entry], true};
+          entries[i+1] = savedState.color;
+        } else if(wasCached  && savedState.loaded) {
+          entries[i+1] = savedState.color;
+          state = savedState.state;
+        }
 
+
+          }
+        }
+      } else if (wasTriggered) {
+        wasTriggered = false;
+      }
     }
 
     //        std::cout << "lol: " << state.buffer << "end\n";
