@@ -46,6 +46,11 @@ void character_callback(GLFWwindow* window, unsigned int codepoint)
 {
   if(gState == nullptr)
     return;
+#ifdef _WIN32
+  bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
+  if(ctrl_pressed)
+    return;
+#endif
   bool alt_pressed = glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS;
   if(alt_pressed) {
     if(glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {

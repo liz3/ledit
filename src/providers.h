@@ -104,7 +104,8 @@ public:
 #endif
 #ifdef __APPLE__
     return (getDefaultFontDir() / "Monaco.ttf").generic_string();
-#else
+#endif
+#ifdef __linux__
   FcConfig* config = FcInitLoadConfigAndFonts();
   FcPattern* pat = FcPatternCreate();
   FcObjectSet* objectSet = FcObjectSetBuild(FC_FAMILY, FC_STYLE, FC_LANG, FC_FILE, FC_SPACING, nullptr);
