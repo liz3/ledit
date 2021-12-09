@@ -12,16 +12,27 @@
 #include "languages.h"
 #include "providers.h"
 #include "u8String.h"
+struct CursorEntry {
+  Cursor cursor;
+  std::string path;
+};
+struct ReplaceBuffer {
+  std::u16string search = u"";
+  std::u16string replace = u"";
+};
 class State {
  public:
   GLuint vao, vbo;
   GLuint sel_vao, sel_vbo;
   GLuint highlight_vao, highlight_vbo;
   Cursor* cursor;
+  std::vector<CursorEntry*> cursors;
+  size_t activeIndex;
   Highlighter highlighter;
   Provider provider;
   FontAtlas* atlas;
   GLFWwindow* window;
+  ReplaceBuffer replaceBuffer;
   float WIDTH, HEIGHT;
   bool hasHighlighting;
   bool ctrlPressed = false;
@@ -36,6 +47,15 @@ class State {
   int round = 0;
   int fontSize;
   State() {}
+  void startReplace() {
+    if(mode != 0)
+      return;
+    mode = 30;
+    status = u"Search: ";
+    miniBuf = replaceBuffer.search;
+    cursor->bindTo(&miniBuf);
+
+  }
   void increaseFontSize(int value) {
     fontSize += value;
     if(fontSize > 260) {
@@ -64,20 +84,20 @@ class State {
     if(mode != 0  && mode != 5)
       return;
     if(mode == 0) {
-      if(cursor->saveLocs.size() == 0) {
+      if(cursors.size() == 1) {
         status = u"No other buffers in cache";
         return;
       }
       round = 0;
-      miniBuf = create(cursor->getSaveLocKeys()[0]);
+      miniBuf = create(cursors[0]->path);
       cursor->bindTo(&miniBuf);
       mode = 5;
       status = u"Switch to: ";
     } else {
       round++;
-      if(round == cursor->saveLocs.size())
+      if(round == cursors.size())
         round = 0;
-      miniBuf = create(cursor->getSaveLocKeys()[round]);
+      miniBuf = create(cursors[round]->path);
     }
   }
   void tryPaste() {
@@ -85,10 +105,23 @@ class State {
     if(contents) {
       std::u16string str = create(std::string(contents));
       cursor->appendWithLines(str);
+      if(mode != 0)
+        return;
       if(hasHighlighting)
         highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y);
       status = u"Pasted " + numberToString(str.length()) + u" Characters";
     }
+  }
+  void cut() {
+    if(!cursor->selection.active) {
+      status = u"Aborted: No selection";
+      return;
+    }
+    std::string content = cursor->getSelection();
+    glfwSetClipboardString(NULL, content.c_str());
+    cursor->deleteSelection();
+    cursor->selection.stop();
+    status = u"Cut " + numberToString(content.length()) + u" Characters";
   }
   void tryCopy() {
     if(!cursor->selection.active) {
@@ -168,7 +201,7 @@ class State {
     }
 
   }
-  void inform(bool success) {
+  void inform(bool success, bool shift_pressed) {
     if(success) {
       if(mode == 1) { // save to
         bool result = cursor->saveTo(convert_str(miniBuf));
@@ -204,23 +237,58 @@ class State {
         cursor->gotoLine(std::stoi(convert_str(miniBuf)));
         status = u"Jump to: " + miniBuf;
       } else if (mode == 4 || mode == 5) {
-        bool result = cursor->openFile(path, convert_str(miniBuf));
-        path = convert_str(miniBuf);
-        std::string window_name = "ledit: " + path;
-        glfwSetWindowTitle(window, window_name.c_str());
-        auto split = cursor->split(path, "/");
-        fileName = create(split[split.size() -1]);
-        tryEnableHighlighting();
-        status = (result ? u"Loaded: " : u"New File: ") + miniBuf;
-        if(!result) {
-           cursor->reset();
-           atlas->linesCache.clear();
+        cursor->unbind();
+        if(mode == 5) {
+          if(round != activeIndex) {
+            activateCursor(round);
+          }
+        } else {
+          bool found = false;
+          size_t fIndex = 0;
+          auto converted = convert_str(miniBuf);
+          for(size_t i = 0; i < cursors.size(); i++) {
+            if(cursors[i]->path == converted) {
+              found = true;
+              fIndex = i;
+              break;
+            }
+          }
+          if(found && activeIndex != fIndex)
+            activateCursor(fIndex);
+          else if(!found)
+            addCursor(converted);
         }
+
       } else if (mode == 15) {
          atlas->readFont(convert_str(miniBuf), fontSize);
          provider.fontPath = convert_str(miniBuf);
          provider.writeConfig();
          status = u"Loaded font: " + miniBuf;
+      } else if (mode == 30) {
+        replaceBuffer.search = miniBuf;
+        miniBuf = replaceBuffer.replace;
+        cursor->bindTo(&miniBuf);
+        status = u"Replace: ";
+        mode = 31;
+        return;
+      } else if (mode == 31) {
+        mode = 32;
+        replaceBuffer.replace = miniBuf;
+        status = replaceBuffer.search + u" => " + replaceBuffer.replace;
+        cursor->unbind();
+        return;
+      } else if(mode == 32) {
+        if(shift_pressed) {
+          auto count = cursor->replaceAll(replaceBuffer.search, replaceBuffer.replace);
+          if(count)
+            status = u"Replaced " + numberToString(count) + u" matches";
+          else
+            status = u"[No match]: " + replaceBuffer.search + u" => " + replaceBuffer.replace;
+        } else {
+          auto result = cursor->replaceOne(replaceBuffer.search, replaceBuffer.replace, true);
+          status = result  + replaceBuffer.search + u" => " + replaceBuffer.replace;
+          return;
+        }
       }
     } else {
       status = u"Aborted";
@@ -257,16 +325,46 @@ class State {
 
 
   }
-  State(Cursor* c, float w, float h, std::string path, int fontSize) {
-    status = create(path);
-    this->fontSize = fontSize;
-    lastStroke = 0;
-    cursor = c;
-    WIDTH = w;
-    HEIGHT = h;
+  std::u16string getTabInfo() {
+    if(activeIndex == 0 && cursors.size() == 1)
+      return u"[ 1 ]";
+    std::u16string text = u"[ " + numberToString(activeIndex+1) + u":" + numberToString(cursors.size()) + u" ]";
+
+    return text;
+  }
+
+  void deleteActive() {
+    deleteCursor(activeIndex);
+  }
+  void rotateBuffer() {
+    if(cursors.size() == 1)
+      return;
+    size_t next = activeIndex + 1;
+    if(next == cursors.size())
+      next = 0;
+    activateCursor(next);
+  }
+  void deleteCursor(size_t index) {
+    if(mode != 0 || cursors.size() == 1 || index >= cursors.size())
+      return;
+    CursorEntry* entry = cursors[index];
+    delete entry;
+
+    if(activeIndex != index)
+      return;
+    size_t targetIndex = index == 0 ? 1 : index-1;
+    cursors.erase(cursors.begin()+index);
+    activateCursor(targetIndex);
+  }
+  void activateCursor(size_t cursorIndex) {
+    CursorEntry* entry = cursors[cursorIndex];
+    activeIndex = cursorIndex;
+    std::string path= entry->path;
+    this->cursor = &(entry->cursor);
     this->path = path;
+    status = create(path);
     if(path.length()) {
-      auto split = cursor->split(path, "/");
+      auto split = entry->cursor.split(path, "/");
       fileName = create(split[split.size() -1]);
       tryEnableHighlighting();
     } else {
@@ -275,6 +373,20 @@ class State {
       renderCoords();
     }
 
+  }
+  void addCursor(std::string path) {
+    Cursor newCursor = path.length() ? Cursor(path) : Cursor();
+    CursorEntry* entry = new CursorEntry {newCursor, path};
+    cursors.push_back(entry);
+    activateCursor(cursors.size()-1);
+  }
+  State(float w, float h, std::string path, int fontSize) {
+
+    this->fontSize = fontSize;
+    lastStroke = 0;
+    WIDTH = w;
+    HEIGHT = h;
+    addCursor(path);
   }
   void init() {
     glGenVertexArrays(1, &vao);

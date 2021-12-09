@@ -190,6 +190,52 @@ class Cursor {
       return u"[No further matches]: ";
     return u"[Not found]: ";
   }
+
+  std::u16string replaceOne(std::u16string what, std::u16string replace, bool allowCenter = true, bool shouldOffset = true) {
+    int i = shouldOffset ? y : 0;
+    bool found = false;
+    for(int x = i; x < lines.size(); x++) {
+      auto line = lines[x];
+      auto where = line.find(what);
+      if(where != std::string::npos) {
+        auto xNow = this->x;
+        auto yNow = this->y;
+        this->y = x;
+        this->x = where;
+        historyPush(30, line.length(), line);
+        std::u16string base = line.substr(0, where);
+        base += replace;
+        if(line.length() - where - what.length() > 0)
+          base += line.substr(where + what.length());
+        lines[x] = base;
+        if(allowCenter) {
+            center(i);
+            xSave = where + replace.length();
+        } else {
+          this->y = yNow;
+        }
+        this->x = xNow;
+        return u"[At: " + numberToString(y + 1) + u":" + numberToString(where + 1) + u"]: ";
+      }
+      i++;
+    }
+    return u"[Not found]: ";
+  }
+  size_t replaceAll(std::u16string what, std::u16string replace) {
+    size_t c = 0;
+    while(true) {
+      auto res = replaceOne(what, replace, false);
+      if(res == u"[Not found]: ")
+        break;
+      c++;
+    }
+    historyPush(31, c, u"");
+    if(x > lines[y].length())
+    x = lines[y].length();
+    xSave = x;
+    return c;
+  }
+
   int findAnyOf(std::u16string str, std::u16string what) {
     std::u16string::const_iterator c;
     int offset = 0;
@@ -343,6 +389,20 @@ class Cursor {
         lines[y] = entry.content;
       }
         break;
+    }
+    case 30: {
+        y = entry.y;
+        x = entry.x;
+        lines[y] = entry.content;
+        break;
+    }
+    case 31: {
+      for(size_t i = 0; i < entry.length; i++) {
+        undo();
+      }
+      y = entry.y;
+      x = entry.x;
+      break;
     }
       default:
         return false;

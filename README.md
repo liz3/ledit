@@ -112,7 +112,8 @@ C-d - delete character after the cursor
 M-d - delete the next word including a whitespace.
 C-shift-p - move current line up
 C-shift-n - move current line down
-# more soon!!!
+C-w - cut selection
+C-r - replace, first asks for search then for replace\, use SHFT-RET to replace all matches.  
 
 Operations:
 C-x-s - Save to last path, if no path present, ledit will ask for a path.
