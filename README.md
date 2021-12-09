@@ -2,6 +2,7 @@
 Very simple GPU Rendered text editor without any bullshit.  
 With keybinds inspired by emacs.  
 Ledit runs on all 3 major operating systems: GNU/linux, macOS and Windows.
+if you just want to test the editor then [download it from the releases](https://github.com/liz3/ledit/releases/tag/0.0.1)
 
 ## Motivation
 The base motivation was just simply that i wanted to have a look into OpenGL and doing GPU accelerated things, i did not plan to create a text editor from the get go.  
