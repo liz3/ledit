@@ -225,7 +225,8 @@ int main(int argc, char** argv) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
+    if(state.provider.allowTransparency)
+      glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, 1);
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
@@ -299,7 +300,8 @@ int main(int argc, char** argv) {
       if(state.highlightLine) {
         selection_shader.use();
         glBindVertexArray(state.highlight_vao);
-        selection_shader.set4f("selection_color", 0.7,0.7,0.7, 0.15);
+        auto color = state.provider.colors.highlight_color;
+        selection_shader.set4f("selection_color", color.x,color.y, color.z, color.w);
         selection_shader.set2f("resolution", (float) WIDTH,(float) HEIGHT);
         glBindBuffer(GL_ARRAY_BUFFER, state.highlight_vbo);
         SelectionEntry entry{vec2f((-(int32_t)WIDTH/2) +10,  (float)HEIGHT/2 - 10 - toOffset - ((cursor->y - cursor->skip) * toOffset)), vec2f((((int32_t)WIDTH/2) * 2) - 20, toOffset)};
@@ -608,7 +610,8 @@ int main(int argc, char** argv) {
         if(selectionBoundaries.size()) {
           selection_shader.use();
           glBindVertexArray(state.sel_vao);
-          selection_shader.set4f("selection_color", 0.7,0.7,0.8, 0.5);
+          auto color = state.provider.colors.selection_color;
+          selection_shader.set4f("selection_color", color.x, color.y, color.z, color.w);
           selection_shader.set2f("resolution", (float) WIDTH,(float) HEIGHT);
           glBindBuffer(GL_ARRAY_BUFFER, state.sel_vbo);
 

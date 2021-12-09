@@ -30,6 +30,8 @@ struct EditorColors {
   Vec4f special_color = vec4f(0.2, 0.2, 0.8, 1.0);
   Vec4f comment_color = vec4fs(0.5);
   Vec4f background_color = vec4f(0,0,0,1.0);
+  Vec4f highlight_color = vec4f(0.1,0.1,0.1,1.0);
+  Vec4f selection_color = vec4f(0.7,0.7, 0.7, 0.6);
 
 };
 class Provider {
@@ -40,6 +42,7 @@ public:
   EditorColors colors;
   std::string fontPath = getDefaultFontPath();
   std::string configPath;
+  bool allowTransparency = false;
   Provider() {
     fs::path* homeDir = getHomeFolder();
     if(homeDir) {
@@ -77,6 +80,15 @@ public:
          return def;
     }
     return vec4f(((float)e[0] / (float)255),((float)e[1] / (float)255), ((float)e[2] / (float)255), ((float)e[3] /(float) 255));
+  }
+  bool getBoolOrDefault(json o, const std::string entry, bool def) {
+    if(!o.contains(entry))
+      return def;
+    json e = o[entry];
+    if(!e.is_boolean())
+      return def;
+
+    return (bool)e;
   }
   std::string getPathOrDefault(json o, const std::string entry, std::string def) {
     if(!o.contains(entry))
@@ -145,8 +157,11 @@ public:
       colors.special_color = getVecOrDefault(configColors, "special_color", colors.special_color);
       colors.comment_color = getVecOrDefault(configColors, "comment_color", colors.comment_color);
       colors.background_color = getVecOrDefault(configColors, "background_color", colors.background_color);
+      colors.highlight_color = getVecOrDefault(configColors, "highlight_color", colors.highlight_color);
+      colors.selection_color = getVecOrDefault(configColors, "selection_color", colors.selection_color);
     }
     fontPath = getPathOrDefault(*configRoot, "font_face", fontPath);
+    allowTransparency = getBoolOrDefault(*configRoot, "window_transparency", allowTransparency);
   }
   json vecToJson(Vec4f value) {
     json j;
@@ -167,6 +182,7 @@ public:
     cColors["special_color"] = vecToJson(colors.special_color);
     cColors["comment_color"] = vecToJson(colors.comment_color);
     config["font_face"] = fontPath;
+    config["window_transparency"] = allowTransparency;
     config["colors"] = cColors;
     const std::string contents = config.dump(2);
     string_to_file(configPath, contents);

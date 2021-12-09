@@ -77,7 +77,14 @@ For the colors there are default values, for the font face either remove it comp
    "background_color": [
      0, 0, 0, 255   // Editor background color
     ]
+   "selection_color": [
+     0, 0, 0, 255   // Selection area color
+    ]
+   "highlight_color": [
+     0, 0, 0, 255   // Color of the active line background highlight.
+    ]
   },
+  "window_transparency": true // if the window is allowed to be transparent
   "font_face": "/Users/liz3/Library/Fonts/FiraCode-Regular.ttf" // TTF font face path
 }
 ```
