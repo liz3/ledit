@@ -209,6 +209,7 @@ class State {
         status = u"Saved to: " + miniBuf;
         if(!path.length()) {
           path = convert_str(miniBuf);
+          cursors[activeIndex]->path = path;
           auto split = cursor->split(path, "/");
           std::string fName = split[split.size() -1];
           fileName = create(fName);
