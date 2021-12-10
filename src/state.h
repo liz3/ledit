@@ -56,6 +56,14 @@ class State {
     cursor->bindTo(&miniBuf);
 
   }
+  void switchMode() {
+     if(mode != 0)
+       return;
+     round = 0;
+     miniBuf = u"Text";
+     status = u"Mode: ";
+     mode = 25;
+  }
   void increaseFontSize(int value) {
     fontSize += value;
     if(fontSize > 260) {
@@ -265,6 +273,16 @@ class State {
          provider.fontPath = convert_str(miniBuf);
          provider.writeConfig();
          status = u"Loaded font: " + miniBuf;
+      } else if (mode == 25) {
+          if(round == 0) {
+             status = u"Mode: Text";
+             hasHighlighting = false;
+          } else {
+             auto lang = LANGUAGES[round-1];
+             highlighter.setLanguage(lang, lang.modeName);
+             hasHighlighting = true;
+             status = u"Mode: " + miniBuf;
+          }
       } else if (mode == 30) {
         replaceBuffer.search = miniBuf;
         miniBuf = replaceBuffer.replace;
@@ -306,6 +324,15 @@ class State {
         return;
       std::string p = provider.lastProvidedFolder;
       miniBuf = create(e);
+    } else if (mode == 25) {
+       if(round == LANGUAGES.size())
+         round = 0;
+       else 
+         round++;
+      if(round == 0)
+        miniBuf = u"Text";
+      else
+        miniBuf = create(LANGUAGES[round-1].modeName);
     }
   }
   void renderCoords(){

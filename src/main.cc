@@ -111,6 +111,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
       if(action == GLFW_PRESS && key == GLFW_KEY_S) {
         gState->save();
       }
+      if(action == GLFW_PRESS && key == GLFW_KEY_M) {
+        gState->switchMode();
+      }
       if(action == GLFW_PRESS && key == GLFW_KEY_L) {
         gState->showLineNumbers = !gState->showLineNumbers;
       }
