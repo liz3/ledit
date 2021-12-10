@@ -46,6 +46,14 @@ public:
   bool isNonChar(char16_t c) {
     return whitespace.find(c) != std::string::npos;
   }
+ bool isNumber(char16_t c) {
+  return c >= '0' && c <= '9';
+ }
+ bool isNumberEnd(char16_t c, bool hexa) {
+  if(hexa && ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+    return false;
+  return !isNumber(c) && c != '.' && c != 'x';
+ }
   std::u16string cachedContent = u"";
   std::map<int, Vec4f> cached;
   std::map<int, std::pair<int, int>> lineIndex;
@@ -114,6 +122,7 @@ public:
     Vec4f keyword_color = colors->keyword_color;
     Vec4f special_color = colors->special_color;
     Vec4f comment_color = colors->comment_color;
+    Vec4f number_color = colors->number_color;
     char16_t last = 0;
     size_t i;
     size_t lCount = 0;
@@ -149,6 +158,12 @@ public:
       } else if (state.busy && state.mode == 3 && hasEnding(state.buffer, language.multiLineComment.second)) {
         state.mode = 0;
         state.busy = false;
+        entries[i] = default_color;
+        last_entry = i;
+      } else if (state.busy && (state.mode == 6 || state.mode == 7) && isNumberEnd(current, state.mode == 7)) {
+        state.buffer = u"";
+        state.busy = false;
+        state.mode = 0;
         entries[i] = default_color;
         last_entry = i;
       } else if (state.busy && state.mode == 2 && current == '\n') {
@@ -187,6 +202,13 @@ public:
           state.buffer = u"";
         }
 
+      } else if (isNumber(current) && isNonChar(last) && !state.busy) {
+          state.mode = 6;
+          if(current == '0' && i < raw.length()-1 && (raw[i+1] == 'x' || raw[i+1] == 'X'))
+            state.mode = 7;
+          state.busy = true;
+          last_entry = i;
+          entries[i] = number_color;
       } else if(!state.busy && isNonChar(last) && !isNonChar(current)) {
         state.wasReset = false;
         state.buffer = u"";

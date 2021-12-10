@@ -84,6 +84,9 @@ For the colors there are default values, for the font face either remove it comp
    "highlight_color": [
      0, 0, 0, 255   // Color of the active line background highlight.
     ]
+   "number_color": [
+     0, 0, 160, 255   // Color used for numbers.
+    ]
   },
   "window_transparency": true // if the window is allowed to be transparent
   "font_face": "/Users/liz3/Library/Fonts/FiraCode-Regular.ttf" // TTF font face path
