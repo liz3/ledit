@@ -327,10 +327,17 @@ class State {
       std::string p = provider.lastProvidedFolder;
       miniBuf = create(e);
     } else if (mode == 25) {
+       if(reverse) {
+          if(round == 0)
+            round = LANGUAGES.size();
+          else
+            round--;
+        } else {
        if(round == LANGUAGES.size())
          round = 0;
        else 
          round++;
+      }
       if(round == 0)
         miniBuf = u"Text";
       else
