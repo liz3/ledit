@@ -40,6 +40,7 @@ class State {
   std::u16string fileName;
   std::u16string status;
   std::u16string miniBuf;
+  std::u16string dummyBuf;
   double lastStroke;
   bool showLineNumbers = true;
   bool highlightLine = true;
@@ -62,6 +63,7 @@ class State {
      round = 0;
      miniBuf = u"Text";
      status = u"Mode: ";
+     cursor->bindTo(&dummyBuf);
      mode = 25;
   }
   void increaseFontSize(int value) {
