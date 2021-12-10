@@ -196,7 +196,7 @@ class Cursor {
     bool found = false;
     for(int x = i; x < lines.size(); x++) {
       auto line = lines[x];
-      auto where = line.find(what);
+      auto where = line.find(what, xSave);
       if(where != std::string::npos) {
         auto xNow = this->x;
         auto yNow = this->y;
@@ -209,15 +209,19 @@ class Cursor {
           base += line.substr(where + what.length());
         lines[x] = base;
         if(allowCenter) {
+            this->y = i;
             center(i);
-            xSave = where + replace.length();
         } else {
           this->y = yNow;
         }
+         xSave = where + replace.length();
         this->x = xNow;
         return u"[At: " + numberToString(y + 1) + u":" + numberToString(where + 1) + u"]: ";
       }
       i++;
+      if(x < lines.size()-1)
+         xSave = 0;
+   
     }
     return u"[Not found]: ";
   }
@@ -230,9 +234,10 @@ class Cursor {
       c++;
     }
     historyPush(31, c, u"");
-    if(x > lines[y].length())
-    x = lines[y].length();
-    xSave = x;
+    if(x > lines[y].length()) {
+      x = lines[y].length();
+      xSave = x;
+    }
     return c;
   }
 

@@ -191,7 +191,7 @@ class State {
   void tryEnableHighlighting() {
     std::vector<std::u16string> fileParts = cursor->split(fileName, u".");
     std::string ext = convert_str(fileParts[fileParts.size()-1]);
-    const Language* lang = has_language(ext);
+    const Language* lang = has_language(fileName == u"Dockerfile" ? "dockerfile" : ext);
     if(lang) {
       highlighter.setLanguage(*lang, lang->modeName);
       highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y);
@@ -268,6 +268,7 @@ class State {
       } else if (mode == 30) {
         replaceBuffer.search = miniBuf;
         miniBuf = replaceBuffer.replace;
+        cursor->unbind();
         cursor->bindTo(&miniBuf);
         status = u"Replace: ";
         mode = 31;

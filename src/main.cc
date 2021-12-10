@@ -302,7 +302,7 @@ int main(int argc, char** argv) {
       Cursor* cursor = state.cursor;
       float toOffset = atlas.atlas_height + 2;
 //      std::cout << atlas.atlas_height << "\n";
-      bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7;
+      bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7 || state.mode == 32;
       cursor->setBounds(HEIGHT - state.atlas->atlas_height - 6, toOffset);
       auto be_color = state.provider.colors.background_color;
       glClearColor(be_color.x, be_color.y, be_color.z, be_color.w);
