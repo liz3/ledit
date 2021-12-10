@@ -145,7 +145,7 @@ C-+   - Increase font size
 C--(-)- decrease font size
 C-x-0 - Load new font file, note that doing this will persist it in the config.
 C-x-h - Toggle highlighting of the active line.
-C-x-m - Switch active for current buffer.
+C-x-m - Switch active mode for current buffer.
 
 
 ```
