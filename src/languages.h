@@ -21,7 +21,7 @@ const Language JavaScript = {
   {"/*", "*/"},
   "\"'`",
   '\\',
-  {"js"}
+  {"js", "jsx"}
 };
 const Language Python = {
   "Python",
@@ -52,7 +52,7 @@ const Language TypeScript {
   {"/*", "*/"},
   "\"'`",
   '\\',
-  {"ts"}
+  {"ts", "tsx"}
 };
 const Language Dockerfile = {
   "Dockerfile",
