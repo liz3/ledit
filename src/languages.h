@@ -57,7 +57,7 @@ const std::vector<Language> LANGUAGES = {
 },
 {
   "Dockerfile",
-  { "CMD", "ENTRYPOINT", "RUN", "ADD" "COPY", "ENV", "EXPOSE", "FROM", "LABEL", "STOPSIGNAL", "USER", "VOLUME", "WORKDIR", "ONBUILD", "AS" },
+  { "CMD", "ENTRYPOINT", "RUN", "ADD", "COPY", "ENV", "EXPOSE", "FROM", "LABEL", "STOPSIGNAL", "USER", "VOLUME", "WORKDIR", "ONBUILD", "AS" },
   {},
   "#",  
   {"",""},
