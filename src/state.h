@@ -223,7 +223,7 @@ class State {
           auto split = cursor->split(path, "/");
           std::string fName = split[split.size() -1];
           fileName = create(fName);
-          std::string window_name = "ledit: " + fName;
+          std::string window_name = "ledit: " + path;
           glfwSetWindowTitle(window, window_name.c_str());
           tryEnableHighlighting();
         }
@@ -252,6 +252,9 @@ class State {
         if(mode == 5) {
           if(round != activeIndex) {
             activateCursor(round);
+            status = u"Switched to: " + create(path);
+          } else {
+            status = u"Canceled";
           }
         } else {
           bool found = false;
@@ -410,6 +413,8 @@ class State {
       hasHighlighting = false;
       renderCoords();
     }
+    std::string window_name = "ledit: " + path;
+    glfwSetWindowTitle(window, window_name.c_str());
 
   }
   void addCursor(std::string path) {

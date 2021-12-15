@@ -97,7 +97,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     return;
 
   }
-  bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
+  bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
   gState->ctrlPressed = ctrl_pressed;
   bool shift_pressed = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
   bool x_pressed = glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS;
@@ -407,6 +407,7 @@ int main(int argc, char** argv) {
 
             cOffset++;
             charAdvance++;
+            if(*c != '\t')
             entries.push_back(atlas.render(*c, xpos,ypos, color));
             xpos += atlas.getAdvance(*c);
             if(xpos > (maxRenderWidth+ atlas.getAdvance(*c)) && c != content.end()) {
@@ -450,7 +451,8 @@ int main(int argc, char** argv) {
         for(size_t x = 0; x < allLines->size(); x++) {
           auto content = (*allLines)[x].second;
           for (c = content.begin(); c != content.end(); c++) {
-            entries.push_back(atlas.render(*c, xpos,ypos, color));
+            if(*c != '\t')
+              entries.push_back(atlas.render(*c, xpos,ypos, color));
             xpos += atlas.getAdvance(*c);
             if(xpos > maxRenderWidth+ atlas.getAdvance(*c)) {
               break;
