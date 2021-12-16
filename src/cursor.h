@@ -597,7 +597,7 @@ class Cursor {
           if((*current)[t] == ' ')
             base += u" ";
           else if ((*current)[t] == '\t')
-           base += u"t";
+           base += u"\t";
           else 
             break;
         }
