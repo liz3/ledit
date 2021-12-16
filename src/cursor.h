@@ -592,8 +592,21 @@ class Cursor {
       std::u16string* current = &lines[y];
       bool isEnd = x == current->length();
       if(isEnd) {
-        lines.insert(pos+1,u"");
+        std::u16string base;
+        for(size_t t = 0; t < current->length(); t++) {
+          if((*current)[t] == ' ')
+            base += u" ";
+          else if ((*current)[t] == '\t')
+           base += u"t";
+          else 
+            break;
+        }
+        lines.insert(pos+1,base);
         historyPush(6, 0, u"");
+        x = base.length();
+        y++;
+        return;
+        
       } else {
         if(x== 0) {
           lines.insert(pos, u"");
