@@ -184,6 +184,10 @@ public:
     cColors["keyword_color"] = vecToJson(colors.keyword_color);
     cColors["special_color"] = vecToJson(colors.special_color);
     cColors["comment_color"] = vecToJson(colors.comment_color);
+    cColors["background_color"] = vecToJson(colors.background_color);    
+    cColors["highlight_color"] = vecToJson(colors.highlight_color);
+    cColors["selection_color"] = vecToJson(colors.selection_color);
+    cColors["number_color"] = vecToJson(colors.number_color);
     config["font_face"] = fontPath;
     config["window_transparency"] = allowTransparency;
     config["colors"] = cColors;

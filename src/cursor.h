@@ -436,6 +436,8 @@ class Cursor {
     center(l);
   }
   void center(int l) {
+    if(l >= skip && l <= skip + maxLines)
+      return;
     if(l < maxLines /2 || lines.size() < l)
       skip = 0;
     else {
