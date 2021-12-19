@@ -171,6 +171,16 @@ const std::vector<Language> LANGUAGES = {
   "\"'",
  '\\',
  {"sh", "bash"}
+},
+{
+  "JSON",
+  {"true", "false", "null"},
+  {},
+  "",
+  {"",""},
+  "\"",
+  '\\',
+  {"json"}
 }
 };
 const Language* has_language(std::string ext) {
