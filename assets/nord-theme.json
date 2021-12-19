@@ -1,0 +1,59 @@
+{
+  "colors": {
+    "background_color": [
+      46,
+      52,
+      64,
+      255
+    ],
+    "comment_color": [
+      67,
+      76,
+      94,
+      255
+    ],
+    "default_color": [
+      229,
+      233,
+      240,
+      240
+    ],
+    "highlight_color": [
+      59,
+      66,
+      82,
+      200
+    ],
+    "keyword_color": [
+      143,
+      188,
+      187,
+      255
+    ],
+    "number_color": [
+      180,
+      142,
+      173,
+      255
+    ],
+    "selection_color": [
+      229,
+      233,
+      240,
+      153
+    ],
+    "special_color": [
+      129,
+      161,
+      193,
+      255
+    ],
+    "string_color": [
+      163,
+      190,
+      140,
+      255
+    ]
+  },
+  "window_transparency": false
+}
