@@ -57,6 +57,17 @@ class State {
     cursor->bindTo(&miniBuf);
 
   }
+  void checkChanged() {
+    if(!path.length())
+      return;
+    auto changed = cursor->didChange(path);
+    if(changed) {
+      miniBuf = u"";
+      mode = 36;
+      status = u"[" + create(path) + u"]: Changed on disk, reload?";
+      cursor->bindTo(&dummyBuf);
+    }
+  }
   void switchMode() {
      if(mode != 0)
        return;
@@ -314,6 +325,9 @@ class State {
           status = result  + replaceBuffer.search + u" => " + replaceBuffer.replace;
           return;
         }
+      } else if (mode == 36) {
+           cursor->reloadFile(path);
+           status = u"Reloaded";
       }
     } else {
       status = u"Aborted";
@@ -408,6 +422,7 @@ class State {
       auto split = entry->cursor.split(path, "/");
       fileName = create(split[split.size() -1]);
       tryEnableHighlighting();
+      checkChanged();
     } else {
       fileName = u"New File";
       hasHighlighting = false;

@@ -25,6 +25,7 @@ class Cursor {
   std::vector<std::u16string> lines;
   std::map<std::string, PosEntry> saveLocs;
   std::deque<HistoryEntry> history;
+  std::filesystem::file_time_type last_write_time;
   Selection selection;
   int x = 0;
   int y = 0;
@@ -509,7 +510,7 @@ class Cursor {
        count++;
      }
      stream.close();
-
+     last_write_time = std::filesystem::last_write_time(path);
   }
   void historyPush(int mode, int length, std::u16string content) {
     if(bind != nullptr)
@@ -538,7 +539,36 @@ class Cursor {
       history.pop_back();
     history.push_front(entry);
   }
-
+  bool didChange(std::string path) {
+    bool result = last_write_time != std::filesystem::last_write_time(path);
+    last_write_time = std::filesystem::last_write_time(path);
+    return result;
+  }
+  bool reloadFile(std::string path) {
+    std::ifstream stream(path);
+    if(!stream.is_open())
+      return false;
+    history.clear();
+    std::stringstream ss;
+    ss << stream.rdbuf();
+    std::string c = ss.str();
+     auto parts = splitNewLine(&c);
+     lines = std::vector<std::u16string>(parts.size());
+     size_t count = 0;
+     for(const auto& ref : parts) {
+       lines[count] = create(ref);
+       count++;
+     }
+    if(skip > lines.size() - maxLines)
+      skip = 0;
+    if(y > lines.size()-1)
+        y = lines.size()-1;
+    if(x > lines[y].length())
+      x = lines[y].length();
+    stream.close();
+    last_write_time = std::filesystem::last_write_time(path);
+    return true;
+  }
   bool openFile(std::string oldPath, std::string path) {
     std::ifstream stream(path);
     if(oldPath.length()) {
@@ -586,6 +616,7 @@ class Cursor {
     if(x > lines[y].length())
       x = lines[y].length();
     stream.close();
+    last_write_time = std::filesystem::last_write_time(path);
     return true;
   }
   void append(char16_t c) {
@@ -671,6 +702,7 @@ void appendWithLines(std::u16string content) {
       historyPushWithExtra(15, save.length(),save, historyExtra);
       history[history.size()-1].x = xSave;
     }
+    center(y);
   }
   void append(std::u16string content) {
     auto* target = bind ? bind : &lines[y];
@@ -794,7 +826,7 @@ void appendWithLines(std::u16string content) {
     selection.diff(x, y);
   }
   bool saveTo(std::string path) {
-    std::ofstream stream(path,  std::ofstream::out);
+    std::ofstream stream(path, std::ofstream::out);
     if(!stream.is_open()) {
       return false;
     }
@@ -805,6 +837,7 @@ void appendWithLines(std::u16string content) {
     }
     stream.flush();
     stream.close();
+    last_write_time = std::filesystem::last_write_time(path);
     return true;
   }
   std::vector<std::pair<int, std::u16string>>* getContent(FontAtlas* atlas, float maxWidth) {

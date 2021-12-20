@@ -1,5 +1,5 @@
-#include <math.h>
 #include <iostream>
+#include <math.h>
 #include <map>
 #include <string>
 #include <vector>
@@ -32,6 +32,13 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     }
 
 }
+void window_focus_callback(GLFWwindow* window, int focused)
+{
+  if(focused) {
+    gState->checkChanged();
+  }
+}
+
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
@@ -259,6 +266,7 @@ int main(int argc, char** argv) {
     glfwSetKeyCallback(window, key_callback);
     glfwSetCharCallback(window, character_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetWindowFocusCallback(window, window_focus_callback);
     GLFWcursor* mouseCursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
     glfwSetCursor(window, mouseCursor);
 
