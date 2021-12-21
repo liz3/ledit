@@ -10,6 +10,9 @@
 #include "selection.h"
 #include <deque>
 #include "u8String.h"
+#ifndef __APPLE__
+#include <filesytem>
+#endif
 struct PosEntry {
   int x,y, skip;
 };
