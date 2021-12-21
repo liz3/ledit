@@ -620,6 +620,10 @@ class Cursor {
     return true;
   }
   void append(char16_t c) {
+    if(selection.active) {
+      deleteSelection();
+      selection.stop();
+    }    
     if(c == '\n' && bind == nullptr) {
       auto pos = lines.begin() + y;
       std::u16string* current = &lines[y];
@@ -719,6 +723,8 @@ void appendWithLines(std::u16string content) {
     return lines[y].substr(0, x);
   }
   void removeBeforeCursor() {
+    if(selection.active)
+      return;
     std::u16string* target = bind ? bind : &lines[y];
     if(x == 0 && target->length() == 0) {
       if(y == lines.size() -1 || bind)
