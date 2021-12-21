@@ -11,7 +11,7 @@
 #include <deque>
 #include "u8String.h"
 #ifndef __APPLE__
-#include <filesytem>
+#include <filesystem>
 #endif
 struct PosEntry {
   int x,y, skip;
