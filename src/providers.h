@@ -33,7 +33,9 @@ struct EditorColors {
   Vec4f background_color = vec4f(0,0,0,1.0);
   Vec4f highlight_color = vec4f(0.1,0.1,0.1,1.0);
   Vec4f selection_color = vec4f(0.7,0.7, 0.7, 0.6);
-
+  Vec4f status_color = vec4f(0.8,0.8,1.0, 0.9);
+  Vec4f minibuffer_color = vec4fs(1.0);
+  Vec4f line_number_color = vec4fs(0.8);
 };
 class Provider {
 public:
@@ -162,6 +164,9 @@ public:
       colors.highlight_color = getVecOrDefault(configColors, "highlight_color", colors.highlight_color);
       colors.selection_color = getVecOrDefault(configColors, "selection_color", colors.selection_color);
       colors.number_color = getVecOrDefault(configColors, "number_color", colors.number_color);
+      colors.status_color = getVecOrDefault(configColors, "status_color", colors.status_color);
+      colors.line_number_color = getVecOrDefault(configColors, "line_number_color", colors.line_number_color);
+      colors.minibuffer_color = getVecOrDefault(configColors, "minibuffer_color", colors.minibuffer_color);
     }
     fontPath = getPathOrDefault(*configRoot, "font_face", fontPath);
     allowTransparency = getBoolOrDefault(*configRoot, "window_transparency", allowTransparency);
@@ -188,6 +193,9 @@ public:
     cColors["highlight_color"] = vecToJson(colors.highlight_color);
     cColors["selection_color"] = vecToJson(colors.selection_color);
     cColors["number_color"] = vecToJson(colors.number_color);
+    cColors["status_color"] = vecToJson(colors.status_color);
+    cColors["line_number_color"] = vecToJson(colors.line_number_color);
+    cColors["minibuffer_color"] = vecToJson(colors.minibuffer_color);
     config["font_face"] = fontPath;
     config["window_transparency"] = allowTransparency;
     config["colors"] = cColors;

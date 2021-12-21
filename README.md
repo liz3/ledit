@@ -2,7 +2,7 @@
 Very simple GPU Rendered text editor without any bullshit.  
 With keybinds inspired by emacs.  
 Ledit runs on all 3 major operating systems: GNU/linux, macOS and Windows.
-if you just want to test the editor then [download it from the releases](https://github.com/liz3/ledit/releases/tag/0.0.1)
+if you just want to test the editor then [download it from the releases](https://github.com/liz3/ledit/releases/tag/latest)
 
 ## Motivation
 The base motivation was just simply that i wanted to have a look into OpenGL and doing GPU accelerated things, i did not plan to create a text editor from the get go.  
@@ -64,7 +64,7 @@ For the colors there are default values, for the font face either remove it comp
       127, 127, 127, 127 // Comment color if a active mode is present, in RGBA (0-255)
     ],
     "default_color": [
-      242, 242, 242, 242 // Default color if a active mode is present, in RGBA (0-255)
+      242, 242, 242, 242 // Default color for text, in RGBA (0-255)
     ],
     "keyword_color": [
       153, 25, 51, 255 // Keyword color if a active mode is present, in RGBA (0-255)
@@ -76,16 +76,25 @@ For the colors there are default values, for the font face either remove it comp
       51, 153, 102, 255 // String literak color if a active mode is present, in RGBA (0-255)
     ],
    "background_color": [
-     0, 0, 0, 255   // Editor background color
+     0, 0, 0, 255   // Editor background color RGBA (0-255)
     ]
    "selection_color": [
-     0, 0, 0, 255   // Selection area color
+     0, 0, 0, 255   // Selection area color RGBA (0-255)
     ]
    "highlight_color": [
-     0, 0, 0, 255   // Color of the active line background highlight.
+     0, 0, 0, 255   // Color of the active line background highlight. RGBA (0-255)
     ]
    "number_color": [
-     0, 0, 160, 255   // Color used for numbers.
+     0, 0, 160, 255   // Color used for numbers. RGBA (0-255)
+    ]
+   "line_number_color": [
+     0, 0, 160, 255   // Color used for line numbers RGBA (0-255)
+    ]
+   "status_color": [
+     0, 0, 160, 255   // Color used for the status line, buffer information RGBA (0-255)
+    ]
+   "minibuffer_color": [
+     0, 0, 160, 255   // Color used for the Minibuffer, actions like search, replace, save new and so on. RGBA (0-255)
     ]
   },
   "window_transparency": true // if the window is allowed to be transparent
@@ -98,6 +107,7 @@ C stands for CTRL, M for alt/meta.
 ESC:
 Escape serves two purposes and behaves a bit like VIM.
 If you are currently in a minibuffer(command action) that cancels that action, escape again closes the ledit instance.
+Otherwise this instantly closes the instance.
 
 Navigation:
 C-a - jump to line start.
@@ -130,14 +140,14 @@ Operations:
 C-x-s - Save to last path, if no path present, ledit will ask for a path.
 C-x-n - Save to new location, note that this will not overwrite the default save path, to overwrite the default path, save then load.
 C-x-o - Load new file, this will replace the current file, non existing files will still load but be marked as New Files.
-C-x-k - switch between files that where opened in the session, note that this will not preserve edits in the current file, save these first,
+C-x-k - switch between open files(buffers) in the session,
 Note: pressing this again will rotate through files that where open.
 
 C-z - Undo.
 M-w/C-c - Copy
 C-y/C-v - Paste
 
-C-space - Toggles selection selection on and off.
+C-space - Toggles selection mode on and off.
 
 Misc:
 C-x-l - Toggle Line numbers.
