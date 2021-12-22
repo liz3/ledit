@@ -308,7 +308,7 @@ int main(int argc, char** argv) {
          changed = true;
       }
       Cursor* cursor = state.cursor;
-      float toOffset = atlas.atlas_height + 2;
+      float toOffset = atlas.atlas_height * 1.15;
       bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7 || state.mode == 32;
       cursor->setBounds(HEIGHT - state.atlas->atlas_height - 6, toOffset);
       auto be_color = state.provider.colors.background_color;
@@ -510,7 +510,7 @@ int main(int argc, char** argv) {
       // glBindTexture(GL_TEXTURE_2D, 0);
       //  glBindVertexArray(0);
        cursor_shader.use();
-      cursor_shader.set1f("cursor_height", atlas.atlas_height);
+      cursor_shader.set1f("cursor_height", toOffset);
       cursor_shader.set1f("last_stroke", state.lastStroke);
       cursor_shader.set1f("time", (float)glfwGetTime());
       cursor_shader.set2f("resolution", (float) WIDTH,(float) HEIGHT);
