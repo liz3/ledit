@@ -531,7 +531,7 @@ int main(int argc, char** argv) {
         float cursorX = -(int32_t)(WIDTH/2) + 15 + (atlas.getAdvance(cursor->getCurrentAdvance(isSearchMode))) + linesAdvance + 4 - cursor->xSkip;
         if(cursorX > WIDTH / 2)
           cursorX = (WIDTH / 2) - 3;
-      float cursorY = -(int32_t)(HEIGHT/2) + 5 + (toOffset * ((cursor->y - cursor->skip)+1));
+      float cursorY = -(int32_t)(HEIGHT/2) + 4 + (toOffset * ((cursor->y - cursor->skip)+1));
 
       cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
 
@@ -558,17 +558,17 @@ int main(int argc, char** argv) {
                 float renderDistance = atlas.getAdvance((*allLines)[yEnd-cursor->skip].second.substr(0, smallerX-cursor->xOffset));
                 float renderDistanceBigger = atlas.getAdvance((*allLines)[yEnd-cursor->skip].second.substr(0, cursor->selection.getXBigger()-cursor->xOffset));
                 if (renderDistance < maxRenderWidth*2) {
-                  float start = ((float)HEIGHT/2) - 10  -  (toOffset *( (yEnd - cursor->skip)+1));
+                  float start = ((float)HEIGHT/2) - 5  -  (toOffset *( (yEnd - cursor->skip)+1));
                   selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance + renderDistance, start), vec2f(renderDistanceBigger - renderDistance, toOffset)});
                 } else {
                 float renderDistanceBigger = atlas.getAdvance((*allLines)[yEnd-cursor->skip].second.substr(0, cursor->selection.getXBigger()-cursor->xOffset));
-                float start = ((float)HEIGHT/2) - 10 -  (toOffset *( (yEnd - cursor->skip)+1));
+                float start = ((float)HEIGHT/2) - 5 -  (toOffset *( (yEnd - cursor->skip)+1));
                 selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance + (maxRenderWidth-renderDistance), start), vec2f(maxRenderWidth >renderDistanceBigger ? maxRenderWidth : renderDistanceBigger, toOffset)});
 
                 }
               } else {
                 float renderDistanceBigger = atlas.getAdvance((*allLines)[yEnd-cursor->skip].second.substr(0, cursor->selection.getXBigger()-cursor->xOffset));
-                float start = ((float)HEIGHT/2) - 10 - (toOffset *( (yEnd - cursor->skip)+1));
+                float start = ((float)HEIGHT/2) - 5 - (toOffset *( (yEnd - cursor->skip)+1));
                   selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance, start), vec2f(renderDistanceBigger > maxRenderWidth*2 ? maxRenderWidth*2 : renderDistanceBigger, toOffset)});
               }
             }
@@ -581,10 +581,10 @@ int main(int argc, char** argv) {
                 if (renderDistance < maxRenderWidth) {
                   if (yStart < yEnd) {
 
-                    float start = ((float)HEIGHT/2) - 10 - (toOffset * (yEffective +1));
+                    float start = ((float)HEIGHT/2) - 5 - (toOffset * (yEffective +1));
                     selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance + renderDistance, start), vec2f((maxRenderWidth * 2) - renderDistance, toOffset)});
                   }else {
-                    float start = ((float)HEIGHT/2) - 10 - (toOffset * (yEffective+1));
+                    float start = ((float)HEIGHT/2) - 5 - (toOffset * (yEffective+1));
                     selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance, start), vec2f(renderDistance, toOffset)});
                   }
                 }
@@ -597,10 +597,10 @@ int main(int argc, char** argv) {
                 float renderDistance = atlas.getAdvance((*allLines)[yEffective].second.substr(0, xStart-cursor->xOffset));
                 if (renderDistance < maxRenderWidth) {
                   if(yEnd < yStart) {
-                    float start = ((float)HEIGHT/2) - 10 - (toOffset * (yEffective+1));
+                    float start = ((float)HEIGHT/2) - 5 - (toOffset * (yEffective+1));
                     selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance + renderDistance, start), vec2f((maxRenderWidth *2) - renderDistance, toOffset)});
                   } else {
-                    float start = ((float)HEIGHT/2) - 10 - (toOffset * (yEffective+1));
+                    float start = ((float)HEIGHT/2) - 5 - (toOffset * (yEffective+1));
                     selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance, start), vec2f(renderDistance, toOffset)});
 
                   }
@@ -622,7 +622,7 @@ int main(int argc, char** argv) {
               }
             }
             if(found) {
-              float start = (float)HEIGHT/2 - 10 - (toOffset * (offset +1));
+              float start = (float)HEIGHT/2 - 5 - (toOffset * (offset +1));
               selectionBoundaries.push_back({vec2f( (-(int32_t)WIDTH/2) + 20 + linesAdvance, start), vec2f(maxRenderWidth * 2,- (count * toOffset))});
             }
           }
