@@ -23,7 +23,7 @@ public:
     auto* entry = &entries[c];
     RenderChar r;
     float x2 = x + entry->left;
-    float y2 = y - entry->top + (atlas_height - smallest_top);
+    float y2 = y - entry->top + (atlas_height);
     r.pos = vec2f(x2, -y2);
     r.size = vec2f(entry->width, -entry->height);
     r.uv_pos = vec2f(entry->offset, 0.0f);

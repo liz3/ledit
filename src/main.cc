@@ -22,9 +22,7 @@
 #include "highlighting.h"
 #include "languages.h"
 State* gState = nullptr;
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
     if(gState != nullptr) {
       gState->WIDTH = (float)width;
@@ -311,7 +309,6 @@ int main(int argc, char** argv) {
       }
       Cursor* cursor = state.cursor;
       float toOffset = atlas.atlas_height + 2;
-//      std::cout << atlas.atlas_height << "\n";
       bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7 || state.mode == 32;
       cursor->setBounds(HEIGHT - state.atlas->atlas_height - 6, toOffset);
       auto be_color = state.provider.colors.background_color;
@@ -326,7 +323,7 @@ int main(int argc, char** argv) {
         selection_shader.set4f("selection_color", color.x,color.y, color.z, color.w);
         selection_shader.set2f("resolution", (float) WIDTH,(float) HEIGHT);
         glBindBuffer(GL_ARRAY_BUFFER, state.highlight_vbo);
-        SelectionEntry entry{vec2f((-(int32_t)WIDTH/2) +10,  (float)HEIGHT/2 - 10 - toOffset - ((cursor->y - cursor->skip) * toOffset)), vec2f((((int32_t)WIDTH/2) * 2) - 20, toOffset)};
+        SelectionEntry entry{vec2f((-(int32_t)WIDTH/2) +10,  (float)HEIGHT/2 - 5 - toOffset - ((cursor->y - cursor->skip) * toOffset)), vec2f((((int32_t)WIDTH/2) * 2) - 20, toOffset)};
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(SelectionEntry), &entry);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -345,7 +342,7 @@ int main(int argc, char** argv) {
       std::u16string::const_iterator c;
       std::string::const_iterator cc;
       float xpos =( -(int32_t)WIDTH/2) + 10;
-      float ypos = -(float)HEIGHT/2 + 15;
+      float ypos = -(float)HEIGHT/2;
       int start = cursor->skip;
       float linesAdvance = 0;
       int maxLines = cursor->skip + cursor->maxLines <= cursor->lines.size() ? cursor->skip + cursor->maxLines : cursor->lines.size();
@@ -369,7 +366,7 @@ int main(int argc, char** argv) {
       auto skipNow = cursor->skip;
       auto* allLines = cursor->getContent(&atlas, maxRenderWidth);
       state.reHighlight();
-      ypos = -(float)HEIGHT/2 + 15;
+      ypos = (-(HEIGHT/2));
       xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
       cursor->setRenderStart(20+linesAdvance, 15);
       Vec4f color = state.provider.colors.default_color;
@@ -476,7 +473,7 @@ int main(int argc, char** argv) {
 
       }
       xpos =( -(int32_t)WIDTH/2) + 15;
-      ypos = (float)HEIGHT/2 - toOffset;
+      ypos = (float)HEIGHT/2 - toOffset - 10;
       std::u16string status = state.status;
       for (c = status.begin(); c != status.end(); c++) {
         entries.push_back(atlas.render(*c, xpos,ypos, status_color));
@@ -486,7 +483,7 @@ int main(int argc, char** argv) {
       if(state.mode != 0 && state.mode != 32) {
         // draw minibuffer
         xpos =( -(int32_t)WIDTH/2) + 20 + statusAdvance;
-        ypos = (float)HEIGHT/2 - toOffset;
+        ypos = (float)HEIGHT/2 - toOffset - 10;
         std::u16string status = state.miniBuf;
         for (c = status.begin(); c != status.end(); c++) {
           entries.push_back(atlas.render(*c, xpos,ypos, state.provider.colors.minibuffer_color));
@@ -496,7 +493,7 @@ int main(int argc, char** argv) {
       } else {
         auto tabInfo = state.getTabInfo();
         xpos =((int32_t)WIDTH/2) - atlas.getAdvance(tabInfo);
-        ypos = (float)HEIGHT/2 - toOffset;
+        ypos = (float)HEIGHT/2 - toOffset - 10;
         for (c = tabInfo.begin(); c != tabInfo.end(); c++) {
           entries.push_back(atlas.render(*c, xpos,ypos, status_color));
           xpos += atlas.getAdvance(*c);
@@ -520,7 +517,7 @@ int main(int argc, char** argv) {
       if(state.mode != 0 && state.mode != 32) {
         // use cursor for minibuffer
         float cursorX = -(int32_t)(WIDTH/2) + 15 + (atlas.getAdvance(cursor->getCurrentAdvance())) + 5 + statusAdvance;
-        float cursorY = (float)HEIGHT/2 - 8;
+        float cursorY = (float)HEIGHT/2 - 10;
         cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
 
       glBindVertexArray(state.vao);
@@ -534,7 +531,7 @@ int main(int argc, char** argv) {
         float cursorX = -(int32_t)(WIDTH/2) + 15 + (atlas.getAdvance(cursor->getCurrentAdvance(isSearchMode))) + linesAdvance + 4 - cursor->xSkip;
         if(cursorX > WIDTH / 2)
           cursorX = (WIDTH / 2) - 3;
-      float cursorY = -(int32_t)(HEIGHT/2) +  15 + (toOffset - (atlas.atlas_height *  0.25)) + (toOffset * (cursor->y - cursor->skip));
+      float cursorY = -(int32_t)(HEIGHT/2) + 5 + (toOffset * ((cursor->y - cursor->skip)+1));
 
       cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
 
