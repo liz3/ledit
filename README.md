@@ -135,6 +135,7 @@ C-shift-p - move current line up
 C-shift-n - move current line down
 C-w - cut selection
 C-r - replace, first asks for search then for replace\, use SHFT-RET to replace all matches.  
+C-x-/ - If a mode is active either comment or uncomment the cursor line or the selected lines, does not work for raw text mode.
 
 Operations:
 C-x-s - Save to last path, if no path present, ledit will ask for a path.

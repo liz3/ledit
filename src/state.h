@@ -23,6 +23,7 @@ struct ReplaceBuffer {
 class State {
  public:
   GLuint vao, vbo;
+  bool focused = true;
   GLuint sel_vao, sel_vbo;
   GLuint highlight_vao, highlight_vbo;
   Cursor* cursor;
@@ -56,6 +57,11 @@ class State {
     miniBuf = replaceBuffer.search;
     cursor->bindTo(&miniBuf);
 
+  }
+  void tryComment() {
+    if(!hasHighlighting)
+      return;
+    cursor->comment(highlighter.language.singleLineComment);
   }
   void checkChanged() {
     if(!path.length())

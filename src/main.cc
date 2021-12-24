@@ -31,6 +31,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 
 }
 void window_focus_callback(GLFWwindow* window, int focused) {
+  gState->focused = focused;
   if(focused) {
     gState->checkChanged();
   }
@@ -114,6 +115,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     if(x_pressed) {
       if(action == GLFW_PRESS && key == GLFW_KEY_S) {
         gState->save();
+      }
+      if(action == GLFW_PRESS && key == GLFW_KEY_SLASH) {
+        gState->tryComment();
       }
       if(action == GLFW_PRESS && key == GLFW_KEY_M) {
         gState->switchMode();
@@ -506,10 +510,8 @@ int main(int argc, char** argv) {
       glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(RenderChar) *entries.size(), &entries[0]); // be sure to use glBufferSubData and not glBufferData
       glBindBuffer(GL_ARRAY_BUFFER, 0);
       glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 6, (GLsizei) entries.size());
-
-      // glBindTexture(GL_TEXTURE_2D, 0);
-      //  glBindVertexArray(0);
-       cursor_shader.use();
+    if(state.focused) {
+      cursor_shader.use();
       cursor_shader.set1f("cursor_height", toOffset);
       cursor_shader.set1f("last_stroke", state.lastStroke);
       cursor_shader.set1f("time", (float)glfwGetTime());
@@ -520,10 +522,10 @@ int main(int argc, char** argv) {
         float cursorY = (float)HEIGHT/2 - 10;
         cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
 
-      glBindVertexArray(state.vao);
-      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-      glBindVertexArray(0);
-      glBindTexture(GL_TEXTURE_2D, 0);
+        glBindVertexArray(state.vao);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glBindVertexArray(0);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
       }
 
@@ -531,17 +533,17 @@ int main(int argc, char** argv) {
         float cursorX = -(int32_t)(WIDTH/2) + 15 + (atlas.getAdvance(cursor->getCurrentAdvance(isSearchMode))) + linesAdvance + 4 - cursor->xSkip;
         if(cursorX > WIDTH / 2)
           cursorX = (WIDTH / 2) - 3;
-      float cursorY = -(int32_t)(HEIGHT/2) + 4 + (toOffset * ((cursor->y - cursor->skip)+1));
+        float cursorY = -(int32_t)(HEIGHT/2) + 4 + (toOffset * ((cursor->y - cursor->skip)+1));
 
-      cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
+        cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
 
 
-      glBindVertexArray(state.vao);
-      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-      glBindVertexArray(0);
-      glBindTexture(GL_TEXTURE_2D, 0);
+        glBindVertexArray(state.vao);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glBindVertexArray(0);
+        glBindTexture(GL_TEXTURE_2D, 0);
       }
-
+    }
       if(cursor->selection.active){
         std::vector<SelectionEntry> selectionBoundaries;
         if(cursor->selection.getYSmaller() < cursor->skip && cursor->selection.getYBigger() > cursor->skip + cursor->maxLines) {

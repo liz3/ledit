@@ -20,8 +20,14 @@ struct HistoryEntry {
   int x,y;
   int mode;
   int length;
+  void* userData;
   std::u16string content;
   std::vector<std::u16string> extra;
+};
+struct CommentEntry {
+  int firstOffset;
+  int yStart;
+  std::u16string commentStr;
 };
 class Cursor {
  public:
@@ -59,6 +65,59 @@ class Cursor {
     }
     maxLines = next;
 
+  }
+  void comment(std::u16string commentStr) {
+    if(!selection.active) {
+      std::u16string firstLine = lines[y];
+      int firstOffset = 0;
+      for(char c : firstLine) {
+        if(c != ' ' && c != '\t')
+          break;
+        firstOffset++;
+      }
+      bool remove = firstLine.length()-firstOffset >= commentStr.length() && firstLine.find(commentStr) == firstOffset;
+      if(remove) {
+        CommentEntry* cm = new CommentEntry();
+        cm->commentStr = commentStr;      
+        (&lines[y])->erase(firstOffset, commentStr.length());
+        historyPush(42, firstOffset, u"", cm);
+      } else {
+        CommentEntry* cm = new CommentEntry();
+        cm->commentStr = commentStr;            
+        (&lines[y])->insert(firstOffset, commentStr);
+        historyPush(43, firstOffset, u"", cm);
+      }
+      return;
+    }
+    int firstOffset = 0;
+    int yStart = selection.getYSmaller();
+    int yEnd = selection.getYBigger();
+    std::u16string firstLine = lines[yStart];
+    for(char c : firstLine) {
+      if(c != ' ' && c != '\t')
+        break;
+      firstOffset++;
+    }
+    bool remove = firstLine.length()-firstOffset >= commentStr.length() && firstLine.find(commentStr) == firstOffset;
+    CommentEntry* cm = new CommentEntry();
+    cm->firstOffset = firstOffset;
+    cm->commentStr = commentStr;
+    cm->yStart = yStart;
+    if(remove) {
+      historyPush(40, 0, u"", cm);
+      for(size_t i = yStart; i < yEnd; i++) {
+        if((&lines[i])->find(commentStr) != firstOffset)
+          break;
+        (&lines[i])->erase(firstOffset, commentStr.length());
+        history[history.size()-1].length+=1;
+      }
+    } else {
+      historyPush(41, yEnd-yStart, u"", cm);
+      for(size_t i = yStart; i < yEnd; i++) {
+        (&lines[i])->insert(firstOffset, commentStr);
+      }
+    }
+    selection.stop();
   }
   void setRenderStart(float x, float y) {
     startX = x;
@@ -296,11 +355,7 @@ class Cursor {
       return false;
     HistoryEntry entry = history[0];
     history.pop_front();
-    // //lets still bounds check
-    // if(lines.size() < entry.y || lines[entry.y].length() < entry.x)
-    //   return false;
     switch(entry.mode) {
-
       case 3: {
         x = entry.x;
         y = entry.y;
@@ -413,6 +468,50 @@ class Cursor {
       x = entry.x;
       break;
     }
+    case 40: {
+      CommentEntry* data = static_cast<CommentEntry*>(entry.userData);
+      std::u16string commentStr = data->commentStr;
+      size_t len = entry.length;
+      for(size_t i = data->yStart; i < data->yStart+len; i++) {
+        (&lines[i])->insert(data->firstOffset, commentStr);
+      }
+      x = data->firstOffset;
+      y = data->yStart;
+      center(y);
+      delete data;
+      break;    
+    }
+    case 41: {
+      CommentEntry* data = static_cast<CommentEntry*>(entry.userData);
+      std::u16string commentStr = data->commentStr;
+      size_t len = entry.length;
+      for(size_t i = data->yStart; i < data->yStart+len; i++) {
+        (&lines[i])->erase(data->firstOffset, commentStr.length());
+      }
+      x = data->firstOffset;
+      y = data->yStart;
+      center(y);
+      delete data;
+      break;    
+    }
+    case 42: {
+      y = entry.y;
+      center(y);
+      CommentEntry* data = static_cast<CommentEntry*>(entry.userData); 
+      (&lines[y])->insert(entry.length, data->commentStr);
+      x = entry.x;
+      delete data;
+      break;
+    }
+    case 43: {
+      y = entry.y;
+      center(y);
+      CommentEntry* data = static_cast<CommentEntry*>(entry.userData); 
+      (&lines[y])->erase(entry.length, data->commentStr.length());
+      x = entry.x;
+      delete data;
+      break;
+    }
       default:
         return false;
     }
@@ -521,6 +620,20 @@ class Cursor {
     HistoryEntry entry;
     entry.x = x;
     entry.y = y;
+    entry.mode = mode;
+    entry.length = length;
+    entry.content = content;
+    if(history.size() > 5000)
+      history.pop_back();
+    history.push_front(entry);
+  }
+  void historyPush(int mode, int length, std::u16string content, void* userData) {
+    if(bind != nullptr)
+      return;
+    HistoryEntry entry;
+    entry.x = x;
+    entry.y = y;
+    entry.userData = userData;
     entry.mode = mode;
     entry.length = length;
     entry.content = content;
