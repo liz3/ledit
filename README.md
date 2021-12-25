@@ -11,6 +11,10 @@ After starting to experiment a bit i decided to call this a small side Project a
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot.png?raw=true)
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot2.png?raw=true)
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot3.png?raw=true)
+
+## Encodings
+Ledit will work correctly with ascii and 2 byte unicode/UTF-8, 3-4 byte unicode characters will not work.
+
 ## Building
 To build ledit you only need [CMake](https://cmake.org/) and a C/C++ compiler which supports C++17.
 ledit requires GLFW and freetype2 but these are included in the [third-party](/third-party) folder.
@@ -38,21 +42,22 @@ cmake ..
 cmake --build . --config Release
 ```
 
-
 ## Structure
 ```
-main.cc - main rendering logic and keyboard callbacks.
-state.h - logic for controlling and state point.
-cursor.h - this is the most important file besides main, it manages the text state,
-what to render and where. and implements all logic components for manipulation.
-- shader.h - manages shader loading.
-- font_atlas.h - font atlas and width calculation.
-- shaders.h, inlined shaders.
-- fira_code.h - inlined version of the fira code font.
-- highlighting.h - simple highlighting engine
-- languages.h - contains language profiles for auto complete
-- third-party - ledit dependencies
+- src/main.cc: main rendering logic and keyboard callbacks.
+- src/state.h: logic for controlling and state point.
+- src/cursor.h: this is the most important file besides main, it manages the text state, what to render and where. and implements all logic components for manipulation.
+- src/shader.h: manages shader loading.
+- src/font_atlas.h: font atlas and width calculation.
+- src/shaders.h: inlined shaders.
+- src/highlighting.h: simple highlighting engine.
+- src/languages.h: contains modes for certain languages for highlighting.
+- src/provider.h: This contains the config parser and providers for folder autocomplete and other related things.
+- src/selection.h: Small structure to keep track of selection state.
+- src/la.(cc/h): Vectors implementation for coords and RGBA colors.
+- third-party: ledit dependencies
 ```
+There are more but these are self explaining.
 ## Config
 ledit can have a config in your home directory `~/.ledit/config.json`.  
 The following values can be set(without the comments)  
@@ -160,3 +165,5 @@ C-x-m - Switch active mode for current buffer.
 
 
 ```
+# LICENSE
+Ledit is free software following [GPL 2.0](/LICENSE).
