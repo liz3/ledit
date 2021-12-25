@@ -7,8 +7,8 @@
 const std::vector<Language> LANGUAGES = {
 {
   "C/C++",
-  {"for", "while", "if", "int", "float", "return", "double", "true", "false", "else", "void", "delete", "struct", "class", "case", "break", "const", "nullptr", "auto", "bool", "new", "auto*", "switch", "case", "typedef", "static", "enum"},
-  {"#include", "std::", "#ifdef", "#define", "#endif", "#ifndef"},
+  {"char","for", "while", "if", "int", "float", "return", "double", "true", "false", "else", "void", "delete", "struct", "class", "case", "break", "const", "nullptr", "auto", "bool", "new", "auto*", "switch", "case", "typedef", "static", "enum"},
+  {"#include", "public", "private", "#ifdef", "#define", "#endif", "#ifndef"},
   "//",
   {"/*", "*/"},
   "\"'",

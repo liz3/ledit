@@ -238,9 +238,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 }
 int main(int argc, char** argv) {
   #ifdef _WIN32
-  ShowWindow( GetConsoleWindow(), SW_HIDE );
+  ShowWindow(GetConsoleWindow(), SW_HIDE);
 #endif
-  std::string x = argc >=2 ?std::string(argv[1]) : "";
+    std::string x = argc >=2 ?std::string(argv[1]) : "";
     State state(1280, 720, x, 30);
     gState = &state;
     glfwInit();

@@ -602,6 +602,10 @@ class Cursor {
    Cursor(std::string path) {
      std::stringstream ss;
      std::ifstream stream(path);
+     if(!stream.is_open()) {
+       lines.push_back(u"");
+       return;
+     }
      ss << stream.rdbuf();
      std::string c = ss.str();
      auto parts = splitNewLine(&c);
@@ -656,6 +660,8 @@ class Cursor {
     history.push_front(entry);
   }
   bool didChange(std::string path) {
+    if(!std::filesystem::exists(path))
+      return false;
     bool result = last_write_time != std::filesystem::last_write_time(path);
     last_write_time = std::filesystem::last_write_time(path);
     return result;
