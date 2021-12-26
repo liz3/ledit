@@ -262,8 +262,13 @@ class State {
         }
         return;
       } else if (mode == 3) { // gotoline
-        cursor->gotoLine(std::stoi(convert_str(miniBuf)));
-        status = u"Jump to: " + miniBuf;
+        auto line_str = convert_str(miniBuf);
+        if(isSafeNumber(line_str)) {
+          cursor->gotoLine(std::stoi(line_str));
+          status = u"Jump to: " + miniBuf;
+        } else {
+          status = u"Invalid line: " + miniBuf;
+        }
       } else if (mode == 4 || mode == 5) {
         cursor->unbind();
         if(mode == 5) {

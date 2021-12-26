@@ -8,6 +8,13 @@ std::string file_to_string(std::string path) {
   stream.close();
   return ss.str();
 }
+bool isSafeNumber(std::string value) {
+  for(const char& c : value) {
+    if(c < '0' || c > '9')
+      return false;
+  }
+  return true;
+}
 bool string_to_file(std::string path, std::string content) {
   std::ofstream stream(path);
   if(!stream.is_open())
