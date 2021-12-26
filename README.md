@@ -106,7 +106,11 @@ For the colors there are default values, for the font face either remove it comp
   "font_face": "/Users/liz3/Library/Fonts/FiraCode-Regular.ttf" // TTF font face path
 }
 ```
-## Keybinds
+## Info
+Here are some infos.
+### Standard input & output
+Ledit can work with stdin/out by passing `-` as file name, **NOTE**: saving will print once then exit!
+### Keybinds
 C stands for CTRL, M for alt/meta.
 ```
 ESC:
@@ -162,7 +166,7 @@ C--(-)- decrease font size
 C-x-0 - Load new font file, note that doing this will persist it in the config.
 C-x-h - Toggle highlighting of the active line.
 C-x-m - Switch active mode for current buffer.
-
+C-x-w - close current buffer if its not the only one, otherwise use ESC.
 
 ```
 # LICENSE

@@ -31,6 +31,7 @@ struct CommentEntry {
 };
 class Cursor {
  public:
+  bool streamMode = false;
   std::vector<std::u16string> lines;
   std::map<std::string, PosEntry> saveLocs;
   std::deque<HistoryEntry> history;
@@ -600,6 +601,13 @@ class Cursor {
   }
 
    Cursor(std::string path) {
+     if (path == "-") {
+       std::string line;
+       while (std::getline(std::cin, line)) {
+         lines.push_back(create(line));
+       }
+       return;
+     }
      std::stringstream ss;
      std::ifstream stream(path);
      if(!stream.is_open()) {
@@ -954,6 +962,16 @@ void appendWithLines(std::u16string content) {
     selection.diff(x, y);
   }
   bool saveTo(std::string path) {
+    if(path == "-") {
+      auto& stream = std::cout;
+      for(size_t i = 0; i < lines.size(); i++) {
+        stream << convert_str(lines[i]);
+        if(i < lines.size() -1)
+          stream << "\n";
+      }
+      exit(0);
+      return true;
+    }
     std::ofstream stream(path, std::ofstream::out);
     if(!stream.is_open()) {
       return false;

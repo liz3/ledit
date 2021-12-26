@@ -430,10 +430,16 @@ class State {
     this->path = path;
     status = create(path);
     if(path.length()) {
-      auto split = entry->cursor.split(path, "/");
-      fileName = create(split[split.size() -1]);
-      tryEnableHighlighting();
-      checkChanged();
+      if(path == "-") {
+        fileName = u"-(STDIN/OUT)";
+        hasHighlighting = false;
+        renderCoords();
+      } else {
+        auto split = entry->cursor.split(path, "/");
+        fileName = create(split[split.size() -1]);
+        tryEnableHighlighting();
+        checkChanged();
+      }
     } else {
       fileName = u"New File";
       hasHighlighting = false;
