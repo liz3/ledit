@@ -31,6 +31,7 @@ struct CommentEntry {
 };
 class Cursor {
  public:
+  bool edited = false;
   bool streamMode = false;
   std::vector<std::u16string> lines;
   std::map<std::string, PosEntry> saveLocs;
@@ -629,6 +630,7 @@ class Cursor {
   void historyPush(int mode, int length, std::u16string content) {
     if(bind != nullptr)
       return;
+    edited = true;
     HistoryEntry entry;
     entry.x = x;
     entry.y = y;
@@ -642,6 +644,7 @@ class Cursor {
   void historyPush(int mode, int length, std::u16string content, void* userData) {
     if(bind != nullptr)
       return;
+    edited = true;
     HistoryEntry entry;
     entry.x = x;
     entry.y = y;
@@ -656,6 +659,7 @@ class Cursor {
   void historyPushWithExtra(int mode, int length, std::u16string content, std::vector<std::u16string> extra) {
     if(bind != nullptr)
       return;
+    edited = true;
     HistoryEntry entry;
     entry.x = x;
     entry.y = y;
@@ -697,6 +701,7 @@ class Cursor {
       x = lines[y].length();
     stream.close();
     last_write_time = std::filesystem::last_write_time(path);
+    edited = false;
     return true;
   }
   bool openFile(std::string oldPath, std::string path) {
@@ -747,6 +752,7 @@ class Cursor {
       x = lines[y].length();
     stream.close();
     last_write_time = std::filesystem::last_write_time(path);
+    edited = false;
     return true;
   }
   void append(char16_t c) {
@@ -984,6 +990,7 @@ void appendWithLines(std::u16string content) {
     stream.flush();
     stream.close();
     last_write_time = std::filesystem::last_write_time(path);
+    edited = false;
     return true;
   }
   std::vector<std::pair<int, std::u16string>>* getContent(FontAtlas* atlas, float maxWidth) {

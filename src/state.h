@@ -24,6 +24,7 @@ class State {
  public:
   GLuint vao, vbo;
   bool focused = true;
+  bool exitFlag = false;
   GLuint sel_vao, sel_vbo;
   GLuint highlight_vao, highlight_vbo;
   Cursor* cursor;
@@ -49,6 +50,13 @@ class State {
   int round = 0;
   int fontSize;
   State() {}
+  CursorEntry* hasEditedBuffer() {
+    for(CursorEntry* cur : cursors) {
+      if(cur->cursor.edited)
+        return cur;
+    }
+    return nullptr;
+  }
   void startReplace() {
     if(mode != 0)
       return;

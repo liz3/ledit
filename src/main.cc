@@ -54,6 +54,7 @@ void character_callback(GLFWwindow* window, unsigned int codepoint)
 {
   if(gState == nullptr)
     return;
+  gState->exitFlag = false;
 #ifdef _WIN32
   bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
   if(ctrl_pressed)
@@ -90,18 +91,28 @@ void character_callback(GLFWwindow* window, unsigned int codepoint)
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
   if(gState == nullptr) return;
-  if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+  if(key == GLFW_KEY_ESCAPE) {
+    if(action == GLFW_PRESS) {
     if(gState->cursor->selection.active) {
       gState->cursor->selection.stop();
       return;
     }
-    if(gState->mode != 0)
+    if(gState->mode != 0) {
       gState->inform(false, false);
-    else
-      glfwSetWindowShouldClose(window, true);
+    } else {
+       CursorEntry* edited = gState->hasEditedBuffer();
+       if(gState->exitFlag || edited == nullptr) {
+         glfwSetWindowShouldClose(window, true);
+       } else {
+         gState->exitFlag = true;
+         gState->status = create(edited->path) + u" edited, press ESC again to exit";
+       }
+    }
+    }
     return;
 
   }
+  gState->exitFlag = false;
   bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
   gState->ctrlPressed = ctrl_pressed;
   bool shift_pressed = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
