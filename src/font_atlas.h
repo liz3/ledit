@@ -218,6 +218,15 @@ public:
     }
     return v;
   }
+  float getAdvance(std::string line) {
+    float v = 0;
+    std::string::const_iterator c;
+    for (c = line.begin(); c != line.end(); c++) {
+      char16_t cc = (char16_t) (*c);
+      v += entries[cc].advance;
+    }
+    return v;
+  }
 
   std::vector<float>* getAllAdvance(std::u16string line, int y) {
     if (linesCache.count(y)) {

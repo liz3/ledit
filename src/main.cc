@@ -352,8 +352,11 @@ int main(int argc, char** argv) {
       int maxLines = cursor->skip + cursor->maxLines <= cursor->lines.size() ? cursor->skip + cursor->maxLines : cursor->lines.size();
       if(state.showLineNumbers) {
         int biggestLine = std::to_string(maxLines).length();
+        auto maxLineAdvance = atlas.getAdvance(std::to_string(maxLines));
         for (int i = start; i < maxLines; i++) {
           std::string value = std::to_string(i+1);
+          auto tAdvance = atlas.getAdvance(value);
+          xpos += maxLineAdvance - tAdvance;
           linesAdvance = 0;
           for (cc = value.begin(); cc != value.end(); cc++) {
             entries.push_back(atlas.render(*cc, xpos,ypos, state.provider.colors.line_number_color));
