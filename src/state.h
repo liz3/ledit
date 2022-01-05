@@ -347,7 +347,7 @@ class State {
     mode = 0;
   }
   void provideComplete(bool reverse) {
-    if (mode == 4 || mode == 15) {
+    if (mode == 4 || mode == 15 || mode == 1) {
       std::string convert = convert_str(miniBuf);
       std::string e = provider.getFileToOpen(convert == provider.getLast() ? provider.lastProvidedFolder : convert, reverse);
       if(!e.length())

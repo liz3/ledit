@@ -42,7 +42,7 @@ public:
   std::u16string languageName;
 
   LanguageExpanded language;
-  const std::u16string whitespace = u" \t\n[]{}();:.,";
+  const std::u16string whitespace = u" \t\n[]{}();:.,*-+/";
   bool isNonChar(char16_t c) {
     return whitespace.find(c) != std::string::npos;
   }
