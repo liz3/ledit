@@ -423,20 +423,17 @@ class Cursor {
         break;
       }
       case 15: {
-        if(!entry.extra.size()) {
+        if(entry.length == 0) {
             y = entry.y;
             x = entry.x;
             (&lines[y])->erase(x,entry.content.length());
         } else {
-          int toDelete = entry.extra.size()-1;
-          y = entry.y - toDelete;
-          while(toDelete > 0) {
-           lines.erase(lines.begin()+y+toDelete);
-           toDelete--;
-         }
-          lines[y] = entry.content;
-          lines[y+1] = entry.extra[entry.extra.size()-1];
+          y = entry.y-entry.length;
           x = entry.x;
+          for(size_t i = 0; i < entry.length; i++) {
+            lines.erase(lines.begin()+y+1);
+          }
+          lines[y] = entry.content;
         }
         break;
       }
@@ -809,9 +806,13 @@ void appendWithLines(std::u16string content) {
       append(content);
       return;
     }
+    if(selection.active) {
+      deleteSelection();
+      selection.stop();
+    }
     bool hasSave = false;
     std::u16string save;
-    std::vector<std::u16string> historyExtra;
+    std::u16string historySave;
     auto contentLines = split(content, u"\n");
     int saveX = 0;
     int count = 0;
@@ -819,28 +820,34 @@ void appendWithLines(std::u16string content) {
        if(i == 0) {
          if(contentLines.size() == 1) {
          (&lines[y])->insert(x, contentLines[i]);
-          historyPush(15, contentLines[i].length(), contentLines[i]);
+          historyPush(15, 0, contentLines[i]);
         } else {
+          historySave = lines[y];
           hasSave = true;
-          save = lines[y];
-          lines[y] = contentLines[i];
+          save = lines[y].substr(x);
+          lines[y] = lines[y].substr(0, x) + contentLines[i];
           saveX = x;
         }
          x += contentLines[i].length();
          continue;
-       }else {
-        historyExtra.push_back(contentLines[i]);
-        lines.insert(lines.begin()+y+1, contentLines[i]);
-        count++;
-        y++;
+       } else if (i == contentLines.size() - 1) {
+          lines.insert(lines.begin()+y+1, contentLines[i]);
+          y++;
+          count++;
+
         x = contentLines[i].length();
+       }else {
+        lines.insert(lines.begin()+y+1, contentLines[i]);
+        y++;
+        count++;
       }
     }
     if(hasSave) {
-      historyExtra.push_back(lines[y+1]);
-      (&lines[y])->insert(x, save);
-      historyPushWithExtra(15, save.length(),save, historyExtra);
-      history[history.size()-1].x = xSave;
+      lines[y] += save;
+      int xx = x;
+      x = saveX;
+      historyPush(15, count,historySave);
+      x = xx;
     }
     center(y);
   }
