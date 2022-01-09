@@ -79,11 +79,6 @@ void character_callback(GLFWwindow* window, unsigned int codepoint)
       return;
     }
   }
-  // if(codepoint < 32 || codepoint > 127) {
-  //   gState->status = u"Unknown character: " + numberToString(codepoint);
-  //   return;
-  // }
-//  std::cout << codepoint << "\n";
   gState->cursor->append((char16_t) codepoint);
   gState->lastStroke = glfwGetTime();
   gState->renderCoords();
@@ -120,7 +115,26 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
   bool alt_pressed = glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS;
   Cursor* cursor = gState->cursor;
   bool isPress = action == GLFW_PRESS || action == GLFW_REPEAT;
-
+#ifdef __linux__
+  if(alt_pressed) {
+    if(key == GLFW_KEY_F && isPress) {
+      gState->cursor->advanceWord();
+      return;
+    }
+    if(key == GLFW_KEY_W && action == GLFW_PRESS) {
+      gState->tryCopy();
+      return;
+    }
+    if(key ==  GLFW_KEY_B && isPress) {
+      gState->cursor->advanceWordBackwards();
+      return;
+    }
+    if(key == GLFW_KEY_D && isPress) {
+      gState->cursor->deleteWord();
+      return;
+    }
+  }
+#endif
   if(ctrl_pressed) {
 
     if(x_pressed) {

@@ -92,6 +92,8 @@ class State {
      mode = 25;
   }
   void increaseFontSize(int value) {
+    if(mode != 0)
+      return;
     fontSize += value;
     if(fontSize > 260) {
       fontSize = 260;
