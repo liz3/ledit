@@ -458,6 +458,9 @@ class State {
 
   }
   void addCursor(std::string path) {
+    if(path.length() && std::filesystem::is_directory(path))
+      path = "";
+
     Cursor newCursor = path.length() ? Cursor(path) : Cursor();
     CursorEntry* entry = new CursorEntry {newCursor, path};
     cursors.push_back(entry);
