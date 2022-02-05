@@ -307,6 +307,8 @@ class Cursor {
   }
 
   int findAnyOf(std::u16string str, std::u16string what) {
+    if(str.length() == 0)
+      return -1;
     std::u16string::const_iterator c;
     int offset = 0;
     for (c = str.begin(); c != str.end(); c++) {
@@ -320,6 +322,8 @@ class Cursor {
     return -1;
   }
   int findAnyOfLast(std::u16string str, std::u16string what) {
+    if(str.length() == 0)
+      return -1;
     std::u16string::const_iterator c;
     int offset = 0;
     for (c = str.end()-1; c != str.begin(); c--) {
@@ -336,11 +340,18 @@ class Cursor {
   void advanceWord() {
     std::u16string* target = bind ? bind : &lines[y];
     int offset = findAnyOf(target->substr(x), u" \t\n[]{}/\\*()=_-,.");
-    if(offset == -1)
-      x = target->length();
-    else
+    if(offset == -1) {
+      if(x == target->length() && y < lines.size() -1) {
+        x = 0;
+        y++;
+      } else {
+        x = target->length();
+      }
+    } else {
       x+= offset;
+    }
     selection.diffX(x);
+    selection.diffY(y);
   }
   std::u16string deleteWord() {
     std::u16string* target = bind ? bind : &lines[y];
@@ -521,11 +532,18 @@ class Cursor {
   void advanceWordBackwards() {
     std::u16string* target = bind ? bind : &lines[y];
     int offset = findAnyOfLast(target->substr(0,x), u" \t\n[]{}/\\*()=_-.,");
-    if(offset == -1)
-      x = 0;
-    else
+    if(offset == -1) {
+      if(x == 0 && y > 0) {
+        y--;
+        x = lines[y].length();
+      } else {
+        x = 0;
+      }
+    } else {
       x -= offset;
+    }
     selection.diffX(x);
+    selection.diffY(y);
   }
 
   void gotoLine(int l) {
