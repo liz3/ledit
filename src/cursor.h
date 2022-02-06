@@ -84,6 +84,8 @@ class Cursor {
         line = line.substr(0, line.length()-count);
       }
     }
+    if(x > lines[y].length())
+      x = lines[y].length();
   }
   void comment(std::u16string commentStr) {
     if(!selection.active) {
@@ -1010,7 +1012,7 @@ void appendWithLines(std::u16string content) {
     selection.diff(x, y);
   }
   bool saveTo(std::string path) {
-    if(hasEnding(path, ".md"))
+    if(!hasEnding(path, ".md"))
       trimTrailingWhiteSpaces();
     if(path == "-") {
       auto& stream = std::cout;
