@@ -1,6 +1,6 @@
 #ifndef UTILS_H
 #define UTILS_H
-
+const std::u16string wordSeperator = u" \t\n[]{}/\\*()=_-,.";
 std::string file_to_string(std::string path) {
   std::ifstream stream(path);
   std::stringstream ss;
