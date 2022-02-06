@@ -120,12 +120,12 @@ public:
   }
   std::string getCwdFormatted(){
     std::string path =
- #ifdef _WIN32   
+ #ifdef _WIN32
      std::filesystem::current_path().generic_string();
 #else
  std::filesystem::current_path();
 #endif
-    fs::path* homeDir = getHomeFolder();    
+    fs::path* homeDir = getHomeFolder();
     bool isHomeDirectory = homeDir != nullptr && path.find((*homeDir).generic_string()) == 0;
     std::string target = path;
     if(isHomeDirectory) {
@@ -254,7 +254,7 @@ public:
     cColors["keyword_color"] = vecToJson(colors.keyword_color);
     cColors["special_color"] = vecToJson(colors.special_color);
     cColors["comment_color"] = vecToJson(colors.comment_color);
-    cColors["background_color"] = vecToJson(colors.background_color);    
+    cColors["background_color"] = vecToJson(colors.background_color);
     cColors["highlight_color"] = vecToJson(colors.highlight_color);
     cColors["selection_color"] = vecToJson(colors.selection_color);
     cColors["number_color"] = vecToJson(colors.number_color);

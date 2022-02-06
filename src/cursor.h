@@ -71,12 +71,12 @@ class Cursor {
   void trimTrailingWhiteSpaces() {
     for(auto& line : lines) {
       char16_t last = line[line.length()-1];
-      if(last == ' ' || last == '\t') {
+      if(last == ' ' || last == '\t' || last == '\r') {
         int remaining = line.length();
         int count = 0;
         while(remaining--) {
           char16_t current = line[remaining];
-          if(current == ' ' || current == '\t')
+          if(current == ' ' || current == '\t' || current == '\r')
             count++;
           else
             break;
