@@ -66,7 +66,23 @@ class Cursor {
       }
     }
     maxLines = next;
-
+  }
+  void trimTrailingWhiteSpaces() {
+    for(auto& line : lines) {
+      char16_t last = line[line.length()-1];
+      if(last == ' ' || last == '\t') {
+        int remaining = line.length();
+        int count = 0;
+        while(remaining--) {
+          char16_t current = line[remaining];
+          if(current == ' ' || current == '\t')
+            count++;
+          else
+            break;
+        }
+        line = line.substr(0, line.length()-count);
+      }
+    }
   }
   void comment(std::u16string commentStr) {
     if(!selection.active) {
@@ -80,12 +96,12 @@ class Cursor {
       bool remove = firstLine.length()-firstOffset >= commentStr.length() && firstLine.find(commentStr) == firstOffset;
       if(remove) {
         CommentEntry* cm = new CommentEntry();
-        cm->commentStr = commentStr;      
+        cm->commentStr = commentStr;
         (&lines[y])->erase(firstOffset, commentStr.length());
         historyPush(42, firstOffset, u"", cm);
       } else {
         CommentEntry* cm = new CommentEntry();
-        cm->commentStr = commentStr;            
+        cm->commentStr = commentStr;
         (&lines[y])->insert(firstOffset, commentStr);
         historyPush(43, firstOffset, u"", cm);
       }
@@ -286,7 +302,7 @@ class Cursor {
       i++;
       if(x < lines.size()-1)
          xSave = 0;
-   
+
     }
     return u"[Not found]: ";
   }
@@ -489,7 +505,7 @@ class Cursor {
       y = data->yStart;
       center(y);
       delete data;
-      break;    
+      break;
     }
     case 41: {
       CommentEntry* data = static_cast<CommentEntry*>(entry.userData);
@@ -502,12 +518,12 @@ class Cursor {
       y = data->yStart;
       center(y);
       delete data;
-      break;    
+      break;
     }
     case 42: {
       y = entry.y;
       center(y);
-      CommentEntry* data = static_cast<CommentEntry*>(entry.userData); 
+      CommentEntry* data = static_cast<CommentEntry*>(entry.userData);
       (&lines[y])->insert(entry.length, data->commentStr);
       x = entry.x;
       delete data;
@@ -516,7 +532,7 @@ class Cursor {
     case 43: {
       y = entry.y;
       center(y);
-      CommentEntry* data = static_cast<CommentEntry*>(entry.userData); 
+      CommentEntry* data = static_cast<CommentEntry*>(entry.userData);
       (&lines[y])->erase(entry.length, data->commentStr.length());
       x = entry.x;
       delete data;
@@ -774,7 +790,7 @@ class Cursor {
     if(selection.active) {
       deleteSelection();
       selection.stop();
-    }    
+    }
     if(c == '\n' && bind == nullptr) {
       auto pos = lines.begin() + y;
       std::u16string* current = &lines[y];
@@ -786,7 +802,7 @@ class Cursor {
             base += u" ";
           else if ((*current)[t] == '\t')
            base += u"\t";
-          else 
+          else
             break;
         }
         lines.insert(pos+1,base);
@@ -794,7 +810,7 @@ class Cursor {
         x = base.length();
         y++;
         return;
-        
+
       } else {
         if(x== 0) {
           lines.insert(pos, u"");
@@ -1003,6 +1019,7 @@ void appendWithLines(std::u16string content) {
       exit(0);
       return true;
     }
+    trimTrailingWhiteSpaces();
     std::ofstream stream(path, std::ofstream::out);
     if(!stream.is_open()) {
       return false;
