@@ -74,6 +74,7 @@ class State {
   void checkChanged() {
     if(!path.length())
       return;
+    cursor->branch = provider.getBranchName(path);
     auto changed = cursor->didChange(path);
     if(changed) {
       miniBuf = u"";
@@ -178,7 +179,6 @@ class State {
       return;
     }
     cursor->saveTo(path);
-    cursor->branch = provider.getBranchName(path);
     status = u"Saved: " + create(path);
   }
   void saveNew() {
@@ -349,7 +349,6 @@ class State {
         }
       } else if (mode == 36) {
            cursor->reloadFile(path);
-           cursor->branch = provider.getBranchName(path);
            status = u"Reloaded";
       }
     } else {
@@ -375,7 +374,7 @@ class State {
         } else {
        if(round == LANGUAGES.size())
          round = 0;
-       else 
+       else
          round++;
       }
       if(round == 0)
