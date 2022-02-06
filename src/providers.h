@@ -113,6 +113,8 @@ public:
     if(branch.length()) {
       if(branch[branch.length()-1] == '\n')
         branch = branch.substr(0, branch.length()-1);
+      if(branch.find("* ") == 0)
+        branch = branch.substr(2);
     }
     return branch;
   }
