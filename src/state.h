@@ -349,6 +349,7 @@ class State {
         }
       } else if (mode == 36) {
            cursor->reloadFile(path);
+           cursor->branch = provider.getBranchName(path);
            status = u"Reloaded";
       }
     } else {

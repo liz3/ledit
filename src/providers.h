@@ -73,12 +73,14 @@ public:
     std::string branch = "";
 #ifdef _WIN32
      std::string command = "cd " + asPath + " && git branch";
-     FILE* pipe = popen(command.c_str(), "r");
+     FILE* pipe = _popen(command.c_str(), "r");
+     if(pipe == NULL)
+      return branch;
      char buffer[1024];
      while (fgets(buffer, sizeof buffer, pipe) != NULL) {
        branch += buffer;
      }
-     pclose(pipe);
+     _pclose(pipe);
 #else
     int fd[2], pid;
     pipe(fd);
@@ -115,7 +117,12 @@ public:
     return branch;
   }
   std::string getCwdFormatted(){
-    std::string path = std::filesystem::current_path();
+    std::string path =
+ #ifdef _WIN32   
+     std::filesystem::current_path().generic_string();
+#else
+ std::filesystem::current_path();
+#endif
     fs::path* homeDir = getHomeFolder();    
     bool isHomeDirectory = homeDir != nullptr && path.find((*homeDir).generic_string()) == 0;
     std::string target = path;
