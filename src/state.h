@@ -178,6 +178,7 @@ class State {
       return;
     }
     cursor->saveTo(path);
+    cursor->branch = provider.getBranchName(path);
     status = u"Saved: " + create(path);
   }
   void saveNew() {
@@ -387,7 +388,11 @@ class State {
       return;
     // if(hasHighlighting)
     // highlighter.highlight(cursor->lines, &provider.colors, cursor->skip,  cursor->maxLines, cursor->y);
-    status = numberToString(cursor->y +1)  + u":" + numberToString(cursor->x +1) + u" ["  + fileName + u": " + (hasHighlighting ? highlighter.languageName : u"Text")  + u"] History Size: " + numberToString(cursor->history.size());
+    std::u16string branch;
+    if(cursor->branch.length()) {
+      branch = u" [git: " + create(cursor->branch) + u"]";
+    }
+    status = numberToString(cursor->y +1)  + u":" + numberToString(cursor->x +1) + branch + u" ["  + fileName + u": " + (hasHighlighting ? highlighter.languageName : u"Text")  + u"] History Size: " + numberToString(cursor->history.size());
     if(cursor->selection.active)
       status += u" Selected: [" + numberToString(cursor->getSelectionSize()) + u"]";
   }
@@ -464,6 +469,9 @@ class State {
       path = "";
 
     Cursor newCursor = path.length() ? Cursor(path) : Cursor();
+    if(path.length()) {
+      newCursor.branch = provider.getBranchName(path);
+    }
     CursorEntry* entry = new CursorEntry {newCursor, path};
     cursors.push_back(entry);
     activateCursor(cursors.size()-1);

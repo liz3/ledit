@@ -1,18 +1,14 @@
 #ifndef PROVIDERS_H
 #define PROVIDERS_H
-/*
-  vec4f(0.2, 0.6, 0.4, 1.0),
-  vec4fs(0.95),
-  vec4f(0.6, 0.1, 0.2, 1.0),
-  vec4f(0.2, 0.2, 0.8, 1.0),
-  vec4fs(0.5),
-
- */
 #include <vector>
 #include <filesystem>
 #include "la.h"
 #include "utils.h"
 #include "../third-party/json/json.hpp"
+#ifndef _WIN32
+#include <signal.h>
+#include <unistd.h>
+#endif
 #ifdef __linux__
 #include <fontconfig/fontconfig.h>
 struct FontEntry {
@@ -70,6 +66,53 @@ public:
     } else {
       std::cerr << "Failed to load home env var\n";
     }
+  }
+  std::string getBranchName(std::string path) {
+    std::string asPath = fs::path(path).parent_path().generic_string();
+    const char* as_cstr = asPath.c_str();
+    std::string branch = "";
+#ifdef _WIN32
+     std::string command = "cd " + asPath + " && git branch";
+     FILE* pipe = popen(command.c_str(), "r");
+     char buffer[1024];
+     while (fgets(buffer, sizeof buffer, pipe) != NULL) {
+       branch += buffer;
+     }
+     pclose(pipe);
+#else
+    int fd[2], pid;
+    pipe(fd);
+    pid = fork();
+    if(pid == 0) {
+      close(1);
+      dup(fd[1]);
+      close(0);
+      close(2);
+      close (fd[0]);
+      close (fd[1]);
+      const char* args[] = {"git", "branch", nullptr};
+      chdir(as_cstr);
+      execvp("git",  static_cast<char* const*>((void*)args));
+      exit(errno);
+    } else {
+      close(fd[1]);
+      while(true) {
+        char buffer[1024];
+        int received = read(fd[0], buffer, 1024);
+        if(received == 0)
+          break;
+        branch += std::string(buffer, received);
+      }
+        close(fd[0]);
+        kill(pid, SIGTERM);
+        wait(&pid);
+    }
+#endif
+    if(branch.length()) {
+      if(branch[branch.length()-1] == '\n')
+        branch = branch.substr(0, branch.length()-1);
+    }
+    return branch;
   }
   std::string getCwdFormatted(){
     std::string path = std::filesystem::current_path();

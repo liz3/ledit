@@ -33,6 +33,7 @@ class Cursor {
  public:
   bool edited = false;
   bool streamMode = false;
+  std::string branch;
   std::vector<std::u16string> lines;
   std::map<std::string, PosEntry> saveLocs;
   std::deque<HistoryEntry> history;
