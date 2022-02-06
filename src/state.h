@@ -186,7 +186,7 @@ class State {
     miniBuf = u"";
     cursor->bindTo(&miniBuf);
     mode = 1;
-    status = u"Save to: ";
+    status = u"Save to[" + create(provider.getCwdFormatted()) + u"]: ";
   }
   void changeFont() {
     if(mode != 0)
@@ -204,7 +204,7 @@ class State {
     provider.lastProvidedFolder = "";
     cursor->bindTo(&miniBuf);
     mode = 4;
-    status = u"Open: ";
+    status = u"Open [" + create(provider.getCwdFormatted()) + u"]: ";
   }
   void reHighlight() {
   if(hasHighlighting)

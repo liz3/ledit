@@ -71,6 +71,19 @@ public:
       std::cerr << "Failed to load home env var\n";
     }
   }
+  std::string getCwdFormatted(){
+    std::string path = std::filesystem::current_path();
+    fs::path* homeDir = getHomeFolder();    
+    bool isHomeDirectory = homeDir != nullptr && path.find((*homeDir).generic_string()) == 0;
+    std::string target = path;
+    if(isHomeDirectory) {
+      target = target.substr((*homeDir).generic_string().length());
+      target = "~" + target;
+    }
+    if(homeDir != nullptr)
+      delete homeDir;
+    return target;
+  }
   Vec4f getVecOrDefault(json o, const std::string entry, Vec4f def) {
     if(!o.contains(entry))
       return def;
