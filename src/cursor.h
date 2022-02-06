@@ -1009,6 +1009,8 @@ void appendWithLines(std::u16string content) {
     selection.diff(x, y);
   }
   bool saveTo(std::string path) {
+    if(hasEnding(path, ".md"))
+      trimTrailingWhiteSpaces();
     if(path == "-") {
       auto& stream = std::cout;
       for(size_t i = 0; i < lines.size(); i++) {
@@ -1019,7 +1021,6 @@ void appendWithLines(std::u16string content) {
       exit(0);
       return true;
     }
-    trimTrailingWhiteSpaces();
     std::ofstream stream(path, std::ofstream::out);
     if(!stream.is_open()) {
       return false;

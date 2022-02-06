@@ -8,6 +8,20 @@ std::string file_to_string(std::string path) {
   stream.close();
   return ss.str();
 }
+bool hasEnding (std::u16string fullString, std::u16string ending) {
+    if (fullString.length() >= ending.length()) {
+        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    } else {
+        return false;
+    }
+}
+bool hasEnding (std::string fullString, std::string ending) {
+    if (fullString.length() >= ending.length()) {
+        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    } else {
+        return false;
+    }
+}
 bool isSafeNumber(std::string value) {
   for(const char& c : value) {
     if(c < '0' || c > '9')
