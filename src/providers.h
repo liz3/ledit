@@ -110,13 +110,10 @@ public:
         wait(&pid);
     }
 #endif
-    if(branch.length()) {
-      if(branch[branch.length()-1] == '\n')
-        branch = branch.substr(0, branch.length()-1);
-      if(branch.find("* ") == 0)
-        branch = branch.substr(2);
-    }
-    return branch;
+    if(!branch.length())
+      return branch;
+    std::string finalBranch = branch.substr(branch.find("* ")+2);
+    return finalBranch.substr(0, finalBranch.find("\n"));
   }
   std::string getCwdFormatted(){
     std::string path =
