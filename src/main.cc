@@ -281,7 +281,9 @@ int main(int argc, char** argv) {
     GLFWwindow* window = glfwCreateWindow(state.WIDTH, state.HEIGHT, window_name.c_str(), nullptr, nullptr);
     if (window == NULL)
     {
-        std::cout << "Failed to create GLFW window" << std::endl;
+        const char* description;
+        int code = glfwGetError(&description);
+        std::cout << "Failed to create GLFW window: " << description << std::endl;
         glfwTerminate();
         return -1;
     }
