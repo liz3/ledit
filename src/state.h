@@ -476,13 +476,12 @@ class State {
     cursors.push_back(entry);
     activateCursor(cursors.size()-1);
   }
-  State(float w, float h, std::string path, int fontSize) {
+  State(float w, float h, int fontSize) {
 
     this->fontSize = fontSize;
     lastStroke = 0;
     WIDTH = w;
     HEIGHT = h;
-    addCursor(path);
   }
   void init() {
     glGenVertexArrays(1, &vao);
