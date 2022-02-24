@@ -265,8 +265,8 @@ int main(int argc, char** argv) {
 #ifdef _WIN32
   ShowWindow(GetConsoleWindow(), SW_HIDE);
 #endif
-    std::string x = argc >=2 ?std::string(argv[1]) : "";
-    State state(1280, 720, x, 30);
+    std::string initialPath = argc >=2 ?std::string(argv[1]) : "";
+    State state(1280, 720, 30);
     gState = &state;
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -277,7 +277,7 @@ int main(int argc, char** argv) {
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
-    const std::string window_name = "ledit: " + (x.length() ? x : "New File");
+    const std::string window_name = "ledit: " + (initialPath.length() ? initialPath : "New File");
     GLFWwindow* window = glfwCreateWindow(state.WIDTH, state.HEIGHT, window_name.c_str(), nullptr, nullptr);
     if (window == NULL)
     {
@@ -288,6 +288,8 @@ int main(int argc, char** argv) {
         return -1;
     }
     state.window = window;
+    state.addCursor(initialPath);
+
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
