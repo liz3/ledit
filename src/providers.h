@@ -8,6 +8,7 @@
 #ifndef _WIN32
 #include <signal.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #endif
 #ifdef __linux__
 #include <fontconfig/fontconfig.h>
