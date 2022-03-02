@@ -169,6 +169,8 @@ class Cursor {
     }
     x = targetX;
     y = targetY;
+    selection.diffX(x);
+    selection.diffY(y);
 
   }
   void reset() {
@@ -1039,7 +1041,7 @@ void appendWithLines(std::u16string content) {
     edited = false;
     return true;
   }
-  std::vector<std::pair<int, std::u16string>>* getContent(FontAtlas* atlas, float maxWidth) {
+  std::vector<std::pair<int, std::u16string>>* getContent(FontAtlas* atlas, float maxWidth, bool onlyCalculate) {
     prepare.clear();
     int end = skip + maxLines;
     if(end >= lines.size()) {
@@ -1056,6 +1058,12 @@ void appendWithLines(std::u16string content) {
       skip--;
       end--;
     }
+    /*
+      Here we only care about the frame to render being adjusted for the linenumbers,
+      content itself relies on maxWidth being accurate!
+    */
+    if(onlyCalculate)
+      return nullptr;
     int maxSupport = 0;
     for(size_t i = skip; i < end; i++) {
       auto s = lines[i];

@@ -26,8 +26,15 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
     if(gState != nullptr) {
       gState->invalidateCache();
+ #ifdef _WIN32
+      float xscale, yscale;
+      glfwGetWindowContentScale(window, &xscale, &yscale);
+      gState->WIDTH = (float)width * xscale;
+      gState->HEIGHT = (float)height * yscale;
+#else
       gState->WIDTH = (float)width;
       gState->HEIGHT = (float)height;
+#endif
     }
 
 }
@@ -47,8 +54,8 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
       gState->invalidateCache();
       double xpos, ypos;
       glfwGetCursorPos(window, &xpos, &ypos);
-    float xscale, yscale;
-    glfwGetWindowContentScale(window, &xscale, &yscale);
+      float xscale, yscale;
+      glfwGetWindowContentScale(window, &xscale, &yscale);
       gState->cursor->setPosFromMouse((float)xpos * xscale, (float) ypos * yscale, gState->atlas);
 
 
@@ -333,9 +340,9 @@ int main(int argc, char** argv) {
     int fontSize;
     float WIDTH;
     float HEIGHT;
+    auto maxRenderWidth = 0;
     while (!glfwWindowShouldClose(window))
     {
-//      glfwPollEvents();
       if(state.cacheValid) {
         glfwPollEvents();
         continue;
@@ -348,7 +355,11 @@ int main(int argc, char** argv) {
          HEIGHT = state.HEIGHT;
          changed = true;
       }
+
       Cursor* cursor = state.cursor;
+      if(maxRenderWidth != 0) {
+        cursor->getContent(&atlas, maxRenderWidth, true);
+      }
       float toOffset = atlas.atlas_height * 1.15;
       bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7 || state.mode == 32;
       cursor->setBounds(HEIGHT - state.atlas->atlas_height - 6, toOffset);
@@ -403,9 +414,9 @@ int main(int argc, char** argv) {
           ypos += toOffset;
         }
       }
-      auto maxRenderWidth = (WIDTH /2) - 20 - linesAdvance;
+      maxRenderWidth = (WIDTH /2) - 20 - linesAdvance;
       auto skipNow = cursor->skip;
-      auto* allLines = cursor->getContent(&atlas, maxRenderWidth);
+      auto* allLines = cursor->getContent(&atlas, maxRenderWidth, false);
       state.reHighlight();
       ypos = (-(HEIGHT/2));
       xpos = -(int32_t)WIDTH/2 + 20 + linesAdvance;
@@ -682,8 +693,8 @@ int main(int argc, char** argv) {
 
 
       glfwSwapBuffers(window);
-      glfwPollEvents();
       state.cacheValid = true;
+      glfwPollEvents();
     }
     glfwTerminate();
   return 0;
