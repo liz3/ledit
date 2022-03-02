@@ -353,7 +353,6 @@ int main(int argc, char** argv) {
         glfwPollEvents();
         continue;
       }
-      std::cout << "render logic running\n";
       bool changed = false;
       if(HEIGHT != state.HEIGHT || WIDTH != state.WIDTH || fontSize != state.fontSize) {
          WIDTH = state.WIDTH;
