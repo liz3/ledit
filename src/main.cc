@@ -25,12 +25,16 @@ State* gState = nullptr;
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
     if(gState != nullptr) {
+      gState->invalidateCache();
       gState->WIDTH = (float)width;
       gState->HEIGHT = (float)height;
     }
 
 }
 void window_focus_callback(GLFWwindow* window, int focused) {
+  if(!gState)
+    return;
+  gState->invalidateCache();
   gState->focused = focused;
   if(focused) {
     gState->checkChanged();
@@ -40,6 +44,7 @@ void window_focus_callback(GLFWwindow* window, int focused) {
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+      gState->invalidateCache();
       double xpos, ypos;
       glfwGetCursorPos(window, &xpos, &ypos);
     float xscale, yscale;
@@ -54,6 +59,7 @@ void character_callback(GLFWwindow* window, unsigned int codepoint)
 {
   if(gState == nullptr)
     return;
+  gState->invalidateCache();
   gState->exitFlag = false;
 #ifdef _WIN32
   bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
@@ -80,12 +86,12 @@ void character_callback(GLFWwindow* window, unsigned int codepoint)
     }
   }
   gState->cursor->append((char16_t) codepoint);
-  gState->lastStroke = glfwGetTime();
   gState->renderCoords();
 }
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
   if(gState == nullptr) return;
+  gState->invalidateCache();
   if(key == GLFW_KEY_ESCAPE) {
     if(action == GLFW_PRESS) {
     if(gState->cursor->selection.active) {
@@ -100,7 +106,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
          glfwSetWindowShouldClose(window, true);
        } else {
          gState->exitFlag = true;
-         gState->status = create(edited->path) + u" edited, press ESC again to exit";
+         gState->status = create(edited->path.length() ? edited->path : "New File") + u" edited, press ESC again to exit";
        }
     }
     }
@@ -212,7 +218,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
      } else {
        if (!isPress)
          return;
-       gState->lastStroke = glfwGetTime();
         if (key == GLFW_KEY_A && action == GLFW_PRESS)
           cursor->jumpStart();
         else if (key == GLFW_KEY_F && isPress)
@@ -239,7 +244,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
       cursor->moveUp();
     if (isPress && key == GLFW_KEY_DOWN)
       cursor->moveDown();
-    gState->lastStroke = glfwGetTime();
     if(isPress && key == GLFW_KEY_ENTER) {
       if(gState->mode != 0) {
         gState->inform(true, shift_pressed);
@@ -332,6 +336,10 @@ int main(int argc, char** argv) {
     while (!glfwWindowShouldClose(window))
     {
 //      glfwPollEvents();
+      if(state.cacheValid) {
+        glfwPollEvents();
+        continue;
+      }
       bool changed = false;
       if(HEIGHT != state.HEIGHT || WIDTH != state.WIDTH || fontSize != state.fontSize) {
          WIDTH = state.WIDTH;
@@ -361,9 +369,6 @@ int main(int argc, char** argv) {
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 6, 1);
-
-
-
       }
       text_shader.use();
       text_shader.set2f("resolution", (float) WIDTH,(float) HEIGHT);
@@ -545,8 +550,6 @@ int main(int argc, char** argv) {
     if(state.focused) {
       cursor_shader.use();
       cursor_shader.set1f("cursor_height", toOffset);
-      cursor_shader.set1f("last_stroke", state.lastStroke);
-      cursor_shader.set1f("time", (float)glfwGetTime());
       cursor_shader.set2f("resolution", (float) WIDTH,(float) HEIGHT);
       if(state.mode != 0 && state.mode != 32) {
         // use cursor for minibuffer
@@ -566,10 +569,7 @@ int main(int argc, char** argv) {
         if(cursorX > WIDTH / 2)
           cursorX = (WIDTH / 2) - 3;
         float cursorY = -(int32_t)(HEIGHT/2) + 4 + (toOffset * ((cursor->y - cursor->skip)+1));
-
         cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
-
-
         glBindVertexArray(state.vao);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         glBindVertexArray(0);
@@ -683,6 +683,7 @@ int main(int argc, char** argv) {
 
       glfwSwapBuffers(window);
       glfwPollEvents();
+      state.cacheValid = true;
     }
     glfwTerminate();
   return 0;
