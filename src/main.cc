@@ -3,8 +3,6 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <thread>
-#include <chrono>
 #ifndef __APPLE__
 #include <algorithm>
 #endif
@@ -346,11 +344,7 @@ int main(int argc, char** argv) {
     while (!glfwWindowShouldClose(window))
     {
       if(state.cacheValid) {
-        if(state.focused)
-          std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        else 
-          std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        glfwPollEvents();
+        glfwWaitEvents();
         continue;
       }
       bool changed = false;
@@ -700,7 +694,7 @@ int main(int argc, char** argv) {
 
       glfwSwapBuffers(window);
       state.cacheValid = true;
-      glfwPollEvents();
+      glfwWaitEvents();
     }
     glfwTerminate();
   return 0;
