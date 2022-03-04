@@ -25,6 +25,7 @@ class State {
   GLuint vao, vbo;
   bool focused = true;
   bool exitFlag = false;
+  bool cacheValid = false;
   GLuint sel_vao, sel_vbo;
   GLuint highlight_vao, highlight_vbo;
   Cursor* cursor;
@@ -43,13 +44,17 @@ class State {
   std::u16string status;
   std::u16string miniBuf;
   std::u16string dummyBuf;
-  double lastStroke;
   bool showLineNumbers = true;
   bool highlightLine = true;
   int mode = 0;
   int round = 0;
   int fontSize;
   State() {}
+
+  void invalidateCache() {
+    cacheValid = false;
+  }
+
   CursorEntry* hasEditedBuffer() {
     for(CursorEntry* cur : cursors) {
       if(cur->cursor.edited)
@@ -479,7 +484,6 @@ class State {
   State(float w, float h, int fontSize) {
 
     this->fontSize = fontSize;
-    lastStroke = 0;
     WIDTH = w;
     HEIGHT = h;
   }
