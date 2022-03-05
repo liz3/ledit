@@ -357,12 +357,13 @@ int main(int argc, char** argv) {
       }
 
       Cursor* cursor = state.cursor;
-      if(maxRenderWidth != 0) {
-        cursor->getContent(&atlas, maxRenderWidth, true);
-      }
       float toOffset = atlas.atlas_height * 1.15;
       bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7 || state.mode == 32;
       cursor->setBounds(HEIGHT - state.atlas->atlas_height - 6, toOffset);
+      if(maxRenderWidth != 0) {
+        cursor->getContent(&atlas, maxRenderWidth, true);
+      }
+
       auto be_color = state.provider.colors.background_color;
       auto status_color = state.provider.colors.status_color;
       glClearColor(be_color.x, be_color.y, be_color.z, be_color.w);
