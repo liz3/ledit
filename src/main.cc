@@ -1,3 +1,6 @@
+#if (MAC_OS_X_VERSION_MAX_ALLOWED < 120000) // Before macOS 12 Monterey
+  #define kIOMainPortDefault kIOMasterPortDefault
+#endif
 #include <iostream>
 #include <math.h>
 #include <map>
