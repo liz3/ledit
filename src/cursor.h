@@ -33,6 +33,7 @@ class Cursor {
  public:
   bool edited = false;
   bool streamMode = false;
+  bool useXFallback;
   std::string branch;
   std::vector<std::u16string> lines;
   std::map<std::string, PosEntry> saveLocs;
@@ -244,13 +245,15 @@ class Cursor {
     }
     return offset;
   }
-  void bindTo(std::u16string* entry) {
+  void bindTo(std::u16string* entry, bool useXSave = false) {
     bind = entry;
     xSave = x;
+    this->useXFallback = useXSave;
     x = entry->length();
   }
   void unbind() {
     bind = nullptr;
+    useXFallback = false;
     x = xSave;
   }
   std::u16string search(std::u16string what, bool skipFirst, bool shouldOffset = true) {
@@ -1069,7 +1072,7 @@ void appendWithLines(std::u16string content) {
       auto s = lines[i];
       prepare.push_back(std::pair<int, std::u16string>(s.length(), s));
     }
-    float neededAdvance = atlas->getAdvance((&lines[y])->substr(0,x));
+    float neededAdvance = atlas->getAdvance((&lines[y])->substr(0,useXFallback ? xSave : x));
     int xOffset = 0;
     if(neededAdvance> maxWidth) {
       auto* all = atlas->getAllAdvance(lines[y], y - skip);
@@ -1083,7 +1086,7 @@ void appendWithLines(std::u16string content) {
         }
         if(acc > maxWidth * 2) {
           xOffset++;
-            xSkip += value;
+          xSkip += value;
         }
         acc += value;
       }

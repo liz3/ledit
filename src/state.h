@@ -227,7 +227,7 @@ class State {
     if(mode != 0)
       return;
     miniBuf = u"";
-    cursor->bindTo(&miniBuf);
+    cursor->bindTo(&miniBuf, true);
     mode = 2;
     status = u"Search: ";
   }
