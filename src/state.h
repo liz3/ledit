@@ -290,7 +290,7 @@ class State {
         if(mode == 5) {
           if(round != activeIndex) {
             activateCursor(round);
-            status = u"Switched to: " + create(path);
+            status = u"Switched to: " + create(path.length() ? path : "New File");
           } else {
             status = u"Canceled";
           }
@@ -465,7 +465,7 @@ class State {
       hasHighlighting = false;
       renderCoords();
     }
-    std::string window_name = "ledit: " + path;
+    std::string window_name = "ledit: " + (path.length() ? path : "New File");
     glfwSetWindowTitle(window, window_name.c_str());
 
   }
