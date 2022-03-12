@@ -8,6 +8,17 @@ if you just want to test the editor then [download it from the releases](https:/
 The base motivation was just simply that i wanted to have a look into OpenGL and doing GPU accelerated things, i did not plan to create a text editor from the get go.  
 After starting to experiment a bit i decided to call this a small side Project and implement a proper editor.
 
+### About the no bullshit
+My issue with modern software is that they get more bloated and complex without any aparent reason.
+
+A text editor should be a program to allow the user editing of text-based files. Maybe some visual highlighting, but thats IT.
+
+Take Visual studio code, when it started, i saw it as a good text editor, one could argue its from a bad company AND web based, but for me it solved the problem of a text editor well.  
+**But** Over the years they added nonsense features like live sharing and the "directory protection pop up" feature which popped up on every start.
+
+I dont care if these features can be disabled or ignored, they solve no problem related to a text editor and bloat the program.  
+Ledit is in a way the same, it does not have a plugin system, neither does it even have a redo, but for me it solves the problem of a text editor and it does not need to be anything more then that.
+
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot.png?raw=true)
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot2.png?raw=true)
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot3.png?raw=true)
