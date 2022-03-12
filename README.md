@@ -16,7 +16,8 @@ A text editor should be a program to allow the user editing of text-based files.
 Take Visual studio code, when it started, i saw it as a good text editor, one could argue its from a bad company AND web based, but for me it solved the problem of a text editor well.  
 **But** Over the years they added nonsense features like live sharing and the "directory protection pop up" feature which popped up on every start.
 
-I dont care if these features can be disabled or ignored, they solve no problem related to a text editor and bloat the program.  
+I dont care if these features can be disabled or ignored, they solve no problem related to a text editor and bloat the program.  ]
+Thats why i use emacs or this.
 Ledit is in a way the same, it does not have a plugin system, neither does it even have a redo, but for me it solves the problem of a text editor and it does not need to be anything more then that.
 
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot.png?raw=true)
