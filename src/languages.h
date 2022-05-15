@@ -23,7 +23,7 @@ const std::vector<Language> LANGUAGES = {
   {"/*", "*/"},
   "\"'`",
   '\\',
-  {"js", "jsx"}
+  {"js", "jsx", "mjs"}
 },
 {
   "Python",
