@@ -7,7 +7,7 @@
 const std::vector<Language> LANGUAGES = {
 {
   "C/C++",
-  {"char","for", "while", "if", "int", "float", "return", "double", "true", "false", "else", "void", "delete", "struct", "class", "case", "break", "const", "nullptr", "auto", "bool", "new", "auto*", "switch", "case", "typedef", "static", "enum"},
+  {"char","for", "while", "if", "int", "float", "return", "double", "true", "false", "else", "void", "delete", "struct", "class", "case", "break", "const", "nullptr", "auto", "bool", "new", "auto*", "switch", "case", "typedef", "static", "enum", "sizeof", "offsetof"},
   {"#include", "public", "private", "#ifdef", "#define", "#endif", "#ifndef", "#else"},
   "//",
   {"/*", "*/"},
@@ -59,7 +59,7 @@ const std::vector<Language> LANGUAGES = {
   "Dockerfile",
   { "CMD", "ENTRYPOINT", "RUN", "ADD", "COPY", "ENV", "EXPOSE", "FROM", "LABEL", "STOPSIGNAL", "USER", "VOLUME", "WORKDIR", "ONBUILD", "AS" },
   {},
-  "#",  
+  "#",
   {"",""},
   "\"",
   '\\',
