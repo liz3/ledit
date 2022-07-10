@@ -29,7 +29,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
     if(gState != nullptr) {
       gState->invalidateCache();
- #ifdef _WIN32
+#ifdef _WIN32
       float xscale, yscale;
       glfwGetWindowContentScale(window, &xscale, &yscale);
       gState->WIDTH = (float)width * xscale;
@@ -131,7 +131,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
   bool alt_pressed = glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS;
   Cursor* cursor = gState->cursor;
   bool isPress = action == GLFW_PRESS || action == GLFW_REPEAT;
-#ifdef __linux__
+#ifndef __APPLE__
   if(alt_pressed) {
     if(key == GLFW_KEY_F && isPress) {
       gState->cursor->advanceWord();
@@ -341,8 +341,8 @@ int main(int argc, char** argv) {
     state.WIDTH *= xscale;
     state.HEIGHT *= yscale;
     int fontSize;
-    float WIDTH;
-    float HEIGHT;
+    float WIDTH = 0;
+    float HEIGHT = 0;
     auto maxRenderWidth = 0;
     while (!glfwWindowShouldClose(window))
     {
@@ -622,12 +622,13 @@ int main(int argc, char** argv) {
               }
             }
           } else {
-            if(yStart >= cursor->skip && yStart <= cursor->skip + cursor->maxLines) {
+            if(yStart >= cursor->skip && yStart <= (cursor->skip + cursor->maxLines) -1) {
               int yEffective = cursor->selection.getYStart() - cursor->skip;
               int xStart = cursor->selection.getXStart();
+              float renderDistance = atlas.getAdvance((*allLines)[yEffective].second.substr(0, xStart-cursor->xOffset));
               if(xStart >= cursor->xOffset) {
-                float renderDistance = atlas.getAdvance((*allLines)[yEffective].second.substr(0, xStart-cursor->xOffset));
-                if (renderDistance < maxRenderWidth) {
+
+                if (renderDistance < (maxRenderWidth*2)) {
                   if (yStart < yEnd) {
 
                     float start = ((float)HEIGHT/2) - 5 - (toOffset * (yEffective +1));
@@ -636,7 +637,10 @@ int main(int argc, char** argv) {
                     float start = ((float)HEIGHT/2) - 5 - (toOffset * (yEffective+1));
                     selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance, start), vec2f(renderDistance, toOffset)});
                   }
-                }
+                } else {
+                    float start = ((float)HEIGHT/2) - 5 - (toOffset * (yEffective +1));
+                    selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance, start), vec2f((maxRenderWidth * 2), toOffset)});
+              }
               }
             }
             if(yEnd >= cursor->skip && yEnd <= cursor->skip + cursor->maxLines) {
@@ -644,7 +648,7 @@ int main(int argc, char** argv) {
               int xStart = cursor->selection.getXEnd();
               if(xStart >= cursor->xOffset) {
                 float renderDistance = atlas.getAdvance((*allLines)[yEffective].second.substr(0, xStart-cursor->xOffset));
-                if (renderDistance < maxRenderWidth) {
+                if (renderDistance < (maxRenderWidth * 2)) {
                   if(yEnd < yStart) {
                     float start = ((float)HEIGHT/2) - 5 - (toOffset * (yEffective+1));
                     selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance + renderDistance, start), vec2f((maxRenderWidth *2) - renderDistance, toOffset)});
@@ -653,6 +657,10 @@ int main(int argc, char** argv) {
                     selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH/2 + 20 + linesAdvance, start), vec2f(renderDistance, toOffset)});
 
                   }
+                } else {
+
+                  float start = ((float)HEIGHT / 2) - 5 - (toOffset * (yEffective + 1));
+                  selectionBoundaries.push_back({ vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance, start), vec2f((maxRenderWidth * 2), toOffset) });
                 }
               }
             }
@@ -660,7 +668,7 @@ int main(int argc, char** argv) {
             int offset = 0;
             int count = 0;
             for(int i = cursor->selection.getYSmaller(); i < cursor->selection.getYBigger()-1; i++) {
-              if(i > cursor->skip + cursor->maxLines)
+              if(i >= (cursor->skip + cursor->maxLines)-1)
                 break;
               if(i >= cursor->skip -1) {
                 if(!found) {
