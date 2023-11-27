@@ -41,6 +41,7 @@ public:
   int offset = 0;
   EditorColors colors;
   std::string fontPath = getDefaultFontPath();
+  std::vector<std::string> extraFonts;
   std::string configPath;
   bool allowTransparency = false;
   Provider() {
@@ -232,6 +233,13 @@ public:
       colors.minibuffer_color = getVecOrDefault(configColors, "minibuffer_color", colors.minibuffer_color);
     }
     fontPath = getPathOrDefault(*configRoot, "font_face", fontPath);
+    if(configRoot->contains("extra_fonts")) {
+      json& extra_fonts = (*configRoot)["extra_fonts"];
+      for(auto& item : extra_fonts) {
+        std::string str = item;
+        extraFonts.push_back(str);
+      }
+    }
     allowTransparency = getBoolOrDefault(*configRoot, "window_transparency", allowTransparency);
   }
   json vecToJson(Vec4f value) {
@@ -262,6 +270,13 @@ public:
     config["font_face"] = fontPath;
     config["window_transparency"] = allowTransparency;
     config["colors"] = cColors;
+    if(extraFonts.size()){
+      json extra_fonts;
+      for(auto& f : extraFonts){
+        extra_fonts.push_back(f);
+      }
+      config["extra_fonts"] = extra_fonts;
+    }
     const std::string contents = config.dump(2);
     string_to_file(configPath, contents);
   }

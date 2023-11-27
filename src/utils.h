@@ -1,6 +1,7 @@
 #ifndef UTILS_H
 #define UTILS_H
-const std::u16string wordSeperator = u" \t\n[]{}/\\*()=_-,.";
+#include "utf8String.h"
+const Utf8String wordSeperator = U" \t\n[]{}/\\*()=_-,.";
 std::string file_to_string(std::string path) {
   std::ifstream stream(path);
   std::stringstream ss;
@@ -8,9 +9,9 @@ std::string file_to_string(std::string path) {
   stream.close();
   return ss.str();
 }
-bool hasEnding (std::u16string fullString, std::u16string ending) {
+bool hasEnding (Utf8String fullString, Utf8String ending) {
     if (fullString.length() >= ending.length()) {
-        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+        return fullString.endsWith(ending);
     } else {
         return false;
     }

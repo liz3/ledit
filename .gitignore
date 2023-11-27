@@ -3,3 +3,4 @@ pngs
 .DS_Store
 Release
 Debug
+.cache

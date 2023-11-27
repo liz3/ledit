@@ -17,6 +17,7 @@
 #include "../third-party/glfw/include/GLFW/glfw3.h"
 #include "../third-party/freetype2/include/ft2build.h"
 #include FT_FREETYPE_H
+#include FT_TRUETYPE_TABLES_H
 #include "state.h"
 #include "shader.h"
 #include "font_atlas.h"
@@ -116,7 +117,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
          glfwSetWindowShouldClose(window, true);
        } else {
          gState->exitFlag = true;
-         gState->status = create(edited->path.length() ? edited->path : "New File") + u" edited, press ESC again to exit";
+         gState->status = create(edited->path.length() ? edited->path : "New File") + U" edited, press ESC again to exit";
        }
     }
     }
@@ -265,7 +266,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
       if(gState->mode != 0)
         gState->provideComplete(shift_pressed);
       else
-        cursor->append(u"  ");
+        cursor->append(U"  ");
     }
     if(isPress && key == GLFW_KEY_BACKSPACE) {
       cursor->removeOne();
@@ -335,6 +336,9 @@ int main(int argc, char** argv) {
     Shader cursor_shader(cursor_shader_vert, cursor_shader_frag, {camera_shader_vert});
     Shader selection_shader(selection_shader_vert, selection_shader_frag, {});
     FontAtlas atlas(state.provider.fontPath, state.fontSize);
+    for(auto& path : state.provider.extraFonts) {
+      atlas.readFont(path, state.fontSize);
+    }
     state.atlas = &atlas;
     float xscale, yscale;
     glfwGetWindowContentScale(window, &xscale, &yscale);
@@ -392,7 +396,7 @@ int main(int argc, char** argv) {
       glBindTexture(GL_TEXTURE_2D, atlas.texture_id);
       glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
       std::vector<RenderChar> entries;
-      std::u16string::const_iterator c;
+      Utf8String::const_iterator c;
       std::string::const_iterator cc;
       float xpos =( -(int32_t)WIDTH/2) + 10;
       float ypos = -(float)HEIGHT/2;
@@ -530,7 +534,7 @@ int main(int argc, char** argv) {
       }
       xpos =( -(int32_t)WIDTH/2) + 15;
       ypos = (float)HEIGHT/2 - toOffset - 10;
-      std::u16string status = state.status;
+      Utf8String status = state.status;
       for (c = status.begin(); c != status.end(); c++) {
         entries.push_back(atlas.render(*c, xpos,ypos, status_color));
         xpos += atlas.getAdvance(*c);
@@ -540,7 +544,7 @@ int main(int argc, char** argv) {
         // draw minibuffer
         xpos =( -(int32_t)WIDTH/2) + 20 + statusAdvance;
         ypos = (float)HEIGHT/2 - toOffset - 10;
-        std::u16string status = state.miniBuf;
+        Utf8String status = state.miniBuf;
         for (c = status.begin(); c != status.end(); c++) {
           entries.push_back(atlas.render(*c, xpos,ypos, state.provider.colors.minibuffer_color));
           xpos += atlas.getAdvance(*c);
@@ -596,7 +600,7 @@ int main(int argc, char** argv) {
         if(cursor->selection.getYSmaller() < cursor->skip && cursor->selection.getYBigger() > cursor->skip + cursor->maxLines) {
           // select everything
         } else {
-          maxRenderWidth += atlas.getAdvance(u" ");
+          maxRenderWidth += atlas.getAdvance(U" ");
           int yStart = cursor->selection.getYStart();
           int yEnd = cursor->selection.getYEnd();
           if(cursor->selection.yStart == cursor->selection.yEnd) {

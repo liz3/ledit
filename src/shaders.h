@@ -13,12 +13,14 @@ layout(location = 2) in vec2 uv_pos;
 layout(location = 3) in vec2 uv_size;
 layout(location = 4) in vec4 fg_color;
 layout(location = 5) in vec4 bg_color;
+layout(location = 6) in float hColor;
 
 out vec2 uv;
 out vec2 glyph_uv_pos;
 out vec2 glyph_uv_size;
 out vec4 glyph_fg_color;
 out vec4 glyph_bg_color;
+out float hasColor;
 uniform vec2 resolution;
 vec2 camera_project(vec2 point) {
 return 2* (point) * (1 / resolution);
@@ -31,6 +33,7 @@ void main() {
     glyph_uv_size = uv_size;
     glyph_fg_color = fg_color;
     glyph_bg_color = vec4(0.0);
+    hasColor = hColor;
 }
 
 )";
@@ -45,12 +48,17 @@ in vec2 glyph_uv_pos;
 in vec2 glyph_uv_size;
 in vec4 glyph_fg_color;
 in vec4 glyph_bg_color;
+in float hasColor;
 
 out vec4 color;
 void main() {
      vec2 t = glyph_uv_pos + glyph_uv_size * uv;
-     vec4 sampled = vec4(1.0, 1.0, 1.0, texture(font, t).x);
-     color = glyph_fg_color * sampled;
+     if(hasColor > 0.5) {
+          color = texture(font, t);
+     } else {
+          vec4 sampled = vec4(1.0, 1.0, 1.0, texture(font, t).x);
+          color = glyph_fg_color * sampled;
+     }
 }
 )";
 
