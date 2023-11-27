@@ -102,7 +102,7 @@ public:
   std::map<int, Vec4f>* get() {
     return &cached;
   }
-  std::map<int, Vec4f>* highlight(Utf8String raw, EditorColors* colors, int skip, int maxLines, int yPassed) {
+  std::map<int, Vec4f>* highlight(Utf8String& raw, EditorColors* colors, int skip, int maxLines, int yPassed) {
     // if(wasCached && raw == cachedContent && skip == lastSkip)
     //   return &cached;
 

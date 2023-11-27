@@ -112,6 +112,7 @@ class State {
     } else {
       status = U"resize: [" + numberToString(fontSize) + U"]";
     }
+    atlas->resizeFonts(fontSize);
     atlas->renderFont(fontSize, atlas->faces[0]);
   }
   void toggleSelection() {

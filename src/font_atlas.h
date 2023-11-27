@@ -74,7 +74,6 @@ public:
       std::cout << "ERROR::FREETYPE: Failed to load font " << x << std::endl;
       return;
     }
-    std::cout << "loaded font file: " << path << "\n";
     face->path = path;
     face->hasColor = isColorEmojiFont(face->face);
     if (face->hasColor)
@@ -84,6 +83,15 @@ public:
     faces.push_back(face);
     if (shouldRender)
       renderFont(fontSize, face);
+  }
+  void resizeFonts(uint32_t size) {
+    for (auto &face : faces) {
+      if (face->hasColor)
+        FT_Select_Size(face->face, 0);
+      else
+        FT_Set_Pixel_Sizes(face->face, 0, size);
+    }
+    fs = size;
   }
   void renderFont(uint32_t fontSize, FontFace *faceEntry) {
     if (wasGenerated) {

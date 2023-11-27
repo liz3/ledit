@@ -227,6 +227,8 @@ public:
   }
 
   char32_t getCharacterAt(size_t index) const {
+    if(character_length == 0)
+        return 0;
     auto p = calculateByteLength(index, 1);
     std::string sub = this->base.substr(p.first, p.second);
     std::vector<char32_t> entries = toCodePoints(sub);
