@@ -117,7 +117,7 @@ For the colors there are default values, for the font face either remove it comp
   },
   // optional load additional font files
   "extra_fonts": [
-  ]
+  ],
   "window_transparency": true // if the window is allowed to be transparent
   "font_face": "/Users/liz3/Library/Fonts/FiraCode-Regular.ttf" // TTF font face path
 }
