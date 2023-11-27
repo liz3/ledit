@@ -17,8 +17,8 @@ struct CursorEntry {
   std::string path;
 };
 struct ReplaceBuffer {
-  std::u16string search = u"";
-  std::u16string replace = u"";
+  Utf8String search = U"";
+  Utf8String replace = U"";
 };
 class State {
  public:
@@ -40,10 +40,10 @@ class State {
   bool hasHighlighting;
   bool ctrlPressed = false;
   std::string path;
-  std::u16string fileName;
-  std::u16string status;
-  std::u16string miniBuf;
-  std::u16string dummyBuf;
+  Utf8String fileName;
+  Utf8String status;
+  Utf8String miniBuf;
+  Utf8String dummyBuf;
   bool showLineNumbers = true;
   bool highlightLine = true;
   int mode = 0;
@@ -66,7 +66,7 @@ class State {
     if(mode != 0)
       return;
     mode = 30;
-    status = u"Search: ";
+    status = U"Search: ";
     miniBuf = replaceBuffer.search;
     cursor->bindTo(&miniBuf);
 
@@ -82,9 +82,9 @@ class State {
     cursor->branch = provider.getBranchName(path);
     auto changed = cursor->didChange(path);
     if(changed) {
-      miniBuf = u"";
+      miniBuf = U"";
       mode = 36;
-      status = u"[" + create(path) + u"]: Changed on disk, reload?";
+      status = U"[" + create(path) + U"]: Changed on disk, reload?";
       cursor->bindTo(&dummyBuf);
     }
   }
@@ -92,8 +92,8 @@ class State {
      if(mode != 0)
        return;
      round = 0;
-     miniBuf = u"Text";
-     status = u"Mode: ";
+     miniBuf = U"Text";
+     status = U"Mode: ";
      cursor->bindTo(&dummyBuf);
      mode = 25;
   }
@@ -103,16 +103,17 @@ class State {
     fontSize += value;
     if(fontSize > 260) {
       fontSize = 260;
-      status = u"Max font size reached [260]";
+      status = U"Max font size reached [260]";
       return;
     } else if (fontSize < 10) {
       fontSize = 10;
-      status = u"Min font size reached [10]";
+      status = U"Min font size reached [10]";
       return;
     } else {
-      status = u"resize: [" + numberToString(fontSize) + u"]";
+      status = U"resize: [" + numberToString(fontSize) + U"]";
     }
-    atlas->renderFont(fontSize);
+    atlas->resizeFonts(fontSize);
+    atlas->renderFont(fontSize, atlas->faces[0]);
   }
   void toggleSelection() {
     if(mode != 0)
@@ -128,14 +129,14 @@ class State {
       return;
     if(mode == 0) {
       if(cursors.size() == 1) {
-        status = u"No other buffers in cache";
+        status = U"No other buffers in cache";
         return;
       }
       round = 0;
       miniBuf = create(cursors[0]->path);
       cursor->bindTo(&miniBuf);
       mode = 5;
-      status = u"Switch to: ";
+      status = U"Switch to: ";
     } else {
       round++;
       if(round == cursors.size())
@@ -146,35 +147,35 @@ class State {
   void tryPaste() {
     const char* contents = glfwGetClipboardString(NULL);
     if(contents) {
-      std::u16string str = create(std::string(contents));
+      Utf8String str = create(std::string(contents));
       cursor->appendWithLines(str);
       if(mode != 0)
         return;
       if(hasHighlighting)
         highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y);
-      status = u"Pasted " + numberToString(str.length()) + u" Characters";
+      status = U"Pasted " + numberToString(str.length()) + U" Characters";
     }
   }
   void cut() {
     if(!cursor->selection.active) {
-      status = u"Aborted: No selection";
+      status = U"Aborted: No selection";
       return;
     }
     std::string content = cursor->getSelection();
     glfwSetClipboardString(NULL, content.c_str());
     cursor->deleteSelection();
     cursor->selection.stop();
-    status = u"Cut " + numberToString(content.length()) + u" Characters";
+    status = U"Cut " + numberToString(content.length()) + U" Characters";
   }
   void tryCopy() {
     if(!cursor->selection.active) {
-      status = u"Aborted: No selection";
+      status = U"Aborted: No selection";
       return;
     }
     std::string content = cursor->getSelection();
     glfwSetClipboardString(NULL, content.c_str());
     cursor->selection.stop();
-    status = u"Copied " + numberToString(content.length()) + u" Characters";
+    status = U"Copied " + numberToString(content.length()) + U" Characters";
   }
   void save() {
     if(mode != 0)
@@ -184,15 +185,15 @@ class State {
       return;
     }
     cursor->saveTo(path);
-    status = u"Saved: " + create(path);
+    status = U"Saved: " + create(path);
   }
   void saveNew() {
     if(mode != 0)
       return;
-    miniBuf = u"";
+    miniBuf = U"";
     cursor->bindTo(&miniBuf);
     mode = 1;
-    status = u"Save to[" + create(provider.getCwdFormatted()) + u"]: ";
+    status = U"Save to[" + create(provider.getCwdFormatted()) + U"]: ";
   }
   void changeFont() {
     if(mode != 0)
@@ -200,17 +201,17 @@ class State {
     miniBuf = create(provider.fontPath);
     cursor->bindTo(&miniBuf);
     mode = 15;
-    status = u"Set font: ";
+    status = U"Set font: ";
 
   }
   void open() {
     if(mode != 0)
       return;
-    miniBuf = u"";
+    miniBuf = U"";
     provider.lastProvidedFolder = "";
     cursor->bindTo(&miniBuf);
     mode = 4;
-    status = u"Open [" + create(provider.getCwdFormatted()) + u"]: ";
+    status = U"Open [" + create(provider.getCwdFormatted()) + U"]: ";
   }
   void reHighlight() {
   if(hasHighlighting)
@@ -219,22 +220,22 @@ class State {
   }
   void undo() {
     bool result = cursor->undo();
-    status = result ? u"Undo" : u"Undo failed";
+    status = result ? U"Undo" : U"Undo failed";
     if(result)
       reHighlight();
   }
   void search() {
     if(mode != 0)
       return;
-    miniBuf = u"";
+    miniBuf = U"";
     cursor->bindTo(&miniBuf, true);
     mode = 2;
-    status = u"Search: ";
+    status = U"Search: ";
   }
   void tryEnableHighlighting() {
-    std::vector<std::u16string> fileParts = cursor->split(fileName, u".");
+    std::vector<Utf8String> fileParts = cursor->split(fileName, U".");
     std::string ext = convert_str(fileParts[fileParts.size()-1]);
-    const Language* lang = has_language(fileName == u"Dockerfile" ? "dockerfile" : ext);
+    const Language* lang = has_language(fileName == U"Dockerfile" ? "dockerfile" : ext);
     if(lang) {
       highlighter.setLanguage(*lang, lang->modeName);
       highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y);
@@ -249,7 +250,7 @@ class State {
       if(mode == 1) { // save to
         bool result = cursor->saveTo(convert_str(miniBuf));
         if(result) {
-        status = u"Saved to: " + miniBuf;
+        status = U"Saved to: " + miniBuf;
         if(!path.length()) {
           path = convert_str(miniBuf);
           cursors[activeIndex]->path = path;
@@ -261,19 +262,19 @@ class State {
           tryEnableHighlighting();
         }
         } else {
-          status = u"Failed to save to: " + miniBuf;
+          status = U"Failed to save to: " + miniBuf;
         }
       } else if (mode == 2 || mode == 7) { // search
         status = cursor->search(miniBuf, false, mode != 7);
         if(mode == 7)
           mode = 2;
         // hacky shit
-        if(status != u"[Not found]: ")
+        if(status != U"[Not found]: ")
           mode = 6;
         return;
       } else if (mode == 6) { // search
         status = cursor->search(miniBuf, true);
-        if(status == u"[No further matches]: ") {
+        if(status == U"[No further matches]: ") {
           mode=7;
         }
         return;
@@ -281,18 +282,18 @@ class State {
         auto line_str = convert_str(miniBuf);
         if(isSafeNumber(line_str)) {
           cursor->gotoLine(std::stoi(line_str));
-          status = u"Jump to: " + miniBuf;
+          status = U"Jump to: " + miniBuf;
         } else {
-          status = u"Invalid line: " + miniBuf;
+          status = U"Invalid line: " + miniBuf;
         }
       } else if (mode == 4 || mode == 5) {
         cursor->unbind();
         if(mode == 5) {
           if(round != activeIndex) {
             activateCursor(round);
-            status = u"Switched to: " + create(path.length() ? path : "New File");
+            status = U"Switched to: " + create(path.length() ? path : "New File");
           } else {
-            status = u"Canceled";
+            status = U"Canceled";
           }
         } else {
           bool found = false;
@@ -315,49 +316,49 @@ class State {
          atlas->readFont(convert_str(miniBuf), fontSize);
          provider.fontPath = convert_str(miniBuf);
          provider.writeConfig();
-         status = u"Loaded font: " + miniBuf;
+         status = U"Loaded font: " + miniBuf;
       } else if (mode == 25) {
           if(round == 0) {
-             status = u"Mode: Text";
+             status = U"Mode: Text";
              hasHighlighting = false;
           } else {
              auto lang = LANGUAGES[round-1];
              highlighter.setLanguage(lang, lang.modeName);
              hasHighlighting = true;
-             status = u"Mode: " + miniBuf;
+             status = U"Mode: " + miniBuf;
           }
       } else if (mode == 30) {
         replaceBuffer.search = miniBuf;
         miniBuf = replaceBuffer.replace;
         cursor->unbind();
         cursor->bindTo(&miniBuf);
-        status = u"Replace: ";
+        status = U"Replace: ";
         mode = 31;
         return;
       } else if (mode == 31) {
         mode = 32;
         replaceBuffer.replace = miniBuf;
-        status = replaceBuffer.search + u" => " + replaceBuffer.replace;
+        status = replaceBuffer.search + U" => " + replaceBuffer.replace;
         cursor->unbind();
         return;
       } else if(mode == 32) {
         if(shift_pressed) {
           auto count = cursor->replaceAll(replaceBuffer.search, replaceBuffer.replace);
           if(count)
-            status = u"Replaced " + numberToString(count) + u" matches";
+            status = U"Replaced " + numberToString(count) + U" matches";
           else
-            status = u"[No match]: " + replaceBuffer.search + u" => " + replaceBuffer.replace;
+            status = U"[No match]: " + replaceBuffer.search + U" => " + replaceBuffer.replace;
         } else {
           auto result = cursor->replaceOne(replaceBuffer.search, replaceBuffer.replace, true);
-          status = result  + replaceBuffer.search + u" => " + replaceBuffer.replace;
+          status = result  + replaceBuffer.search + U" => " + replaceBuffer.replace;
           return;
         }
       } else if (mode == 36) {
            cursor->reloadFile(path);
-           status = u"Reloaded";
+           status = U"Reloaded";
       }
     } else {
-      status = u"Aborted";
+      status = U"Aborted";
     }
     cursor->unbind();
     mode = 0;
@@ -383,7 +384,7 @@ class State {
          round++;
       }
       if(round == 0)
-        miniBuf = u"Text";
+        miniBuf = U"Text";
       else
         miniBuf = create(LANGUAGES[round-1].modeName);
     }
@@ -393,28 +394,28 @@ class State {
       return;
     // if(hasHighlighting)
     // highlighter.highlight(cursor->lines, &provider.colors, cursor->skip,  cursor->maxLines, cursor->y);
-    std::u16string branch;
+    Utf8String branch;
     if(cursor->branch.length()) {
-      branch = u" [git: " + create(cursor->branch) + u"]";
+      branch = U" [git: " + create(cursor->branch) + U"]";
     }
-    status = numberToString(cursor->y +1)  + u":" + numberToString(cursor->x +1) + branch + u" ["  + fileName + u": " + (hasHighlighting ? highlighter.languageName : u"Text")  + u"] History Size: " + numberToString(cursor->history.size());
+    status = numberToString(cursor->y +1)  + U":" + numberToString(cursor->x +1) + branch + U" ["  + fileName + U": " + (hasHighlighting ? highlighter.languageName : U"Text")  + U"] History Size: " + numberToString(cursor->history.size());
     if(cursor->selection.active)
-      status += u" Selected: [" + numberToString(cursor->getSelectionSize()) + u"]";
+      status += U" Selected: [" + numberToString(cursor->getSelectionSize()) + U"]";
   }
   void gotoLine() {
     if(mode != 0)
       return;
-    miniBuf = u"";
+    miniBuf = U"";
     cursor->bindTo(&miniBuf);
     mode = 3;
-    status = u"Line: ";
+    status = U"Line: ";
 
 
   }
-  std::u16string getTabInfo() {
+  Utf8String getTabInfo() {
     if(activeIndex == 0 && cursors.size() == 1)
-      return u"[ 1 ]";
-    std::u16string text = u"[ " + numberToString(activeIndex+1) + u":" + numberToString(cursors.size()) + u" ]";
+      return U"[ 1 ]";
+    Utf8String text = U"[ " + numberToString(activeIndex+1) + U":" + numberToString(cursors.size()) + U" ]";
 
     return text;
   }
@@ -451,7 +452,7 @@ class State {
     status = create(path);
     if(path.length()) {
       if(path == "-") {
-        fileName = u"-(STDIN/OUT)";
+        fileName = U"-(STDIN/OUT)";
         hasHighlighting = false;
         renderCoords();
       } else {
@@ -461,7 +462,7 @@ class State {
         checkChanged();
       }
     } else {
-      fileName = u"New File";
+      fileName = U"New File";
       hasHighlighting = false;
       renderCoords();
     }
@@ -560,6 +561,10 @@ private:
     glEnableVertexAttribArray(5);
     glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, bg_color));
     glVertexAttribDivisor(5, 1);
+
+     glEnableVertexAttribArray(6);
+    glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, sizeof(RenderChar), (void*)offsetof(RenderChar, hasColor));
+    glVertexAttribDivisor(6, 1);
 
   }
 

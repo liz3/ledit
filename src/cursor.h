@@ -21,13 +21,13 @@ struct HistoryEntry {
   int mode;
   int length;
   void* userData;
-  std::u16string content;
-  std::vector<std::u16string> extra;
+  Utf8String content;
+  std::vector<Utf8String> extra;
 };
 struct CommentEntry {
   int firstOffset;
   int yStart;
-  std::u16string commentStr;
+  Utf8String commentStr;
 };
 class Cursor {
  public:
@@ -35,7 +35,7 @@ class Cursor {
   bool streamMode = false;
   bool useXFallback;
   std::string branch;
-  std::vector<std::u16string> lines;
+  std::vector<Utf8String> lines;
   std::map<std::string, PosEntry> saveLocs;
   std::deque<HistoryEntry> history;
   std::filesystem::file_time_type last_write_time;
@@ -56,8 +56,8 @@ class Cursor {
 
   float startX = 0;
   float startY = 0;
-  std::vector<std::pair<int, std::u16string>> prepare;
-  std::u16string* bind = nullptr;
+  std::vector<std::pair<int, Utf8String>> prepare;
+  Utf8String* bind = nullptr;
   void setBounds(float height, float lineHeight) {
     this->height = height;
     this->lineHeight = lineHeight;
@@ -88,9 +88,9 @@ class Cursor {
     if(x > lines[y].length())
       x = lines[y].length();
   }
-  void comment(std::u16string commentStr) {
+  void comment(Utf8String commentStr) {
     if(!selection.active) {
-      std::u16string firstLine = lines[y];
+      Utf8String firstLine = lines[y];
       int firstOffset = 0;
       for(char c : firstLine) {
         if(c != ' ' && c != '\t')
@@ -102,19 +102,19 @@ class Cursor {
         CommentEntry* cm = new CommentEntry();
         cm->commentStr = commentStr;
         (&lines[y])->erase(firstOffset, commentStr.length());
-        historyPush(42, firstOffset, u"", cm);
+        historyPush(42, firstOffset, U"", cm);
       } else {
         CommentEntry* cm = new CommentEntry();
         cm->commentStr = commentStr;
         (&lines[y])->insert(firstOffset, commentStr);
-        historyPush(43, firstOffset, u"", cm);
+        historyPush(43, firstOffset, U"", cm);
       }
       return;
     }
     int firstOffset = 0;
     int yStart = selection.getYSmaller();
     int yEnd = selection.getYBigger();
-    std::u16string firstLine = lines[yStart];
+    Utf8String firstLine = lines[yStart];
     for(char c : firstLine) {
       if(c != ' ' && c != '\t')
         break;
@@ -126,7 +126,7 @@ class Cursor {
     cm->commentStr = commentStr;
     cm->yStart = yStart;
     if(remove) {
-      historyPush(40, 0, u"", cm);
+      historyPush(40, 0, U"", cm);
       for(size_t i = yStart; i < yEnd; i++) {
         if((&lines[i])->find(commentStr) != firstOffset)
           break;
@@ -134,7 +134,7 @@ class Cursor {
         history[history.size()-1].length+=1;
       }
     } else {
-      historyPush(41, yEnd-yStart, u"", cm);
+      historyPush(41, yEnd-yStart, U"", cm);
       for(size_t i = yStart; i < yEnd; i++) {
         (&lines[i])->insert(firstOffset, commentStr);
       }
@@ -181,7 +181,7 @@ class Cursor {
     skip = 0;
     prepare.clear();
     history.clear();
-    lines = {u""};
+    lines = {U""};
   }
   void deleteSelection() {
     if(selection.yStart == selection.yEnd) {
@@ -195,8 +195,8 @@ class Cursor {
        int ySmall = selection.getYSmaller();
        int yBig = selection.getYBigger();
        bool isStart = ySmall == selection.yStart;
-       std::u16string save = lines[ySmall];
-       std::vector<std::u16string> toSave;
+       Utf8String save = lines[ySmall];
+       std::vector<Utf8String> toSave;
        lines[ySmall] = lines[ySmall].substr(0, isStart ? selection.xStart : selection.xEnd);
        for(int i = 0; i < yBig-ySmall; i++) {
          toSave.push_back(lines[ySmall+1]);
@@ -245,7 +245,7 @@ class Cursor {
     }
     return offset;
   }
-  void bindTo(std::u16string* entry, bool useXSave = false) {
+  void bindTo(Utf8String* entry, bool useXSave = false) {
     bind = entry;
     xSave = x;
     this->useXFallback = useXSave;
@@ -256,7 +256,7 @@ class Cursor {
     useXFallback = false;
     x = xSave;
   }
-  std::u16string search(std::u16string what, bool skipFirst, bool shouldOffset = true) {
+  Utf8String search(Utf8String what, bool skipFirst, bool shouldOffset = true) {
     int i = shouldOffset ? y : 0;
     bool found = false;
     for(int x = i; x < lines.size(); x++) {
@@ -271,16 +271,16 @@ class Cursor {
         // we are in non 0 mode here, set savex
         xSave = where;
         center(i);
-        return u"[At: " + numberToString(y + 1) + u":" + numberToString(where + 1) + u"]: ";
+        return U"[At: " + numberToString(y + 1) + U":" + numberToString(where + 1) + U"]: ";
       }
       i++;
     }
     if(skipFirst)
-      return u"[No further matches]: ";
-    return u"[Not found]: ";
+      return U"[No further matches]: ";
+    return U"[Not found]: ";
   }
 
-  std::u16string replaceOne(std::u16string what, std::u16string replace, bool allowCenter = true, bool shouldOffset = true) {
+  Utf8String replaceOne(Utf8String what, Utf8String replace, bool allowCenter = true, bool shouldOffset = true) {
     int i = shouldOffset ? y : 0;
     bool found = false;
     for(int x = i; x < lines.size(); x++) {
@@ -292,7 +292,7 @@ class Cursor {
         this->y = x;
         this->x = where;
         historyPush(30, line.length(), line);
-        std::u16string base = line.substr(0, where);
+        Utf8String base = line.substr(0, where);
         base += replace;
         if(line.length() - where - what.length() > 0)
           base += line.substr(where + what.length());
@@ -305,24 +305,24 @@ class Cursor {
         }
          xSave = where + replace.length();
         this->x = xNow;
-        return u"[At: " + numberToString(y + 1) + u":" + numberToString(where + 1) + u"]: ";
+        return U"[At: " + numberToString(y + 1) + U":" + numberToString(where + 1) + U"]: ";
       }
       i++;
       if(x < lines.size()-1)
          xSave = 0;
 
     }
-    return u"[Not found]: ";
+    return U"[Not found]: ";
   }
-  size_t replaceAll(std::u16string what, std::u16string replace) {
+  size_t replaceAll(Utf8String what, Utf8String replace) {
     size_t c = 0;
     while(true) {
       auto res = replaceOne(what, replace, false);
-      if(res == u"[Not found]: ")
+      if(res == U"[Not found]: ")
         break;
       c++;
     }
-    historyPush(31, c, u"");
+    historyPush(31, c, U"");
     if(x > lines[y].length()) {
       x = lines[y].length();
       xSave = x;
@@ -330,10 +330,10 @@ class Cursor {
     return c;
   }
 
-  int findAnyOf(std::u16string str, std::u16string what) {
+  int findAnyOf(Utf8String str, Utf8String what) {
     if(str.length() == 0)
       return -1;
-    std::u16string::const_iterator c;
+    Utf8String::const_iterator c;
     int offset = 0;
     for (c = str.begin(); c != str.end(); c++) {
 
@@ -345,10 +345,10 @@ class Cursor {
 
     return -1;
   }
-  int findAnyOfLast(std::u16string str, std::u16string what) {
+  int findAnyOfLast(Utf8String str, Utf8String what) {
     if(str.length() == 0)
       return -1;
-    std::u16string::const_iterator c;
+    Utf8String::const_iterator c;
     int offset = 0;
     for (c = str.end()-1; c != str.begin(); c--) {
 
@@ -362,7 +362,7 @@ class Cursor {
   }
 
   void advanceWord() {
-    std::u16string* target = bind ? bind : &lines[y];
+    Utf8String* target = bind ? bind : &lines[y];
     int offset = findAnyOf(target->substr(x), wordSeperator);
     if(offset == -1) {
       if(x == target->length() && y < lines.size() -1) {
@@ -377,12 +377,12 @@ class Cursor {
     selection.diffX(x);
     selection.diffY(y);
   }
-  std::u16string deleteWord() {
-    std::u16string* target = bind ? bind : &lines[y];
+  Utf8String deleteWord() {
+    Utf8String* target = bind ? bind : &lines[y];
     int offset = findAnyOf(target->substr(x), wordSeperator);
     if(offset == -1)
       offset = target->length() -x;
-    std::u16string w = target->substr(x,offset);
+    Utf8String w = target->substr(x,offset);
     target->erase(x, offset);
     historyPush(3, w.length(), w);
     return w;
@@ -447,7 +447,7 @@ class Cursor {
         x = 0;
         y = entry.y;
         lines[y] = entry.content;
-        lines.insert(lines.begin() +y, u"");
+        lines.insert(lines.begin() +y, U"");
         center(y);
         break;
       }
@@ -504,7 +504,7 @@ class Cursor {
     }
     case 40: {
       CommentEntry* data = static_cast<CommentEntry*>(entry.userData);
-      std::u16string commentStr = data->commentStr;
+      Utf8String commentStr = data->commentStr;
       size_t len = entry.length;
       for(size_t i = data->yStart; i < data->yStart+len; i++) {
         (&lines[i])->insert(data->firstOffset, commentStr);
@@ -517,7 +517,7 @@ class Cursor {
     }
     case 41: {
       CommentEntry* data = static_cast<CommentEntry*>(entry.userData);
-      std::u16string commentStr = data->commentStr;
+      Utf8String commentStr = data->commentStr;
       size_t len = entry.length;
       for(size_t i = data->yStart; i < data->yStart+len; i++) {
         (&lines[i])->erase(data->firstOffset, commentStr.length());
@@ -554,7 +554,7 @@ class Cursor {
 
 
   void advanceWordBackwards() {
-    std::u16string* target = bind ? bind : &lines[y];
+    Utf8String* target = bind ? bind : &lines[y];
     int offset = findAnyOfLast(target->substr(0,x), wordSeperator);
     if(offset == -1) {
       if(x == 0 && y > 0) {
@@ -592,10 +592,10 @@ class Cursor {
     }
 
   }
-  std::vector<std::u16string> split(std::u16string base, std::u16string delimiter) {
-    std::vector<std::u16string> final;
+  std::vector<Utf8String> split(Utf8String base, Utf8String delimiter) {
+    std::vector<Utf8String> final;
     size_t pos = 0;
-    std::u16string token;
+    Utf8String token;
     while ((pos = base.find(delimiter)) != std::string::npos) {
       token = base.substr(0, pos);
       final.push_back(token);
@@ -637,7 +637,7 @@ class Cursor {
     return final;
   }
   Cursor() {
-    lines.push_back(u"");
+    lines.push_back(U"");
   }
 
    Cursor(std::string path) {
@@ -651,13 +651,13 @@ class Cursor {
      std::stringstream ss;
      std::ifstream stream(path);
      if(!stream.is_open()) {
-       lines.push_back(u"");
+       lines.push_back(U"");
        return;
      }
      ss << stream.rdbuf();
      std::string c = ss.str();
      auto parts = splitNewLine(&c);
-     lines = std::vector<std::u16string>(parts.size());
+     lines = std::vector<Utf8String>(parts.size());
      size_t count = 0;
      for(const auto& ref : parts) {
        lines[count] = create(ref);
@@ -666,7 +666,7 @@ class Cursor {
      stream.close();
      last_write_time = std::filesystem::last_write_time(path);
   }
-  void historyPush(int mode, int length, std::u16string content) {
+  void historyPush(int mode, int length, Utf8String content) {
     if(bind != nullptr)
       return;
     edited = true;
@@ -680,7 +680,7 @@ class Cursor {
       history.pop_back();
     history.push_front(entry);
   }
-  void historyPush(int mode, int length, std::u16string content, void* userData) {
+  void historyPush(int mode, int length, Utf8String content, void* userData) {
     if(bind != nullptr)
       return;
     edited = true;
@@ -695,7 +695,7 @@ class Cursor {
       history.pop_back();
     history.push_front(entry);
   }
-  void historyPushWithExtra(int mode, int length, std::u16string content, std::vector<std::u16string> extra) {
+  void historyPushWithExtra(int mode, int length, Utf8String content, std::vector<Utf8String> extra) {
     if(bind != nullptr)
       return;
     edited = true;
@@ -726,7 +726,7 @@ class Cursor {
     ss << stream.rdbuf();
     std::string c = ss.str();
      auto parts = splitNewLine(&c);
-     lines = std::vector<std::u16string>(parts.size());
+     lines = std::vector<Utf8String>(parts.size());
      size_t count = 0;
      for(const auto& ref : parts) {
        lines[count] = create(ref);
@@ -777,7 +777,7 @@ class Cursor {
     ss << stream.rdbuf();
     std::string c = ss.str();
      auto parts = splitNewLine(&c);
-     lines = std::vector<std::u16string>(parts.size());
+     lines = std::vector<Utf8String>(parts.size());
      size_t count = 0;
      for(const auto& ref : parts) {
        lines[count] = create(ref);
@@ -794,38 +794,38 @@ class Cursor {
     edited = false;
     return true;
   }
-  void append(char16_t c) {
+  void append(char32_t c) {
     if(selection.active) {
       deleteSelection();
       selection.stop();
     }
     if(c == '\n' && bind == nullptr) {
       auto pos = lines.begin() + y;
-      std::u16string* current = &lines[y];
+      Utf8String* current = &lines[y];
       bool isEnd = x == current->length();
       if(isEnd) {
-        std::u16string base;
+        Utf8String base;
         for(size_t t = 0; t < current->length(); t++) {
           if((*current)[t] == ' ')
-            base += u" ";
+            base += U" ";
           else if ((*current)[t] == '\t')
-           base += u"\t";
+           base += U"\t";
           else
             break;
         }
         lines.insert(pos+1,base);
-        historyPush(6, 0, u"");
+        historyPush(6, 0, U"");
         x = base.length();
         y++;
         return;
 
       } else {
         if(x== 0) {
-          lines.insert(pos, u"");
-          historyPush(7, 0, u"");
+          lines.insert(pos, U"");
+          historyPush(7, 0, U"");
         } else {
-          std::u16string toWrite = current->substr(0, x);
-          std::u16string next = current->substr(x);
+          Utf8String toWrite = current->substr(0, x);
+          Utf8String next = current->substr(x);
           lines[y] = toWrite;
           lines.insert(pos+1, next);
           historyPushWithExtra(7, toWrite.length(), toWrite, {next});
@@ -836,14 +836,14 @@ class Cursor {
       x = 0;
     }else {
       auto* target = bind ? bind :  &lines[y];
-      std::u16string content;
+      Utf8String content;
       content += c;
       target->insert(x, content);
       historyPush(8, 1, content);
       x++;
     }
   }
-void appendWithLines(std::u16string content) {
+void appendWithLines(Utf8String content) {
     if(bind) {
       append(content);
       return;
@@ -853,9 +853,9 @@ void appendWithLines(std::u16string content) {
       selection.stop();
     }
     bool hasSave = false;
-    std::u16string save;
-    std::u16string historySave;
-    auto contentLines = split(content, u"\n");
+    Utf8String save;
+    Utf8String historySave;
+    auto contentLines = split(content, U"\n");
     int saveX = 0;
     int count = 0;
     for(int i = 0; i < contentLines.size(); i++) {
@@ -893,13 +893,13 @@ void appendWithLines(std::u16string content) {
     }
     center(y);
   }
-  void append(std::u16string content) {
+  void append(Utf8String content) {
     auto* target = bind ? bind : &lines[y];
     target->insert(x, content);
     x += content.length();
   }
 
-  std::u16string getCurrentAdvance(bool useSaveValue = false) {
+  Utf8String getCurrentAdvance(bool useSaveValue = false) {
     if(useSaveValue)
       return lines[y].substr(0, xSave);
 
@@ -910,19 +910,19 @@ void appendWithLines(std::u16string content) {
   void removeBeforeCursor() {
     if(selection.active)
       return;
-    std::u16string* target = bind ? bind : &lines[y];
+    Utf8String* target = bind ? bind : &lines[y];
     if(x == 0 && target->length() == 0) {
       if(y == lines.size() -1 || bind)
         return;
       if(target->length() == 0) {
-        std::u16string next = lines[y+1];
+        Utf8String next = lines[y+1];
         lines[y] = next;
         lines.erase(lines.begin()+y + 1);
         historyPush(10, next.length(), next);
       return;
       }
     }
-      historyPush(11,1, std::u16string(1, (*target)[x]));
+      historyPush(11,1, Utf8String(1, (*target)[x]));
       target->erase(x, 1);
 
       if(x > target->length())
@@ -935,12 +935,12 @@ void appendWithLines(std::u16string content) {
       selection.stop();
       return;
     }
-    std::u16string* target = bind ? bind :  &lines[y];
+    Utf8String* target = bind ? bind :  &lines[y];
     if(x == 0) {
       if(y == 0 || bind)
         return;
 
-        std::u16string* copyTarget = &lines[y-1];
+        Utf8String* copyTarget = &lines[y-1];
         int xTarget = copyTarget->length();
         if (target->length() > 0) {
           historyPushWithExtra(5, (&lines[y])->length(), lines[y], {lines[y-1]});
@@ -953,7 +953,7 @@ void appendWithLines(std::u16string content) {
         y--;
         x = xTarget;
     } else {
-      historyPush(4, 1, std::u16string(1, (*target)[x-1]));
+      historyPush(4, 1, Utf8String(1, (*target)[x-1]));
       target->erase(x-1, 1);
       x--;
     }
@@ -961,7 +961,7 @@ void appendWithLines(std::u16string content) {
   void moveUp() {
     if(y == 0 || bind)
       return;
-   std::u16string* target = &lines[y-1];
+   Utf8String* target = &lines[y-1];
    int targetX = target->length() < x ? target->length() : x;
    x = targetX;
    y--;
@@ -970,7 +970,7 @@ void appendWithLines(std::u16string content) {
   void moveDown() {
     if(bind || y == lines.size()-1)
       return;
-   std::u16string* target = &lines[y+1];
+   Utf8String* target = &lines[y+1];
    int targetX = target->length() < x ? target->length() : x;
    x = targetX;
    y++;
@@ -992,7 +992,7 @@ void appendWithLines(std::u16string content) {
 
 
   void moveRight() {
-    std::u16string* current = bind ? bind : &lines[y];
+    Utf8String* current = bind ? bind : &lines[y];
     if(x == current->length()) {
       if(y == lines.size()-1 || bind)
         return;
@@ -1004,11 +1004,11 @@ void appendWithLines(std::u16string content) {
     selection.diff(x, y);
   }
   void moveLeft() {
-    std::u16string* current = bind ? bind :  &lines[y];
+    Utf8String* current = bind ? bind :  &lines[y];
     if(x == 0) {
       if(y == 0 || bind)
         return;
-      std::u16string* target = & lines[y-1];
+      Utf8String* target = & lines[y-1];
       y--;
       x = target->length();
     } else {
@@ -1044,7 +1044,7 @@ void appendWithLines(std::u16string content) {
     edited = false;
     return true;
   }
-  std::vector<std::pair<int, std::u16string>>* getContent(FontAtlas* atlas, float maxWidth, bool onlyCalculate) {
+  std::vector<std::pair<int, Utf8String>>* getContent(FontAtlas* atlas, float maxWidth, bool onlyCalculate) {
     prepare.clear();
     int end = skip + maxLines;
     if(end >= lines.size()) {
@@ -1070,7 +1070,7 @@ void appendWithLines(std::u16string content) {
     int maxSupport = 0;
     for(size_t i = skip; i < end; i++) {
       auto s = lines[i];
-      prepare.push_back(std::pair<int, std::u16string>(s.length(), s));
+      prepare.push_back(std::pair<int, Utf8String>(s.length(), s));
     }
     float neededAdvance = atlas->getAdvance((&lines[y])->substr(0,useXFallback ? xSave : x));
     int xOffset = 0;
@@ -1099,7 +1099,7 @@ void appendWithLines(std::u16string content) {
         if(a.length() > xOffset)
           prepare[i].second =  a.substr(xOffset);
         else
-          prepare[i].second = u"";
+          prepare[i].second = U"";
       }
     }
     this->xOffset = xOffset;
@@ -1110,11 +1110,11 @@ void appendWithLines(std::u16string content) {
     if(targetY < 0 || targetY == lines.size())
       return;
    if(targetY < y ) {
-      std::u16string toOffset = lines[y-1];
+      Utf8String toOffset = lines[y-1];
       lines[y-1] = lines[y];
       lines[y] = toOffset;
     } else {
-      std::u16string toOffset = lines[y+1];
+      Utf8String toOffset = lines[y+1];
       lines[y+1] = lines[y];
       lines[y] = toOffset;
     }

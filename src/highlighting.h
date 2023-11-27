@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <sstream>
+#include "utf8String.h"
 struct Language {
   std::string modeName;
   std::vector<std::string> keyWords;
@@ -16,20 +17,20 @@ struct Language {
   std::vector<std::string> fileExtensions;
 };
 struct LanguageExpanded {
-  std::u16string modeName;
-  std::vector<std::u16string> keyWords;
-  std::vector<std::u16string> specialWords;
-  std::u16string singleLineComment;
-  std::pair<std::u16string, std::u16string> multiLineComment;
-  std::u16string stringCharacters;
-  char16_t escapeChar;
+  Utf8String modeName;
+  std::vector<Utf8String> keyWords;
+  std::vector<Utf8String> specialWords;
+  Utf8String singleLineComment;
+  std::pair<Utf8String, Utf8String> multiLineComment;
+  Utf8String stringCharacters;
+  char32_t escapeChar;
 };
 struct HighlighterState {
   int start;
   bool busy;
   bool wasReset;
   int mode;
-  std::u16string buffer;
+  Utf8String buffer;
   char stringChar;
 };
 struct SavedState {
@@ -39,22 +40,22 @@ struct SavedState {
 };
 class Highlighter {
 public:
-  std::u16string languageName;
+  Utf8String languageName;
 
   LanguageExpanded language;
-  const std::u16string whitespace = u" \t\n[]{}();:.,*-+/";
-  bool isNonChar(char16_t c) {
+  const Utf8String whitespace = U" \t\n[]{}();:.,*-+/";
+  bool isNonChar(char32_t c) {
     return whitespace.find(c) != std::string::npos;
   }
- bool isNumber(char16_t c) {
+ bool isNumber(char32_t c) {
   return c >= '0' && c <= '9';
  }
- bool isNumberEnd(char16_t c, bool hexa) {
+ bool isNumberEnd(char32_t c, bool hexa) {
   if(hexa && ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
     return false;
   return !isNumber(c) && c != '.' && c != 'x';
  }
-  std::u16string cachedContent = u"";
+  Utf8String cachedContent = U"";
   std::map<int, Vec4f> cached;
   std::map<int, std::pair<int, int>> lineIndex;
   Vec4f lastEntry;
@@ -76,32 +77,32 @@ public:
     if(lang.singleLineComment.length()) {
       language.singleLineComment = create(lang.singleLineComment);
     } else {
-      language.singleLineComment = u"";
+      language.singleLineComment = U"";
     }
     if(lang.multiLineComment.first.length()) {
       language.multiLineComment = std::pair(create(lang.multiLineComment.first), create(lang.multiLineComment.second));
     } else {
-      language.multiLineComment = std::pair(u"", u"");
+      language.multiLineComment = std::pair(U"", U"");
     }
     language.stringCharacters = create(lang.stringCharacters);
-    language.escapeChar = (char16_t) lang.escapeChar;
+    language.escapeChar = (char32_t) lang.escapeChar;
 
     languageName = create(name);
     wasCached = false;
   }
-  std::map<int, Vec4f>* highlight(std::vector<std::u16string>& lines, EditorColors* colors, int skip, int maxLines, int y) {
-    std::u16string str;
+  std::map<int, Vec4f>* highlight(std::vector<Utf8String>& lines, EditorColors* colors, int skip, int maxLines, int y) {
+    Utf8String str;
     for(size_t i = 0; i < lines.size(); i++) {
       str += lines[i];
       if(i < lines.size() -1)
-        str += u"\n";
+        str += U"\n";
     }
     return highlight(str, colors, skip, maxLines, y);
   }
   std::map<int, Vec4f>* get() {
     return &cached;
   }
-  std::map<int, Vec4f>* highlight(std::u16string raw, EditorColors* colors, int skip, int maxLines, int yPassed) {
+  std::map<int, Vec4f>* highlight(Utf8String& raw, EditorColors* colors, int skip, int maxLines, int yPassed) {
     // if(wasCached && raw == cachedContent && skip == lastSkip)
     //   return &cached;
 
@@ -111,7 +112,7 @@ public:
     }
     //   entries = cached;
     // }
-    HighlighterState state =  {0, false, false, 0, u"", 0};
+    HighlighterState state =  {0, false, false, 0, U"", 0};
     // if(skip > 0 && wasCached)
     //   state = savedState;
     int startIndex = 0;
@@ -123,13 +124,14 @@ public:
     Vec4f special_color = colors->special_color;
     Vec4f comment_color = colors->comment_color;
     Vec4f number_color = colors->number_color;
-    char16_t last = 0;
+    char32_t last = 0;
     size_t i;
     size_t lCount = 0;
     int last_entry = -1;
     bool wasTriggered = false;
+    auto vec = raw.getCodePoints();
     for(i = 0; i < raw.length(); i++) {
-      char16_t current = raw[i];
+      char32_t current = vec[i];
       if(current == '\n') {
         int endIndex = entries.size();
         lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);
@@ -161,13 +163,13 @@ public:
         entries[i] = default_color;
         last_entry = i;
       } else if (state.busy && (state.mode == 6 || state.mode == 7) && isNumberEnd(current, state.mode == 7)) {
-        state.buffer = u"";
+        state.buffer = U"";
         state.busy = false;
         state.mode = 0;
         entries[i] = default_color;
         last_entry = i;
       } else if (state.busy && state.mode == 2 && current == '\n') {
-        state.buffer = u"";
+        state.buffer = U"";
         state.busy = false;
         state.mode = 0;
         entries[i] = default_color;
@@ -178,11 +180,11 @@ public:
         last_entry = i- (language.singleLineComment.length()-1);
         state.busy = true;
         state.mode = 2;
-        state.buffer = u"";
+        state.buffer = U"";
       } else if (language.multiLineComment.first.length() && hasEnding(state.buffer, language.multiLineComment.first) && !state.busy) {
         entries[i- language.multiLineComment.first.length()] = comment_color;
         last_entry = i- (language.multiLineComment.first.length());
-        state.buffer = u"";
+        state.buffer = U"";
         state.busy = true;
         state.mode = 3;
       } else if(isNonChar(current) && !state.busy && state.buffer.length() && !state.wasReset) {
@@ -193,13 +195,13 @@ public:
           entries[i] = default_color;
           last_entry = i;
           state.wasReset = true;
-          state.buffer = u"";
+          state.buffer = U"";
         } else if (std::find(language.specialWords.begin(), language.specialWords.end(), state.buffer)!= language.specialWords.end()) {
           entries[state.start] = special_color;
           entries[i] = default_color;
           last_entry = i;
           state.wasReset = true;
-          state.buffer = u"";
+          state.buffer = U"";
         }
 
       } else if (isNumber(current) && isNonChar(last) && !state.busy) {
@@ -211,7 +213,7 @@ public:
           entries[i] = number_color;
       } else if(!state.busy && isNonChar(last) && !isNonChar(current)) {
         state.wasReset = false;
-        state.buffer = u"";
+        state.buffer = U"";
         state.start = i;
       }
 
@@ -253,10 +255,10 @@ public:
         entries[offset(i) - language.singleLineComment.length()] = comment_color;
         state.busy = true;
         state.mode = 2;
-        state.buffer = u"";
+        state.buffer = U"";
       }else if (hasEnding(state.buffer, language.multiLineComment.first)) {
         entries[i] = comment_color;
-        state.buffer = u"";
+        state.buffer = U"";
         state.busy = true;
         state.mode = 3;
       }
@@ -274,15 +276,15 @@ public:
     return &cached;
   }
 private:
-  bool nextIsValid(std::u16string str, int i) {
+  bool nextIsValid(Utf8String str, int i) {
     return i >= str.length()-1 || isNonChar(str[i+1]);
   }
   int offset(int i) {
     return i+1;
   }
-  bool hasEnding (std::u16string const &fullString, std::u16string const &ending) {
+  bool hasEnding (Utf8String const &fullString, Utf8String const &ending) {
     if (fullString.length() >= ending.length()) {
-      return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+      return fullString.endsWith(ending);
     } else {
       return false;
     }

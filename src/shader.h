@@ -11,7 +11,8 @@ struct CharacterEntry {
   float offset;
   uint8_t* data = nullptr;
   int xPos;
-  char16_t c;
+  char32_t c;
+  bool hasColor;
 };
 struct RenderChar {
   Vec2f pos;
@@ -20,6 +21,7 @@ struct RenderChar {
   Vec2f uv_size;
   Vec4f fg_color;
   Vec4f bg_color;
+  float hasColor;
 };
 struct SelectionEntry {
   Vec2f pos;

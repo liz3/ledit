@@ -25,7 +25,7 @@ Ledit is in a way the same, it does not have a plugin system, neither does it ev
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot3.png?raw=true)
 
 ## Encodings
-Ledit will work correctly with ascii and 2 byte unicode/UTF-8, 3-4 byte unicode characters will not work.
+Ledit supports the entire utf-8 range.
 
 ## Building
 To build ledit you only need [CMake](https://cmake.org/) and a C/C++ compiler which supports C++17.
@@ -67,6 +67,7 @@ cmake --build . --config Release
 - src/provider.h: This contains the config parser and providers for folder autocomplete and other related things.
 - src/selection.h: Small structure to keep track of selection state.
 - src/la.(cc/h): Vectors implementation for coords and RGBA colors.
+- src/utf8String.h: Utf8 string implementation
 - third-party: ledit dependencies
 ```
 There are more but these are self explaining.
@@ -114,6 +115,9 @@ For the colors there are default values, for the font face either remove it comp
      0, 0, 160, 255   // Color used for the Minibuffer, actions like search, replace, save new and so on. RGBA (0-255)
     ]
   },
+  // optional load additional font files
+  "extra_fonts": [
+  ],
   "window_transparency": true // if the window is allowed to be transparent
   "font_face": "/Users/liz3/Library/Fonts/FiraCode-Regular.ttf" // TTF font face path
 }
