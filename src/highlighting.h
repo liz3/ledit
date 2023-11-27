@@ -129,8 +129,9 @@ public:
     size_t lCount = 0;
     int last_entry = -1;
     bool wasTriggered = false;
+    auto vec = raw.getCodePoints();
     for(i = 0; i < raw.length(); i++) {
-      char32_t current = raw[i];
+      char32_t current = vec[i];
       if(current == '\n') {
         int endIndex = entries.size();
         lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);

@@ -348,6 +348,9 @@ private:
   }
   std::pair<size_t, size_t> calculateByteLength(size_t character_start,
                                                 size_t length) const {
+    if(character_start == 0 && length == character_length){
+        return std::pair(0, base.length());
+    }
     const std::string &u = this->base;
     int l = u.length();
     size_t offset = 0;
