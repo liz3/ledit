@@ -33,7 +33,7 @@ class Cursor {
  public:
   bool edited = false;
   bool streamMode = false;
-  bool useXFallback;
+  bool useXFallback = false;
   std::string branch;
   std::vector<Utf8String> lines;
   std::map<std::string, PosEntry> saveLocs;
