@@ -180,7 +180,7 @@ const std::vector<Language> LANGUAGES = {
       "bool",      "usize",         "comptime",    "c_int", "i8",     "u8",
       "i16",       "u16",           "i32",         "u32",   "i64",    "u64",
       "struct",    "catch",         "unreachable", "defer", "break",  "switch",
-      "type",      "usingnamespace", "export", "callconv", "for", "while", "threadlocal", "orelse", "or", "and"},
+      "type",      "usingnamespace", "export", "callconv", "for", "while", "threadlocal", "orelse", "or", "and", "anyopaque", "anytype"},
      {"@addrSpaceCast",
       "@addWithOverflow",
       "@alignCast",
