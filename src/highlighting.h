@@ -5,6 +5,8 @@
 #include <string>
 #include <map>
 #include <sstream>
+#include <uchar.h>
+#include <vector>
 #include "utf8String.h"
 struct Language {
   std::string modeName;
@@ -43,9 +45,13 @@ public:
   Utf8String languageName;
 
   LanguageExpanded language;
-  const Utf8String whitespace = U" \t\n[]{}();:.,*-+/";
+  const char32_t whitespace[19] = U" \t\n[]{}();:.,*-+/";
   bool isNonChar(char32_t c) {
-    return whitespace.find(c) != std::string::npos;
+    for(size_t i = 0; i < 19; i++) {
+      if(c == whitespace[i])
+        return true;
+    }
+    return false;
   }
  bool isNumber(char32_t c) {
   return c >= '0' && c <= '9';
@@ -206,7 +212,7 @@ public:
 
       } else if (isNumber(current) && isNonChar(last) && !state.busy) {
           state.mode = 6;
-          if(current == '0' && i < raw.length()-1 && (raw[i+1] == 'x' || raw[i+1] == 'X'))
+          if(current == '0' && i < raw.length()-1 && (vec[i+1] == 'x' || vec[i+1] == 'X'))
             state.mode = 7;
           state.busy = true;
           last_entry = i;

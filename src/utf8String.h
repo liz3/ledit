@@ -173,7 +173,7 @@ public:
   }
 
   bool operator==(const Utf8String &other) const {
-    return base == other.getStr();
+    return base == other.getStrRef();
   }
 
   bool operator==(const char32_t input[]) {
@@ -219,6 +219,7 @@ public:
   size_t length() const { return this->character_length; }
   size_t size() const { return this->character_length; }
   std::string getStr() const { return this->base; }
+  const std::string& getStrRef() const { return this->base; }
   std::vector<char32_t> getCodePoints() {
     return this->toCodePoints(this->base);
   }
