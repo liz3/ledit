@@ -72,6 +72,10 @@ void character_callback(GLFWwindow* window, unsigned int codepoint)
     return;
   gState->invalidateCache();
   gState->exitFlag = false;
+  if(gState->exitLoop){
+    glfwSetWindowShouldClose(window, false);
+  }
+  gState->exitLoop = false;
 #ifdef _WIN32
   bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
   if(ctrl_pressed)
@@ -125,6 +129,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
   }
   gState->exitFlag = false;
+  if(gState->exitLoop){
+    glfwSetWindowShouldClose(window, false);
+  }
+  gState->exitLoop = false;
   bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
   gState->ctrlPressed = ctrl_pressed;
   bool shift_pressed = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
@@ -348,8 +356,21 @@ int main(int argc, char** argv) {
     float WIDTH = 0;
     float HEIGHT = 0;
     auto maxRenderWidth = 0;
-    while (!glfwWindowShouldClose(window))
+    while (true)
     {
+      if(glfwWindowShouldClose(window)) {
+          if(state.exitFlag)
+            break;
+          auto* edited = state.hasEditedBuffer();
+          if(!edited){
+            break;
+          }
+
+         gState->status = create(edited->path.length() ? edited->path : "New File") + U" edited, press ESC again to exit";
+         if(!gState->exitLoop)
+          state.invalidateCache();
+        gState->exitLoop = true;
+      }
       if(state.cacheValid) {
         glfwWaitEvents();
         continue;

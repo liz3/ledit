@@ -149,6 +149,13 @@ public:
       if(skip > 0 && wasCached && lCount < skip-1) {
         continue;
       }
+       if (state.busy && (state.mode == 6 || state.mode == 7) && isNumberEnd(current, state.mode == 7)) {
+        state.buffer = U"";
+        state.busy = false;
+        state.mode = 0;
+        entries[i] = default_color;
+        last_entry = i;
+      } 
       if(language.stringCharacters.find(current) != std::string::npos && (last != language.escapeChar || (last == language.escapeChar && i >1 && raw[i-2] == language.escapeChar))) {
         if(state.mode == 0 && !state.busy) {
           state.mode = 1;
@@ -167,12 +174,6 @@ public:
       } else if (state.busy && state.mode == 3 && hasEnding(state.buffer, language.multiLineComment.second)) {
         state.mode = 0;
         state.busy = false;
-        entries[i] = default_color;
-        last_entry = i;
-      } else if (state.busy && (state.mode == 6 || state.mode == 7) && isNumberEnd(current, state.mode == 7)) {
-        state.buffer = U"";
-        state.busy = false;
-        state.mode = 0;
         entries[i] = default_color;
         last_entry = i;
       } else if (state.busy && state.mode == 2 && current == '\n') {

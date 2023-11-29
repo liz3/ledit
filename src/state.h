@@ -25,6 +25,7 @@ class State {
   GLuint vao, vbo;
   bool focused = true;
   bool exitFlag = false;
+  bool exitLoop = false;
   bool cacheValid = false;
   GLuint sel_vao, sel_vbo;
   GLuint highlight_vao, highlight_vbo;
