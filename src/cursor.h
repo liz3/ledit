@@ -1061,9 +1061,11 @@ public:
       if (skip < 0)
         skip = 0;
     }
-    if (y == end && end < (lines.size())) {
-      skip++;
-      end++;
+    if (y >= end && end < (lines.size())) {
+      while (y >= end) {
+        skip++;
+        end++;
+      }
 
     } else if (y < skip && skip > 0) {
       skip--;
