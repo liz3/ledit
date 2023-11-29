@@ -173,7 +173,7 @@ public:
   }
 
   bool operator==(const Utf8String &other) const {
-    return base == other.getStrRef();
+    return this->getStrRef() == other.getStrRef();
   }
 
   bool operator==(const char32_t input[]) {
@@ -188,9 +188,10 @@ public:
     return n != base;
   }
 
-  size_t find(char32_t search, size_t start) {
+  size_t find(char32_t search, size_t start) const {
+    const auto chars = getCodePointsRange(start);
     for (size_t i = start; i < this->character_length; i++) {
-      if (getCharacterAt(i) == search)
+      if (chars[i] == search)
         return i;
     }
     return std::string::npos;
@@ -201,8 +202,9 @@ public:
     return str.find(search.getStr());
   }
   size_t find(char32_t search) const {
+    auto chars = getCodePoints();
     for (size_t i = 0; i < this->character_length; i++) {
-      if (getCharacterAt(i) == search)
+      if (chars[i] == search)
         return i;
     }
     return std::string::npos;
@@ -219,23 +221,24 @@ public:
   size_t length() const { return this->character_length; }
   size_t size() const { return this->character_length; }
   std::string getStr() const { return this->base; }
-  const std::string& getStrRef() const { return this->base; }
-  std::vector<char32_t> getCodePoints() {
+  const std::string &getStrRef() const { return this->base; }
+  std::vector<char32_t> getCodePoints() const {
     return this->toCodePoints(this->base);
   }
-  std::vector<char32_t> getCodePointsRange(size_t off = 0, size_t len = 0) {
+  std::vector<char32_t> getCodePointsRange(size_t off = 0,
+                                           size_t len = 0) const {
     return this->toCodePoints(this->base, off, len);
   }
 
   char32_t getCharacterAt(size_t index) const {
-    if(character_length == 0)
-        return 0;
+    if (character_length == 0)
+      return 0;
     auto p = calculateByteLength(index, 1);
     std::string sub = this->base.substr(p.first, p.second);
     std::vector<char32_t> entries = toCodePoints(sub);
     return entries[0];
   }
-    Utf8String substr(size_t start = 0) const {
+  Utf8String substr(size_t start = 0) const {
     auto p = calculateByteLength(start);
     return Utf8String(this->base.substr(p.first, p.second));
   }
@@ -351,8 +354,8 @@ private:
   }
   std::pair<size_t, size_t> calculateByteLength(size_t character_start,
                                                 size_t length) const {
-    if(character_start == 0 && length == character_length){
-        return std::pair(0, base.length());
+    if (character_start == 0 && length == character_length) {
+      return std::pair(0, base.length());
     }
     const std::string &u = this->base;
     int l = u.length();
@@ -466,7 +469,7 @@ private:
   void setState() {
     this->character_length = calculateCharacterLength(this->base);
   }
-  std::vector<char32_t> toCodePoints(std::string &u, size_t off = 0,
+  std::vector<char32_t> toCodePoints(const std::string &u, size_t off = 0,
                                      size_t len = 0) const {
     std::vector<char32_t> points;
     size_t character_pos = 0;

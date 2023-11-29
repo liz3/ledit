@@ -6,6 +6,7 @@
 #include <map>
 #include <sstream>
 #include <uchar.h>
+#include <unordered_map>
 #include <vector>
 #include "utf8String.h"
 struct Language {
@@ -20,8 +21,8 @@ struct Language {
 };
 struct LanguageExpanded {
   Utf8String modeName;
-  std::vector<Utf8String> keyWords;
-  std::vector<Utf8String> specialWords;
+  std::unordered_map<std::string, bool> keyWords;
+  std::unordered_map<std::string, bool> specialWords;
   Utf8String singleLineComment;
   std::pair<Utf8String, Utf8String> multiLineComment;
   Utf8String stringCharacters;
@@ -74,11 +75,11 @@ public:
     language.modeName = create(lang.modeName);
     language.keyWords.clear();
     for(auto& entry : lang.keyWords) {
-      language.keyWords.push_back(create(entry));
+      language.keyWords[entry] = 1;
     }
     language.specialWords.clear();
     for(auto& entry : lang.specialWords) {
-      language.specialWords.push_back(create(entry));
+      language.specialWords[entry] = 1;
     }
     if(lang.singleLineComment.length()) {
       language.singleLineComment = create(lang.singleLineComment);
@@ -195,14 +196,14 @@ public:
         state.mode = 3;
       } else if(isNonChar(current) && !state.busy && state.buffer.length() && !state.wasReset) {
 
-        if (std::find(language.keyWords.begin(), language.keyWords.end(), state.buffer)!= language.keyWords.end()) {
+        if (language.keyWords.count(state.buffer.getStrRef())) {
 
           entries[state.start] = keyword_color;
           entries[i] = default_color;
           last_entry = i;
           state.wasReset = true;
           state.buffer = U"";
-        } else if (std::find(language.specialWords.begin(), language.specialWords.end(), state.buffer)!= language.specialWords.end()) {
+        } else if (language.specialWords.count(state.buffer.getStrRef())) {
           entries[state.start] = special_color;
           entries[i] = default_color;
           last_entry = i;
@@ -248,11 +249,11 @@ public:
     //        std::cout << "lol: " << state.buffer << "end\n";
     if(state.buffer.length()) {
 
-      if (std::find(language.keyWords.begin(), language.keyWords.end(), state.buffer)!= language.keyWords.end() && nextIsValid(raw, i)) {
+      if (language.keyWords.count(state.buffer.getStrRef())) {
         entries[state.start] = keyword_color;
         entries[i] = default_color;
         state.wasReset = true;
-      } else if (std::find(language.specialWords.begin(), language.specialWords.end(), state.buffer)!= language.specialWords.end() && nextIsValid(raw, i)) {
+      } else if (language.specialWords.count(state.buffer.getStrRef())) {
         entries[state.start] = special_color;
         entries[i] = default_color;
         state.wasReset = true;
