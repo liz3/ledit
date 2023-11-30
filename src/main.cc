@@ -133,7 +133,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     glfwSetWindowShouldClose(window, false);
   }
   gState->exitLoop = false;
-  bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
+  bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS || mods & GLFW_MOD_CONTROL;
   gState->ctrlPressed = ctrl_pressed;
   bool shift_pressed = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
   bool x_pressed = glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS;
