@@ -62,12 +62,12 @@ public:
     return false;
   return !isNumber(c) && c != '.' && c != 'x';
  }
-  Utf8String cachedContent = U"";
   std::map<int, Vec4f> cached;
   std::map<int, std::pair<int, int>> lineIndex;
   Vec4f lastEntry;
   int lastSkip = 0;
   int lastMax = 0;
+  size_t last_history_size = 0;
   int lastY = 0;
   SavedState savedState;
   bool wasCached = false;
@@ -97,31 +97,28 @@ public:
     languageName = create(name);
     wasCached = false;
   }
-  std::map<int, Vec4f>* highlight(std::vector<Utf8String>& lines, EditorColors* colors, int skip, int maxLines, int y) {
+  std::map<int, Vec4f>* highlight(std::vector<Utf8String>& lines, EditorColors* colors, int skip, int maxLines, int y, size_t history_size) {
     Utf8String str;
     for(size_t i = 0; i < lines.size(); i++) {
       str += lines[i];
       if(i < lines.size() -1)
         str += U"\n";
     }
-    return highlight(str, colors, skip, maxLines, y);
+    return highlight(str, colors, skip, maxLines, y, history_size);
   }
   std::map<int, Vec4f>* get() {
     return &cached;
   }
-  std::map<int, Vec4f>* highlight(Utf8String& raw, EditorColors* colors, int skip, int maxLines, int yPassed) {
-    // if(wasCached && raw == cachedContent && skip == lastSkip)
-    //   return &cached;
+  std::map<int, Vec4f>* highlight(Utf8String& raw, EditorColors* colors, int skip, int maxLines, int yPassed, size_t history_size) {
+    if(wasCached && history_size == last_history_size)
+      return &cached;
 
      std::map<int, Vec4f> entries;
     if(skip != lastSkip) {
       wasCached = false;
     }
-    //   entries = cached;
-    // }
+
     HighlighterState state =  {0, false, false, 0, U"", 0};
-    // if(skip > 0 && wasCached)
-    //   state = savedState;
     int startIndex = 0;
     int y = 0;
     lineIndex.clear();
@@ -276,11 +273,11 @@ public:
 
     lastMax = maxLines;
     cached = entries;
-    lastY = yPassed;;
+    lastY = yPassed;
+    last_history_size = history_size;
 
     wasCached = true;
     lastSkip = skip;
-    cachedContent = raw;
     return &cached;
   }
 private:

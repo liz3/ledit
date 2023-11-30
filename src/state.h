@@ -153,7 +153,7 @@ class State {
       if(mode != 0)
         return;
       if(hasHighlighting)
-        highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y);
+        highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y, cursor->history.size());
       status = U"Pasted " + numberToString(str.length()) + U" Characters";
     }
   }
@@ -216,7 +216,7 @@ class State {
   }
   void reHighlight() {
   if(hasHighlighting)
-    highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y);
+    highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y, cursor->history.size());
 
   }
   void undo() {
@@ -239,7 +239,7 @@ class State {
     const Language* lang = has_language(fileName == U"Dockerfile" ? "dockerfile" : ext);
     if(lang) {
       highlighter.setLanguage(*lang, lang->modeName);
-      highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y);
+      highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y, cursor->history.size());
       hasHighlighting = true;
     } else {
       hasHighlighting = false;
