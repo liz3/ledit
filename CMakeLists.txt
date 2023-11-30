@@ -7,7 +7,6 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(DISABLE_PACKAGE_CONFIG_AND_INSTALL ON)
 set(SKIP_INSTALL_ALL ON)
 add_executable(ledit src/glad.c src/la.cc src/main.cc)
-
 add_subdirectory(third-party/zlib)
 set(ZLIB_LIBRARY zlibstatic)
 set(ZLIB_LIBRARIES zlibstatic)
@@ -31,6 +30,7 @@ endif()
 add_subdirectory(third-party/glfw)
 
 set(FT_WITH_PNG ON)
+
 add_subdirectory(third-party/freetype2)
 if (NOT WIN32 AND NOT APPLE)
     target_link_libraries(ledit PUBLIC fontconfig dl)

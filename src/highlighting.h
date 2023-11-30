@@ -1,7 +1,7 @@
 #ifndef HIGHLIGHTING_H
 #define HIGHLIGHTING_H
 #include "la.h"
-#include "providers.h"
+
 #include <string>
 #include <map>
 #include <sstream>
@@ -9,6 +9,20 @@
 #include <unordered_map>
 #include <vector>
 #include "utf8String.h"
+struct EditorColors {
+  Vec4f string_color = vec4f(0.2, 0.6, 0.4, 1.0);
+  Vec4f default_color = vec4fs(0.95);
+  Vec4f keyword_color = vec4f(0.6, 0.1, 0.2, 1.0);
+  Vec4f special_color = vec4f(0.2, 0.2, 0.8, 1.0);
+  Vec4f number_color = vec4f(0.2, 0.2, 0.6, 1.0);
+  Vec4f comment_color = vec4fs(0.5);
+  Vec4f background_color = vec4f(0, 0, 0, 1.0);
+  Vec4f highlight_color = vec4f(0.1, 0.1, 0.1, 1.0);
+  Vec4f selection_color = vec4f(0.7, 0.7, 0.7, 0.6);
+  Vec4f status_color = vec4f(0.8, 0.8, 1.0, 0.9);
+  Vec4f minibuffer_color = vec4fs(1.0);
+  Vec4f line_number_color = vec4fs(0.8);
+};
 struct Language {
   std::string modeName;
   std::vector<std::string> keyWords;
@@ -71,6 +85,7 @@ public:
   int lastY = 0;
   SavedState savedState;
   bool wasCached = false;
+  bool wasEntire = false;
   void setLanguage(Language lang, std::string name) {
     language.modeName = create(lang.modeName);
     language.keyWords.clear();
@@ -110,12 +125,15 @@ public:
     return &cached;
   }
   std::map<int, Vec4f>* highlight(Utf8String& raw, EditorColors* colors, int skip, int maxLines, int yPassed, size_t history_size) {
-    if(wasCached && history_size == last_history_size)
+    if(wasCached && wasEntire && history_size == last_history_size)
       return &cached;
 
      std::map<int, Vec4f> entries;
     if(skip != lastSkip) {
       wasCached = false;
+      wasEntire = true;
+    } else {
+      wasEntire = !wasCached;
     }
 
     HighlighterState state =  {0, false, false, 0, U"", 0};
@@ -173,7 +191,13 @@ public:
         state.busy = false;
         entries[i] = default_color;
         last_entry = i;
-      } else if (state.busy && state.mode == 2 && current == '\n') {
+      } else if (language.multiLineComment.first.length() && hasEnding(state.buffer, language.multiLineComment.first) && (!state.busy || state.mode == 2)) {
+        entries[i- language.multiLineComment.first.length()] = comment_color;
+        last_entry = i- (language.multiLineComment.first.length());
+        state.buffer = U"";
+        state.busy = true;
+        state.mode = 3;
+      }  else if (state.busy && state.mode == 2 && current == '\n') {
         state.buffer = U"";
         state.busy = false;
         state.mode = 0;
@@ -186,13 +210,7 @@ public:
         state.busy = true;
         state.mode = 2;
         state.buffer = U"";
-      } else if (language.multiLineComment.first.length() && hasEnding(state.buffer, language.multiLineComment.first) && !state.busy) {
-        entries[i- language.multiLineComment.first.length()] = comment_color;
-        last_entry = i- (language.multiLineComment.first.length());
-        state.buffer = U"";
-        state.busy = true;
-        state.mode = 3;
-      } else if(isNonChar(current) && !state.busy && state.buffer.length() && !state.wasReset) {
+      }else if(isNonChar(current) && !state.busy && state.buffer.length() && !state.wasReset) {
 
         if (language.keyWords.count(state.buffer.getStrRef())) {
 

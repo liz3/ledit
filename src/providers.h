@@ -2,6 +2,7 @@
 #define PROVIDERS_H
 #include <vector>
 #include <filesystem>
+#include "highlighting.h"
 #include "la.h"
 #include "utils.h"
 #include "../third-party/json/json.hpp"
@@ -20,20 +21,7 @@ struct FontEntry {
 #endif
 namespace fs = std::filesystem;
 using json = nlohmann::json;
-struct EditorColors {
-  Vec4f string_color = vec4f(0.2,0.6,0.4,1.0);
-  Vec4f default_color = vec4fs(0.95);
-  Vec4f keyword_color = vec4f(0.6, 0.1, 0.2, 1.0);
-  Vec4f special_color = vec4f(0.2, 0.2, 0.8, 1.0);
-  Vec4f number_color = vec4f(0.2, 0.2, 0.6, 1.0);
-  Vec4f comment_color = vec4fs(0.5);
-  Vec4f background_color = vec4f(0,0,0,1.0);
-  Vec4f highlight_color = vec4f(0.1,0.1,0.1,1.0);
-  Vec4f selection_color = vec4f(0.7,0.7, 0.7, 0.6);
-  Vec4f status_color = vec4f(0.8,0.8,1.0, 0.9);
-  Vec4f minibuffer_color = vec4fs(1.0);
-  Vec4f line_number_color = vec4fs(0.8);
-};
+
 class Provider {
 public:
   std::string lastProvidedFolder;
@@ -42,6 +30,7 @@ public:
   EditorColors colors;
   std::string fontPath = getDefaultFontPath();
   std::vector<std::string> extraFonts;
+  std::vector<Language> extraLanguages;
   std::string configPath;
   bool allowTransparency = false;
   Provider() {
@@ -59,6 +48,12 @@ public:
             json j;
             parseConfig(&j);
          }
+        fs::path languages = configDir / "languages.json";
+        if(fs::exists(languages)){
+           std::string contents = file_to_string(languages.generic_string());
+          json parsed = json::parse(contents);
+          loadExtraLanguages(parsed);
+        }
       } else {
         fs::create_directory(configDir);
         json j;
@@ -216,7 +211,40 @@ public:
   return "";
 #endif
   }
-  void parseConfig(json* configRoot) {
+  void loadExtraLanguages(json& languages){
+    if(!languages.is_array())
+      return;
+    for(const auto& entry : languages){
+        Language language;
+        language.modeName = entry["mode_name"];
+        if(entry.contains("key_words") && entry["key_words"].is_array()){
+          for(auto& word : entry["key_words"])
+            language.keyWords.push_back(word);
+          
+        }
+        if(entry.contains("special_words") && entry["special_words"].is_array()){
+          for(auto& word : entry["special_words"])
+            language.specialWords.push_back(word);
+        }
+        language.singleLineComment = entry.contains("single_line_comment")? entry["single_line_comment"] : "";
+        if(entry.contains("multi_line_comment") && entry["multi_line_comment"].is_array()) {
+          language.multiLineComment = std::pair(entry["multi_line_comment"][0], entry["multi_line_comment"][1]);
+        }
+        language.stringCharacters = entry.contains("string_characters")? entry["string_characters"] : "";
+        if(entry.contains("escape_character")) {
+          std::string content = entry["escape_character"];
+          language.escapeChar = content[0];
+        }
+        if(entry.contains("file_extensions") && entry["file_extensions"].is_array()){
+          for(auto& word : entry["file_extensions"])
+            language.fileExtensions.push_back(word);
+        }
+        if(language.modeName.length() && language.fileExtensions.size()){
+          extraLanguages.push_back(language);
+        }
+      }
+    }
+    void parseConfig(json* configRoot) {
     if(configRoot->contains("colors")) {
       json configColors = (*configRoot)["colors"];
       colors.string_color = getVecOrDefault(configColors, "string_color", colors.string_color);

@@ -122,6 +122,55 @@ For the colors there are default values, for the font face either remove it comp
   "font_face": "/Users/liz3/Library/Fonts/FiraCode-Regular.ttf" // TTF font face path
 }
 ```
+## Highlighting for extra languages
+ledit can load support for highlighting extra languages via the file `~/.ledit/languages.json`.
+This file is a json array which can support the following like this CMake example(note that this is not complete)
+```json
+[
+  {
+    "mode_name": "CMake",
+    "key_words": [
+      "if",
+      "else",
+      "endif",
+      "BOOL",
+      "AND",
+      "OR",
+      "ON",
+      "OFF",
+      "GLOB",
+      "FORCE",
+      "CACHE"
+    ],
+    "special_words": [
+      "set",
+      "include_directories",
+      "add_library",
+      "add_executable",
+      "target_include_directories",
+      "target_link_libraries",
+      "project",
+      "add_subdirectory",
+      "cmake_minimum_required",
+      "link_libraries",
+      "set_target_properties",
+      "execute_process",
+      "add_definitions",
+      "string",
+      "message"
+    ],
+    "single_line_comment": "#",
+    "multi_line_comment": ["#[[", "]]"],
+    "escape_character": "\\",
+    "file_extensions": [
+      "CMakeLists.txt",
+      "cmake"
+    ],
+    "string_characters": "\""
+  }
+]
+```
+
 ## Info
 Here are some infos.
 ### Standard input & output

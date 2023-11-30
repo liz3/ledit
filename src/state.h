@@ -233,10 +233,21 @@ class State {
     mode = 2;
     status = U"Search: ";
   }
+  const Language* try_load_language(const std::string& name, const std::string& ext){
+    for(const auto& language : provider.extraLanguages){
+      for(const auto& extension : language.fileExtensions) {
+        if(extension == ext || extension == name)
+          return &language;
+      }
+    }
+    return has_language(name, ext);
+  }
   void tryEnableHighlighting() {
-    std::vector<Utf8String> fileParts = cursor->split(fileName, U".");
-    std::string ext = convert_str(fileParts[fileParts.size()-1]);
-    const Language* lang = has_language(fileName == U"Dockerfile" ? "dockerfile" : ext);
+    fs::path path = fs::path(fileName.getStrRef());
+    auto name = path.filename();
+    auto extension = path.extension();
+    std::string extension_str = extension.generic_string();
+    const Language* lang = try_load_language(name.generic_string(), extension_str.length() ? extension_str.substr(1) : "");
     if(lang) {
       highlighter.setLanguage(*lang, lang->modeName);
       highlighter.highlight(cursor->lines, &provider.colors, cursor->skip, cursor->maxLines, cursor->y, cursor->history.size());
@@ -323,8 +334,8 @@ class State {
              status = U"Mode: Text";
              hasHighlighting = false;
           } else {
-             auto lang = LANGUAGES[round-1];
-             highlighter.setLanguage(lang, lang.modeName);
+             auto lang = getAllLanguages()[round-1];
+             highlighter.setLanguage(*lang, lang->modeName);
              hasHighlighting = true;
              status = U"Mode: " + miniBuf;
           }
@@ -364,6 +375,17 @@ class State {
     cursor->unbind();
     mode = 0;
   }
+  const std::vector<const Language*> getAllLanguages(){
+    std::vector<const Language*> l;
+    for(const auto &lang : LANGUAGES) {
+      l.push_back(&lang);
+    }
+
+    for(const auto &lang : provider.extraLanguages) {
+      l.push_back(&lang);
+    }
+    return l;
+  }
   void provideComplete(bool reverse) {
     if (mode == 4 || mode == 15 || mode == 1) {
       std::string convert = convert_str(miniBuf);
@@ -373,13 +395,14 @@ class State {
       std::string p = provider.lastProvidedFolder;
       miniBuf = create(e);
     } else if (mode == 25) {
+      const auto langs = getAllLanguages();
        if(reverse) {
           if(round == 0)
-            round = LANGUAGES.size();
+            round = langs.size();
           else
             round--;
         } else {
-       if(round == LANGUAGES.size())
+       if(round == langs.size())
          round = 0;
        else
          round++;
@@ -387,7 +410,7 @@ class State {
       if(round == 0)
         miniBuf = U"Text";
       else
-        miniBuf = create(LANGUAGES[round-1].modeName);
+        miniBuf = create(langs[round-1]->modeName);
     }
   }
   void renderCoords(){

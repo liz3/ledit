@@ -12,7 +12,7 @@ const std::vector<Language> LANGUAGES = {
       "nullptr", "auto",    "bool",   "new",   "auto*",  "switch",
       "case",    "typedef", "static", "enum",  "sizeof", "offsetof"},
      {"#include", "public", "private", "#ifdef", "#define", "#endif", "#ifndef",
-      "#else"},
+      "#else", "#if"},
      "//",
      {"/*", "*/"},
      "\"'",
@@ -303,12 +303,13 @@ const std::vector<Language> LANGUAGES = {
      "\"'",
      '\\',
      {"zig"}}};
-inline const Language *has_language(std::string ext) {
-  for (const auto &lang : LANGUAGES) {
-    if (std::find(lang.fileExtensions.begin(), lang.fileExtensions.end(),
-                  ext) != lang.fileExtensions.end())
-      return &lang;
-  }
+inline const Language *has_language(const std::string& name, const std::string& ext) {
+   for(const auto& language : LANGUAGES){
+      for(const auto& extension : language.fileExtensions) {
+        if(extension == ext || name == extension)
+          return &language;
+      }
+    }
   return nullptr;
 }
 
