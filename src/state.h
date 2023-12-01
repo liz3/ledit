@@ -34,7 +34,7 @@ class State {
   size_t activeIndex;
   Highlighter highlighter;
   Provider provider;
-  FontAtlas* atlas;
+  FontAtlas* atlas = nullptr;
   GLFWwindow* window;
   ReplaceBuffer replaceBuffer;
   float WIDTH, HEIGHT;
@@ -425,6 +425,8 @@ class State {
     status = numberToString(cursor->y +1)  + U":" + numberToString(cursor->x +1) + branch + U" ["  + fileName + U": " + (hasHighlighting ? highlighter.languageName : U"Text")  + U"] History Size: " + numberToString(cursor->history.size());
     if(cursor->selection.active)
       status += U" Selected: [" + numberToString(cursor->getSelectionSize()) + U"]";
+    if(atlas && atlas->errors.size())
+      status += U" " + atlas->errors[0];
   }
   void gotoLine() {
     if(mode != 0)

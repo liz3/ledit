@@ -1,10 +1,17 @@
 #ifndef FONT_ATLAS_H
 #define FONT_ATLAS_H
+#include <_types/_uint32_t.h>
+#include <string>
 #include <vector>
+#include <filesystem>
 #include "base64.h"
+#include "freetype/freetype.h"
+#include "freetype/fttypes.h"
 #include "utils.h"
 #include "glad.h"
 #include "utf8String.h"
+
+namespace fs = std::filesystem;
 
 struct FontFace {
   bool hasColor = false;
@@ -17,6 +24,7 @@ public:
   std::map<int, std::vector<float>> linesCache;
   std::map<int, Utf8String> contentCache;
   GLuint texture_id;
+  std::vector<Utf8String> errors;
   FT_UInt atlas_width, atlas_height, atlas_height_absolute, smallest_top;
   uint32_t fs;
   FT_Library ft;
@@ -52,12 +60,23 @@ public:
   }
   float getAdvance(char32_t c) { return entries[c].advance; }
   FontAtlas(std::string path, uint32_t fontSize) {
+    errors.clear();
     if (FT_Init_FreeType(&ft)) {
       std::cout << "ERROR::FREETYPE: Could not init FreeType Library"
                 << std::endl;
       return;
     }
     readFont(path, fontSize, true);
+  }
+  size_t fontSelectSize(uint32_t size, FT_Face face) {
+    size_t i;
+    for(i = 0; i < face->num_fixed_sizes;i++){
+      auto entry = face->available_sizes[i];
+      if(entry.height >= size){
+        return i;
+      }
+    }
+    return i;
   }
   void readFont(std::string path, uint32_t fontSize,
                 bool shouldRender = false) {
@@ -68,16 +87,54 @@ public:
       }
       faces.clear();
     }
+    {
+      fs::path p(path);
+      if (p.extension().generic_string() == ".ttc" && !shouldRender) {
+        FT_Face gFace;
+        FT_Error error = FT_New_Face(ft, path.c_str(), -1, &gFace);
+        if (error) {
+          errors.push_back(U"Failed to load ttc " + Utf8String(path));
+          return;
+        }
+        int numFaces = gFace->num_faces;
+
+        for (int i = 0; i < numFaces; ++i) {
+          FontFace *face = new FontFace();
+          error = FT_New_Face(ft, path.c_str(), i, &face->face);
+          if (error) {
+            errors.push_back(U"Failed to load ttc " + Utf8String(path) + U" [" + std::to_string(i) + U"]");
+            delete face;
+            continue;
+          }
+          FT_Bool isItalic = face->face->style_flags & FT_STYLE_FLAG_ITALIC;
+          FT_Bool isBold = face->face->style_flags & FT_STYLE_FLAG_BOLD;
+          if (isBold || isItalic) {
+            FT_Done_Face(face->face);
+            delete face;
+            continue;
+          }
+          face->path = path;
+          face->hasColor = isColorEmojiFont(face->face);
+          if (face->hasColor)
+            FT_Select_Size(face->face, fontSelectSize(fontSize, face->face));
+          else
+            FT_Set_Pixel_Sizes(face->face, 0, fontSize);
+          faces.push_back(face);
+        }
+        FT_Done_Face(gFace);
+        return;
+      }
+    }
     FontFace *face = new FontFace();
     int x = FT_New_Face(ft, path.c_str(), 0, &face->face);
     if (x) {
-      std::cout << "ERROR::FREETYPE: Failed to load font " << x << std::endl;
+      errors.push_back(U"Failed to load ttf " + Utf8String(path));
       return;
     }
     face->path = path;
     face->hasColor = isColorEmojiFont(face->face);
     if (face->hasColor)
-      FT_Select_Size(face->face, 0);
+      FT_Select_Size(face->face, fontSelectSize(fontSize, face->face));
     else
       FT_Set_Pixel_Sizes(face->face, 0, fontSize);
     faces.push_back(face);
@@ -192,14 +249,20 @@ public:
       }
     }
     if (!faceEntry) {
+      Utf8String errStr = U"No font file for char " ;
+      errStr += c;
+      errors.push_back(errStr);
       return;
     }
     auto &face = faceEntry->face;
     auto f = FT_LOAD_RENDER;
     if (faceEntry->hasColor)
       f |= FT_LOAD_COLOR;
-    if (FT_Load_Char(face, c, f)) {
-      std::cout << "Failed to load char: " << (char32_t)c << "\n";
+    FT_Error err= FT_Load_Char(face, c, f);
+    if (err) {
+      Utf8String errStr = U"No font file for char ";
+      errStr += c;
+      errors.push_back(errStr);
       return;
     }
     CharacterEntry entry;
@@ -238,8 +301,8 @@ public:
                  nullptr);
     //   glCopyImageSubData(texture_id, GL_TEXTURE_2D, 0, 0, 0, 0, new_tex_id,
     //   GL_TEXTURE_2D, 0, 0, 0, 0, old_width, old_height, 0);
-    //   glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0,0,0,0, old_width, old_height);
-    //   xOffset = 0;
+    //   glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0,0,0,0, old_width,
+    //   old_height); xOffset = 0;
     for (std::map<char32_t, CharacterEntry>::iterator it = entries.begin();
          it != entries.end(); ++it) {
       it->second.offset = (float)it->second.xPos / (float)atlas_width;
@@ -313,13 +376,7 @@ public:
     return &linesCache[y];
   }
   bool isColorEmojiFont(FT_Face &face) {
-    static const uint32_t tag = FT_MAKE_TAG('C', 'B', 'D', 'T');
-    unsigned long length = 0;
-    FT_Load_Sfnt_Table(face, tag, 0, nullptr, &length);
-    if (length)
-      return true;
-
-    return false;
+   return FT_HAS_COLOR(face);
   }
 };
 

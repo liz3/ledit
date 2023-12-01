@@ -348,6 +348,9 @@ int main(int argc, char** argv) {
       atlas.readFont(path, state.fontSize);
     }
     state.atlas = &atlas;
+    if(atlas.errors.size()) {
+      state.status += U" " + atlas.errors[0];
+    }
     float xscale, yscale;
     glfwGetWindowContentScale(window, &xscale, &yscale);
     state.WIDTH *= xscale;
