@@ -350,7 +350,7 @@ public:
     float v = 0;
     std::string::const_iterator c;
     for (c = line.begin(); c != line.end(); c++) {
-      char16_t cc = (char16_t)(*c);
+      char32_t cc = (char32_t)(*c);
       v += entries[cc].advance;
     }
     return v;

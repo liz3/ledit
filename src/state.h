@@ -47,6 +47,7 @@ class State {
   Utf8String dummyBuf;
   bool showLineNumbers = true;
   bool highlightLine = true;
+  bool lineWrapping = false;
   int mode = 0;
   int round = 0;
   int fontSize;

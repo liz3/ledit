@@ -1066,7 +1066,7 @@ public:
     return true;
   }
   std::vector<std::pair<int, Utf8String>> *
-  getContent(FontAtlas *atlas, float maxWidth, bool onlyCalculate) {
+  getContent(FontAtlas *atlas, float maxWidth, bool onlyCalculate, bool lineWrapping) {
     prepare.clear();
     int end = skip + maxLines;
     if (end >= lines.size()) {
@@ -1095,6 +1095,9 @@ public:
     for (size_t i = skip; i < end; i++) {
       auto s = lines[i];
       prepare.push_back(std::pair<int, Utf8String>(s.length(), s));
+    }
+    if(lineWrapping){
+      return &prepare;
     }
     float neededAdvance =
         atlas->getAdvance((&lines[y])->substr(0, useXFallback ? xSave : x));
