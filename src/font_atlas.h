@@ -1,6 +1,5 @@
 #ifndef FONT_ATLAS_H
 #define FONT_ATLAS_H
-#include <_types/_uint32_t.h>
 #include <string>
 #include <vector>
 #include <filesystem>
