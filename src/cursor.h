@@ -397,6 +397,20 @@ public:
     historyPush(3, w.length(), w);
     return w;
   }
+  Utf8String deleteWordBackwards() {
+    if(x == 0)
+      return U"";
+    Utf8String *target = bind ? bind : &lines[y];
+    int offset = findAnyOfLast(target->substr(0, x), wordSeperator);
+    if (offset == -1)
+      offset = target->length();
+    Utf8String w = target->substr(x-offset, offset);
+    target->erase(x-offset, offset);
+
+    x = x-offset;
+    historyPush(3, w.length(), w);
+    return w;
+  }
   bool undo() {
     if (history.size() == 0)
       return false;

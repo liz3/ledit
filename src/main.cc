@@ -277,7 +277,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         cursor->append(U"  ");
     }
     if(isPress && key == GLFW_KEY_BACKSPACE) {
-      cursor->removeOne();
+      if(alt_pressed) {
+        cursor->deleteWordBackwards();
+      } else {
+        cursor->removeOne();
+      }
     }
     if(isPress)
       gState->renderCoords();
