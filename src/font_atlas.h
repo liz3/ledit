@@ -41,7 +41,7 @@ public:
     RenderChar r;
     float x2 = x + entry->left * scale;
     float y2 = y +atlas_height;
-    y2 -= (entry->top * scale);
+    y2 -= (entry->top + smallest_top * scale);
     if (entry->hasColor) {
       float height = entry->height * (fs / entry->height);
       y2 += ((entry->top) - ((height) - (fs)*0.15)) * scale;
@@ -229,7 +229,6 @@ public:
     }
     atlas_width *= 2;
     atlas_height_absolute = atlas_height;
-    atlas_height *= 0.87;
     atlas_height_original = atlas_height;
     atlas_height *= scale;
 
@@ -311,7 +310,6 @@ public:
         bm.rows > atlas_height_absolute ? bm.rows : atlas_height_absolute;
     if (!entry.hasColor) {
       atlas_height = atlas_height_absolute;
-      atlas_height *= 0.87;
       atlas_height_original = atlas_height;
       atlas_height *= scale;
     }
