@@ -98,23 +98,12 @@ class State {
      cursor->bindTo(&dummyBuf);
      mode = 25;
   }
-  void increaseFontSize(int value) {
+  void increaseFontSize(float value) {
     if(mode != 0)
       return;
-    fontSize += value;
-    if(fontSize > 260) {
-      fontSize = 260;
-      status = U"Max font size reached [260]";
-      return;
-    } else if (fontSize < 10) {
-      fontSize = 10;
-      status = U"Min font size reached [10]";
-      return;
-    } else {
-      status = U"resize: [" + numberToString(fontSize) + U"]";
-    }
-    atlas->resizeFonts(fontSize);
-    atlas->renderFont(fontSize, atlas->faces[0]);
+
+    atlas->changeScale(value);
+    status = U"resize: [" + numberToString(atlas->fs * atlas->scale) + U"]";
   }
   void toggleSelection() {
     if(mode != 0)

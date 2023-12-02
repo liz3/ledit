@@ -229,9 +229,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         gState->tryCopy();
 
      }   else if (key == GLFW_KEY_EQUAL && isPress) {
-            gState->increaseFontSize(2);
+            gState->increaseFontSize(0.05);
      }   else if (key == GLFW_KEY_MINUS && isPress) {
-            gState->increaseFontSize(-2);
+            gState->increaseFontSize(-0.05);
       } else if ((key == GLFW_KEY_V || key == GLFW_KEY_Y) && isPress) {
          gState->tryPaste();
      } else {
@@ -392,7 +392,7 @@ int main(int argc, char** argv) {
       }
 
       Cursor* cursor = state.cursor;
-      float toOffset = atlas.atlas_height * 1.15;
+      float toOffset = atlas.atlas_height;
       bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7 || state.mode == 32;
       cursor->setBounds(HEIGHT - state.atlas->atlas_height - 6, toOffset);
       if(maxRenderWidth != 0) {
