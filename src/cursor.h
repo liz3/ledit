@@ -417,6 +417,13 @@ public:
     HistoryEntry entry = history[0];
     history.pop_front();
     switch (entry.mode) {
+    case 2: {
+      x = entry.x;
+      y = entry.y;
+      (&lines[y])->erase(x, entry.length);
+      center(y);
+      break;
+    }
     case 3: {
       x = entry.x;
       y = entry.y;
@@ -916,6 +923,7 @@ public:
   void append(Utf8String content) {
     auto *target = bind ? bind : &lines[y];
     target->insert(x, content);
+    historyPush(2, content.length(), content);
     x += content.length();
   }
 

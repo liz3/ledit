@@ -24,32 +24,35 @@ public:
   std::map<int, Utf8String> contentCache;
   GLuint texture_id;
   std::vector<Utf8String> errors;
-  FT_UInt atlas_width, atlas_height, atlas_height_absolute, smallest_top;
+  FT_UInt atlas_width, atlas_height, atlas_height_absolute, smallest_top,
+      atlas_height_original;
   uint32_t fs;
   FT_Library ft;
   bool wasGenerated = false;
   int xOffset = 0;
+  float scale = 1;
   std::vector<FontFace *> faces;
   RenderChar render(char32_t c, float x = 0.0, float y = 0.0,
                     Vec4f color = vec4fs(1)) {
-    if (c >= 128)
+    if (c >= 128 || c < 32)
       lazyLoad(c);
 
     auto *entry = &entries[c];
     RenderChar r;
-    float x2 = x + entry->left;
-    float y2 = y - entry->top + (atlas_height);
+    float x2 = x + entry->left * scale;
+    float y2 = y +atlas_height;
+    y2 -= (entry->top + smallest_top * scale);
     if (entry->hasColor) {
       float height = entry->height * (fs / entry->height);
-      y2 += (entry->top) - ((height) - (fs)*0.15);
+      y2 += ((entry->top) - ((height) - (fs)*0.15)) * scale;
     }
     r.pos = vec2f(x2, -y2);
     if (entry->hasColor) {
       float height = entry->height * (fs / entry->height);
-      r.size = vec2f(((float)fs), (-height));
+      r.size = vec2f(((float)fs) * scale, (-height) * scale);
 
     } else
-      r.size = vec2f(entry->width, -entry->height);
+      r.size = vec2f(entry->width * scale, (-entry->height) * scale);
     r.uv_pos = vec2f(entry->offset, 0.0f);
     r.uv_size = vec2f(entry->width / (float)atlas_width,
                       entry->height / atlas_height_absolute);
@@ -57,7 +60,7 @@ public:
     r.hasColor = entry->hasColor ? 1 : 0;
     return r;
   }
-  float getAdvance(char32_t c) { return entries[c].advance; }
+  float getAdvance(char32_t c) { return entries[c].advance * scale; }
   FontAtlas(std::string path, uint32_t fontSize) {
     errors.clear();
     if (FT_Init_FreeType(&ft)) {
@@ -69,9 +72,9 @@ public:
   }
   size_t fontSelectSize(uint32_t size, FT_Face face) {
     size_t i;
-    for(i = 0; i < face->num_fixed_sizes;i++){
+    for (i = 0; i < face->num_fixed_sizes; i++) {
       auto entry = face->available_sizes[i];
-      if(entry.height >= size){
+      if (entry.height >= size) {
         return i;
       }
     }
@@ -101,7 +104,8 @@ public:
           FontFace *face = new FontFace();
           error = FT_New_Face(ft, path.c_str(), i, &face->face);
           if (error) {
-            errors.push_back(U"Failed to load ttc " + Utf8String(path) + U" [" + std::to_string(i) + U"]");
+            errors.push_back(U"Failed to load ttc " + Utf8String(path) + U" [" +
+                             std::to_string(i) + U"]");
             delete face;
             continue;
           }
@@ -149,14 +153,36 @@ public:
     }
     fs = size;
   }
+  void changeScale(float diff) {
+
+    if (scale + diff > 1.8 || scale + diff < 0.6) {
+      if ((fs == 18 && scale + diff < 0.6) ||
+          (fs == 160 && scale + diff > 1.8)) {
+        return;
+      }
+
+      entries.clear();
+      auto newSize = scale + diff > 1.8 ? fs * 1.8 : fs * 0.8;
+      scale = 1;
+      if (newSize < 18)
+        newSize = 18;
+      else if (newSize > 160)
+        newSize = 160;
+      for (auto &face : faces) {
+        if (face->hasColor)
+          FT_Select_Size(face->face, fontSelectSize(newSize, face->face));
+        else
+          FT_Set_Pixel_Sizes(face->face, 0, newSize);
+      }
+      renderFont(newSize, faces[0]);
+    } else {
+      scale += diff;
+      atlas_height = atlas_height_original * scale;
+    }
+  }
   void renderFont(uint32_t fontSize, FontFace *faceEntry) {
     if (wasGenerated) {
       glDeleteTextures(1, &texture_id);
-      for (std::map<char32_t, CharacterEntry>::iterator it = entries.begin();
-           it != entries.end(); ++it) {
-        delete[] it->second.data;
-      }
-      entries.clear();
       linesCache.clear();
     }
     auto &face = faceEntry->face;
@@ -166,17 +192,45 @@ public:
     smallest_top = 1e9;
     // TODO should this be here?
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    for (int i = 0; i < 128; i++) {
-      if (FT_Load_Char(face, i, FT_LOAD_RENDER)) {
+    for (int i = 32; i < 128; i++) {
+      if (FT_Load_Char(face, i,
+                       FT_LOAD_RENDER | FT_LOAD_TARGET_(FT_RENDER_MODE_SDF))) {
         std::cout << "Failed to load char: " << (char)i << "\n";
         return;
       }
       auto bm = face->glyph->bitmap;
       atlas_width += bm.width;
       atlas_height = bm.rows > atlas_height ? bm.rows : atlas_height;
+
+      CharacterEntry entry;
+      entry.width = bm.width;
+      entry.height = bm.rows;
+      entry.top = face->glyph->bitmap_top;
+      entry.left = face->glyph->bitmap_left;
+      entry.advance = face->glyph->advance.x >> 6;
+      entry.advanceY = face->glyph->advance.y >> 6;
+      entry.hasColor = faceEntry->hasColor;
+      entry.c = (char32_t)i;
+      entry.data = new uint8_t[(int)entry.width * (int)entry.height * 4];
+      for (size_t i = 0; i < (entry.width * entry.height); i++) {
+        auto target_index = i * 4;
+        entry.data[target_index] = face->glyph->bitmap.buffer[i];
+        entry.data[target_index + 1] = face->glyph->bitmap.buffer[i];
+        entry.data[target_index + 2] = face->glyph->bitmap.buffer[i];
+        entry.data[target_index + 3] = 255;
+      }
+      if (smallest_top == 0 && entry.top > 0)
+        smallest_top = entry.top;
+      else
+        smallest_top = entry.top < smallest_top && entry.top != 0
+                           ? entry.top
+                           : smallest_top;
+      entries.insert(std::pair<char32_t, CharacterEntry>(entry.c, entry));
     }
     atlas_width *= 2;
     atlas_height_absolute = atlas_height;
+    atlas_height_original = atlas_height;
+    atlas_height *= scale;
 
     // texture
     glActiveTexture(GL_TEXTURE0);
@@ -195,39 +249,11 @@ public:
                  (GLsizei)atlas_height_absolute, 0, GL_RGBA, GL_UNSIGNED_BYTE,
                  nullptr);
     xOffset = 0;
-    for (int i = 0; i < 128; i++) {
-      if (FT_Load_Char(face, i, FT_LOAD_RENDER)) {
-        std::cout << "Failed to load char: " << (char)i << "\n";
-        return;
-      }
-
-      CharacterEntry entry;
-      auto bm = face->glyph->bitmap;
-      entry.width = bm.width;
-      entry.height = bm.rows;
-      entry.top = face->glyph->bitmap_top;
-      entry.left = face->glyph->bitmap_left;
-      entry.advance = face->glyph->advance.x >> 6;
+    for (int i = 32; i < 128; i++) {
+      CharacterEntry &entry = entries[i];
+      entry.offset = (float)xOffset / (float)atlas_width;
       entry.xPos = xOffset;
-      entry.hasColor = faceEntry->hasColor;
-      entry.c = (char32_t)i;
-      (&entry)->data = new uint8_t[(int)entry.width * (int)entry.height * 4];
-      for (size_t i = 0; i < (entry.width * entry.height); i++) {
-        auto target_index = i * 4;
-        entry.data[target_index] = face->glyph->bitmap.buffer[i];
-        entry.data[target_index + 1] = face->glyph->bitmap.buffer[i];
-        entry.data[target_index + 2] = face->glyph->bitmap.buffer[i];
-        entry.data[target_index + 3] = 255;
-      }
-      if (smallest_top == 0 && entry.top > 0)
-        smallest_top = entry.top;
-      else
-        smallest_top = entry.top < smallest_top && entry.top != 0
-                           ? entry.top
-                           : smallest_top;
-      entries.insert(std::pair<char32_t, CharacterEntry>(entry.c, entry));
 
-      entries[(char32_t)i].offset = (float)xOffset / (float)atlas_width;
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
       glTexSubImage2D(GL_TEXTURE_2D, 0, xOffset, 0, entry.width, entry.height,
                       GL_RGBA, GL_UNSIGNED_BYTE, entry.data);
@@ -248,7 +274,7 @@ public:
       }
     }
     if (!faceEntry) {
-      Utf8String errStr = U"No font file for char " ;
+      Utf8String errStr = U"No font file for char ";
       errStr += c;
       errors.push_back(errStr);
       return;
@@ -257,7 +283,9 @@ public:
     auto f = FT_LOAD_RENDER;
     if (faceEntry->hasColor)
       f |= FT_LOAD_COLOR;
-    FT_Error err= FT_Load_Char(face, c, f);
+    else
+      f |= FT_LOAD_TARGET_(FT_RENDER_MODE_SDF);
+    FT_Error err = FT_Load_Char(face, c, f);
     if (err) {
       Utf8String errStr = U"No font file for char ";
       errStr += c;
@@ -280,8 +308,11 @@ public:
     atlas_width += bm.width;
     atlas_height_absolute =
         bm.rows > atlas_height_absolute ? bm.rows : atlas_height_absolute;
-    if (!entry.hasColor)
+    if (!entry.hasColor) {
       atlas_height = atlas_height_absolute;
+      atlas_height_original = atlas_height;
+      atlas_height *= scale;
+    }
     entry.offset = (float)xOffset / (float)atlas_width;
     GLuint new_tex_id;
     glGenTextures(1, &new_tex_id);
@@ -298,10 +329,7 @@ public:
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei)atlas_width,
                  (GLsizei)atlas_height_absolute, 0, GL_RGBA, GL_UNSIGNED_BYTE,
                  nullptr);
-    //   glCopyImageSubData(texture_id, GL_TEXTURE_2D, 0, 0, 0, 0, new_tex_id,
-    //   GL_TEXTURE_2D, 0, 0, 0, 0, old_width, old_height, 0);
-    //   glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0,0,0,0, old_width,
-    //   old_height); xOffset = 0;
+
     for (std::map<char32_t, CharacterEntry>::iterator it = entries.begin();
          it != entries.end(); ++it) {
       it->second.offset = (float)it->second.xPos / (float)atlas_width;
@@ -340,9 +368,9 @@ public:
     float v = 0;
     Utf8String::const_iterator c;
     for (c = line.begin(); c != line.end(); c++) {
-      if (*c >= 128)
+      if (*c >= 128 || *c < 32)
         lazyLoad(*c);
-      v += entries[*c].advance;
+      v += entries[*c].advance * scale;
     }
     return v;
   }
@@ -351,7 +379,7 @@ public:
     std::string::const_iterator c;
     for (c = line.begin(); c != line.end(); c++) {
       char32_t cc = (char32_t)(*c);
-      v += entries[cc].advance;
+      v += entries[cc].advance * scale;
     }
     return v;
   }
@@ -365,18 +393,16 @@ public:
     std::vector<float> values;
     Utf8String::const_iterator c;
     for (c = line.begin(); c != line.end(); c++) {
-      if (*c >= 128)
+      if (*c >= 128 || *c < 32)
         lazyLoad(*c);
 
-      values.push_back(entries[*c].advance);
+      values.push_back(entries[*c].advance * scale);
     }
     linesCache[y] = values;
     contentCache[y] = line;
     return &linesCache[y];
   }
-  bool isColorEmojiFont(FT_Face &face) {
-   return FT_HAS_COLOR(face);
-  }
+  bool isColorEmojiFont(FT_Face &face) { return FT_HAS_COLOR(face); }
 };
 
 #endif

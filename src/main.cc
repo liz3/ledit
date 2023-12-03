@@ -228,15 +228,18 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       gState->undo();
     } else if (key == GLFW_KEY_W && isPress) {
       gState->cut();
+    } else if (key == GLFW_KEY_TAB && isPress) {
+      gState->fastSwitch();
+      return;
     } else if (key == GLFW_KEY_SPACE && isPress) {
       gState->toggleSelection();
     } else if (key == GLFW_KEY_C && action == GLFW_PRESS) {
       gState->tryCopy();
 
     } else if (key == GLFW_KEY_EQUAL && isPress) {
-      gState->increaseFontSize(2);
+      gState->increaseFontSize(0.05);
     } else if (key == GLFW_KEY_MINUS && isPress) {
-      gState->increaseFontSize(-2);
+      gState->increaseFontSize(-0.05);
     } else if ((key == GLFW_KEY_V || key == GLFW_KEY_Y) && isPress) {
       gState->tryPaste();
     } else {
@@ -394,7 +397,7 @@ int main(int argc, char **argv) {
     }
     const auto renderHeight = HEIGHT - state.atlas->atlas_height - 6;
     Cursor *cursor = state.cursor;
-    float toOffset = atlas.atlas_height * 1.15;
+    float toOffset = atlas.atlas_height;
     bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7 ||
                         state.mode == 32;
     cursor->setBounds(renderHeight, toOffset);
@@ -441,264 +444,281 @@ int main(int argc, char **argv) {
                        ? cursor->skip + cursor->maxLines
                        : cursor->lines.size();
     if (state.showLineNumbers) {
-      if (state.lineWrapping) {
-        auto heightRemaining = renderHeight;
-        auto maxLineAdvance = atlas.getAdvance(std::to_string(maxLines));
-        for (int i = start; i < maxLines; i++) {
-          std::string value = std::to_string(i + 1);
-          auto tAdvance = atlas.getAdvance(value);
-          xpos += maxLineAdvance - tAdvance;
-          linesAdvance = 0;
-          for (cc = value.begin(); cc != value.end(); cc++) {
-            entries.push_back(atlas.render(
-                *cc, xpos, ypos, state.provider.colors.line_number_color));
-            auto advance = atlas.getAdvance(*cc);
-            xpos += advance;
-            linesAdvance += advance;
+        if (state.lineWrapping) {
+          auto heightRemaining = renderHeight;
+          auto maxLineAdvance = atlas.getAdvance(std::to_string(maxLines));
+          for (int i = start; i < maxLines; i++) {
+            std::string value = std::to_string(i + 1);
+            auto tAdvance = atlas.getAdvance(value);
+            xpos += maxLineAdvance - tAdvance;
+            linesAdvance = 0;
+            for (cc = value.begin(); cc != value.end(); cc++) {
+              entries.push_back(atlas.render(
+                  *cc, xpos, ypos, state.provider.colors.line_number_color));
+              auto advance = atlas.getAdvance(*cc);
+              xpos += advance;
+              linesAdvance += advance;
+            }
+            auto fullWidth = atlas.getAdvance(cursor->lines[i]);
+            int lines = fullWidth / ((WIDTH / 2) - 10 - tAdvance);
+            lines = lines == 0 ? 1 : lines;
+            std::cout << "x: " << i + 1 << ":" << lines << " full " << fullWidth
+                      << " w " << ((WIDTH / 2) - 10 - tAdvance)
+                      << " content: " << (cursor->lines[i].getStrRef()) << "\n";
+            xpos = -(int32_t)WIDTH / 2 + 10;
+            heightRemaining -= toOffset * lines;
+            ypos += toOffset * lines;
+            if (heightRemaining <= 0)
+              break;
           }
-          auto fullWidth = atlas.getAdvance(cursor->lines[i]);
-          int lines = fullWidth / ((WIDTH / 2) - 10 - tAdvance);
-                    lines = lines == 0 ? 1 : lines;
-          std::cout << "x: " << i+1 << ":" << lines  << " full " <<  fullWidth << " w " << ((WIDTH / 2) - 10 - tAdvance) << " content: " << (cursor->lines[i].getStrRef()) << "\n";
-          xpos = -(int32_t)WIDTH / 2 + 10;
-          heightRemaining -= toOffset * lines;
-          ypos += toOffset * lines;
-          if (heightRemaining <= 0)
-            break;
+        } else {
+          int biggestLine = std::to_string(maxLines).length();
+          auto maxLineAdvance = atlas.getAdvance(std::to_string(maxLines));
+          for (int i = start; i < maxLines; i++) {
+            std::string value = std::to_string(i + 1);
+            auto tAdvance = atlas.getAdvance(value);
+            xpos += maxLineAdvance - tAdvance;
+            linesAdvance = 0;
+            for (cc = value.begin(); cc != value.end(); cc++) {
+              entries.push_back(atlas.render(
+                  *cc, xpos, ypos, state.provider.colors.line_number_color));
+              auto advance = atlas.getAdvance(*cc);
+              xpos += advance;
+              linesAdvance += advance;
+            }
+            xpos = -(int32_t)WIDTH / 2 + 10;
+            ypos += toOffset;
+          }
+        }
+      }
+      maxRenderWidth = (WIDTH / 2) - 20 - linesAdvance;
+      auto skipNow = cursor->skip;
+      auto *allLines =
+          cursor->getContent(&atlas, maxRenderWidth, false, state.lineWrapping);
+      state.reHighlight();
+      ypos = (-(HEIGHT / 2));
+      xpos = -(int32_t)WIDTH / 2 + 20 + linesAdvance;
+      cursor->setRenderStart(20 + linesAdvance, 15);
+      Vec4f color = state.provider.colors.default_color;
+      if (state.hasHighlighting) {
+        auto highlighter = state.highlighter;
+        int lineOffset = cursor->skip;
+        auto *colored = state.highlighter.get();
+        int cOffset = cursor->getTotalOffset();
+        int cxOffset = cursor->xOffset;
+        //        std::cout << cxOffset << ":" << lineOffset << "\n";
+
+        for (size_t x = 0; x < allLines->size(); x++) {
+          auto content = (*allLines)[x].second;
+          auto hasColorIndex = highlighter.lineIndex.count(x + lineOffset);
+          if (content.length())
+            cOffset += cxOffset;
+          else
+            cOffset += (*allLines)[x].first;
+          if (cxOffset > 0) {
+            if (hasColorIndex) {
+              auto entry = highlighter.lineIndex[x + lineOffset];
+              auto start = colored->begin();
+              std::advance(start, entry.first);
+              auto end = colored->begin();
+              std::advance(end, entry.second);
+              for (std::map<int, Vec4f>::iterator it = start; it != end; ++it) {
+                int xx = it->first;
+                if (xx >= cOffset)
+                  break;
+                color = it->second;
+              }
+            }
+          }
+          if ((*colored).count(cOffset)) {
+            color = (*colored)[cOffset];
+          }
+          int charAdvance = 0;
+          for (c = content.begin(); c != content.end(); c++) {
+            if ((*colored).count(cOffset)) {
+              color = (*colored)[cOffset];
+            }
+
+            cOffset++;
+            charAdvance++;
+            if (*c != '\t')
+              entries.push_back(atlas.render(*c, xpos, ypos, color));
+            xpos += atlas.getAdvance(*c);
+            if (state.lineWrapping) {
+              if (xpos > (maxRenderWidth + atlas.getAdvance(*c))) {
+                if ((*colored).count(cOffset)) {
+                  color = (*colored)[cOffset];
+                }
+                xpos = -maxRenderWidth;
+                ypos += toOffset;
+              }
+              continue;
+            }
+            if (xpos > (maxRenderWidth + atlas.getAdvance(*c)) &&
+                c != content.end()) {
+              int remaining = content.length() - (charAdvance);
+
+              if (remaining > 0) {
+                if (hasColorIndex) {
+                  auto entry = highlighter.lineIndex[x + lineOffset];
+                  auto start = colored->begin();
+                  std::advance(start, entry.first);
+                  auto end = colored->begin();
+                  std::advance(end, entry.second);
+                  for (std::map<int, Vec4f>::iterator it = start; it != end;
+                       ++it) {
+                    int xx = it->first;
+                    if (xx > cOffset + remaining)
+                      break;
+                    if (xx >= cOffset)
+                      color = it->second;
+                  }
+                }
+                cOffset += remaining;
+              }
+
+              break;
+            }
+          }
+
+          if (x < allLines->size() - 1) {
+            if ((*colored).count(cOffset)) {
+              color = (*colored)[cOffset];
+            }
+            cOffset++;
+            xpos = -maxRenderWidth;
+            ypos += toOffset;
+          }
         }
       } else {
-        int biggestLine = std::to_string(maxLines).length();
-        auto maxLineAdvance = atlas.getAdvance(std::to_string(maxLines));
-        for (int i = start; i < maxLines; i++) {
-          std::string value = std::to_string(i + 1);
-          auto tAdvance = atlas.getAdvance(value);
-          xpos += maxLineAdvance - tAdvance;
-          linesAdvance = 0;
-          for (cc = value.begin(); cc != value.end(); cc++) {
-            entries.push_back(atlas.render(
-                *cc, xpos, ypos, state.provider.colors.line_number_color));
-            auto advance = atlas.getAdvance(*cc);
-            xpos += advance;
-            linesAdvance += advance;
-          }
-          xpos = -(int32_t)WIDTH / 2 + 10;
-          ypos += toOffset;
-        }
-      }
-    }
-    maxRenderWidth = (WIDTH / 2) - 20 - linesAdvance;
-    auto skipNow = cursor->skip;
-    auto *allLines =
-        cursor->getContent(&atlas, maxRenderWidth, false, state.lineWrapping);
-    state.reHighlight();
-    ypos = (-(HEIGHT / 2));
-    xpos = -(int32_t)WIDTH / 2 + 20 + linesAdvance;
-    cursor->setRenderStart(20 + linesAdvance, 15);
-    Vec4f color = state.provider.colors.default_color;
-    if (state.hasHighlighting) {
-      auto highlighter = state.highlighter;
-      int lineOffset = cursor->skip;
-      auto *colored = state.highlighter.get();
-      int cOffset = cursor->getTotalOffset();
-      int cxOffset = cursor->xOffset;
-      //        std::cout << cxOffset << ":" << lineOffset << "\n";
-
-      for (size_t x = 0; x < allLines->size(); x++) {
-        auto content = (*allLines)[x].second;
-        auto hasColorIndex = highlighter.lineIndex.count(x + lineOffset);
-        if (content.length())
-          cOffset += cxOffset;
-        else
-          cOffset += (*allLines)[x].first;
-        if (cxOffset > 0) {
-          if (hasColorIndex) {
-            auto entry = highlighter.lineIndex[x + lineOffset];
-            auto start = colored->begin();
-            std::advance(start, entry.first);
-            auto end = colored->begin();
-            std::advance(end, entry.second);
-            for (std::map<int, Vec4f>::iterator it = start; it != end; ++it) {
-              int xx = it->first;
-              if (xx >= cOffset)
-                break;
-              color = it->second;
+        for (size_t x = 0; x < allLines->size(); x++) {
+          auto content = (*allLines)[x].second;
+          for (c = content.begin(); c != content.end(); c++) {
+            if (*c != '\t')
+              entries.push_back(atlas.render(*c, xpos, ypos, color));
+            xpos += atlas.getAdvance(*c);
+            if (xpos > maxRenderWidth + atlas.getAdvance(*c)) {
+              break;
             }
           }
-        }
-        if ((*colored).count(cOffset)) {
-          color = (*colored)[cOffset];
-        }
-        int charAdvance = 0;
-        for (c = content.begin(); c != content.end(); c++) {
-          if ((*colored).count(cOffset)) {
-            color = (*colored)[cOffset];
+          if (x < allLines->size() - 1) {
+            xpos = -maxRenderWidth;
+            ypos += toOffset;
           }
-
-          cOffset++;
-          charAdvance++;
-          if (*c != '\t')
-            entries.push_back(atlas.render(*c, xpos, ypos, color));
-          xpos += atlas.getAdvance(*c);
-          if (state.lineWrapping) {
-            if (xpos > (maxRenderWidth + atlas.getAdvance(*c))) {
-              if ((*colored).count(cOffset)) {
-                color = (*colored)[cOffset];
-              }
-              xpos = -maxRenderWidth;
-              ypos += toOffset;
-            }
-            continue;
-          }
-          if (xpos > (maxRenderWidth + atlas.getAdvance(*c)) &&
-              c != content.end()) {
-            int remaining = content.length() - (charAdvance);
-
-            if (remaining > 0) {
-              if (hasColorIndex) {
-                auto entry = highlighter.lineIndex[x + lineOffset];
-                auto start = colored->begin();
-                std::advance(start, entry.first);
-                auto end = colored->begin();
-                std::advance(end, entry.second);
-                for (std::map<int, Vec4f>::iterator it = start; it != end;
-                     ++it) {
-                  int xx = it->first;
-                  if (xx > cOffset + remaining)
-                    break;
-                  if (xx >= cOffset)
-                    color = it->second;
-                }
-              }
-              cOffset += remaining;
-            }
-
-            break;
-          }
-        }
-
-        if (x < allLines->size() - 1) {
-          if ((*colored).count(cOffset)) {
-            color = (*colored)[cOffset];
-          }
-          cOffset++;
-          xpos = -maxRenderWidth;
-          ypos += toOffset;
         }
       }
-    } else {
-      for (size_t x = 0; x < allLines->size(); x++) {
-        auto content = (*allLines)[x].second;
-        for (c = content.begin(); c != content.end(); c++) {
-          if (*c != '\t')
-            entries.push_back(atlas.render(*c, xpos, ypos, color));
-          xpos += atlas.getAdvance(*c);
-          if (xpos > maxRenderWidth + atlas.getAdvance(*c)) {
-            break;
-          }
-        }
-        if (x < allLines->size() - 1) {
-          xpos = -maxRenderWidth;
-          ypos += toOffset;
-        }
-      }
-    }
-    xpos = (-(int32_t)WIDTH / 2) + 15;
-    ypos = (float)HEIGHT / 2 - toOffset - 10;
-    Utf8String status = state.status;
-    for (c = status.begin(); c != status.end(); c++) {
-      entries.push_back(atlas.render(*c, xpos, ypos, status_color));
-      xpos += atlas.getAdvance(*c);
-    }
-    float statusAdvance = atlas.getAdvance(state.status);
-    if (state.mode != 0 && state.mode != 32) {
-      // draw minibuffer
-      xpos = (-(int32_t)WIDTH / 2) + 20 + statusAdvance;
+      xpos = (-(int32_t)WIDTH / 2) + 15;
       ypos = (float)HEIGHT / 2 - toOffset - 10;
-      Utf8String status = state.miniBuf;
+      Utf8String status = state.status;
       for (c = status.begin(); c != status.end(); c++) {
-        entries.push_back(atlas.render(*c, xpos, ypos,
-                                       state.provider.colors.minibuffer_color));
-        xpos += atlas.getAdvance(*c);
-      }
-
-    } else {
-      auto tabInfo = state.getTabInfo();
-      xpos = ((int32_t)WIDTH / 2) - atlas.getAdvance(tabInfo);
-      ypos = (float)HEIGHT / 2 - toOffset - 10;
-      for (c = tabInfo.begin(); c != tabInfo.end(); c++) {
         entries.push_back(atlas.render(*c, xpos, ypos, status_color));
         xpos += atlas.getAdvance(*c);
       }
-    }
-
-    glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
-    glBufferSubData(
-        GL_ARRAY_BUFFER, 0, sizeof(RenderChar) * entries.size(),
-        &entries[0]); // be sure to use glBufferSubData and not glBufferData
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 6, (GLsizei)entries.size());
-    if (state.focused) {
-      cursor_shader.use();
-      cursor_shader.set1f("cursor_height", toOffset);
-      cursor_shader.set2f("resolution", (float)WIDTH, (float)HEIGHT);
+      float statusAdvance = atlas.getAdvance(state.status);
       if (state.mode != 0 && state.mode != 32) {
-        // use cursor for minibuffer
-        float cursorX = -(int32_t)(WIDTH / 2) + 15 +
-                        (atlas.getAdvance(cursor->getCurrentAdvance())) + 5 +
-                        statusAdvance;
-        float cursorY = (float)HEIGHT / 2 - 10;
-        cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
+        // draw minibuffer
+        xpos = (-(int32_t)WIDTH / 2) + 20 + statusAdvance;
+        ypos = (float)HEIGHT / 2 - toOffset - 10;
+        Utf8String status = state.miniBuf;
+        for (c = status.begin(); c != status.end(); c++) {
+          entries.push_back(atlas.render(
+              *c, xpos, ypos, state.provider.colors.minibuffer_color));
+          xpos += atlas.getAdvance(*c);
+        }
 
-        glBindVertexArray(state.vao);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        glBindVertexArray(0);
-        glBindTexture(GL_TEXTURE_2D, 0);
-      }
-
-      if (isSearchMode || state.mode == 0) {
-        float cursorX =
-            -(int32_t)(WIDTH / 2) + 15 +
-            (atlas.getAdvance(cursor->getCurrentAdvance(isSearchMode))) +
-            linesAdvance + 4 - cursor->xSkip;
-        if (cursorX > WIDTH / 2)
-          cursorX = (WIDTH / 2) - 3;
-        float cursorY = -(int32_t)(HEIGHT / 2) + 4 +
-                        (toOffset * ((cursor->y - cursor->skip) + 1));
-        cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
-        glBindVertexArray(state.vao);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        glBindVertexArray(0);
-        glBindTexture(GL_TEXTURE_2D, 0);
-      }
-    }
-    if (cursor->selection.active) {
-      std::vector<SelectionEntry> selectionBoundaries;
-      if (cursor->selection.getYSmaller() < cursor->skip &&
-          cursor->selection.getYBigger() > cursor->skip + cursor->maxLines) {
-        // select everything
       } else {
-        maxRenderWidth += atlas.getAdvance(U" ");
-        int yStart = cursor->selection.getYStart();
-        int yEnd = cursor->selection.getYEnd();
-        if (cursor->selection.yStart == cursor->selection.yEnd) {
-          if (cursor->selection.xStart != cursor->selection.xEnd) {
-            int smallerX = cursor->selection.getXSmaller();
-            if (smallerX >= cursor->xOffset) {
+        auto tabInfo = state.getTabInfo();
+        xpos = ((int32_t)WIDTH / 2) - atlas.getAdvance(tabInfo);
+        ypos = (float)HEIGHT / 2 - toOffset - 10;
+        for (c = tabInfo.begin(); c != tabInfo.end(); c++) {
+          entries.push_back(atlas.render(*c, xpos, ypos, status_color));
+          xpos += atlas.getAdvance(*c);
+        }
+      }
 
-              float renderDistance = atlas.getAdvance(
-                  (*allLines)[yEnd - cursor->skip].second.substr(
-                      0, smallerX - cursor->xOffset));
-              float renderDistanceBigger = atlas.getAdvance(
-                  (*allLines)[yEnd - cursor->skip].second.substr(
-                      0, cursor->selection.getXBigger() - cursor->xOffset));
-              if (renderDistance < maxRenderWidth * 2) {
-                float start = ((float)HEIGHT / 2) - 5 -
-                              (toOffset * ((yEnd - cursor->skip) + 1));
-                selectionBoundaries.push_back(
-                    {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance +
-                               renderDistance,
-                           start),
-                     vec2f(renderDistanceBigger - renderDistance, toOffset)});
+      glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
+      glBufferSubData(
+          GL_ARRAY_BUFFER, 0, sizeof(RenderChar) * entries.size(),
+          &entries[0]); // be sure to use glBufferSubData and not glBufferData
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+      glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 6, (GLsizei)entries.size());
+      if (state.focused) {
+        cursor_shader.use();
+        cursor_shader.set1f("cursor_height", toOffset);
+        cursor_shader.set2f("resolution", (float)WIDTH, (float)HEIGHT);
+        if (state.mode != 0 && state.mode != 32) {
+          // use cursor for minibuffer
+          float cursorX = -(int32_t)(WIDTH / 2) + 15 +
+                          (atlas.getAdvance(cursor->getCurrentAdvance())) + 5 +
+                          statusAdvance;
+          float cursorY = (float)HEIGHT / 2 - 10;
+          cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
+
+          glBindVertexArray(state.vao);
+          glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+          glBindVertexArray(0);
+          glBindTexture(GL_TEXTURE_2D, 0);
+        }
+
+        if (isSearchMode || state.mode == 0) {
+          float cursorX =
+              -(int32_t)(WIDTH / 2) + 15 +
+              (atlas.getAdvance(cursor->getCurrentAdvance(isSearchMode))) +
+              linesAdvance + 4 - cursor->xSkip;
+          if (cursorX > WIDTH / 2)
+            cursorX = (WIDTH / 2) - 3;
+          float cursorY = -(int32_t)(HEIGHT / 2) + 4 +
+                          (toOffset * ((cursor->y - cursor->skip) + 1));
+          cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
+          glBindVertexArray(state.vao);
+          glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+          glBindVertexArray(0);
+          glBindTexture(GL_TEXTURE_2D, 0);
+        }
+      }
+      if (cursor->selection.active) {
+        std::vector<SelectionEntry> selectionBoundaries;
+        if (cursor->selection.getYSmaller() < cursor->skip &&
+            cursor->selection.getYBigger() > cursor->skip + cursor->maxLines) {
+          // select everything
+        } else {
+          maxRenderWidth += atlas.getAdvance(U" ");
+          int yStart = cursor->selection.getYStart();
+          int yEnd = cursor->selection.getYEnd();
+          if (cursor->selection.yStart == cursor->selection.yEnd) {
+            if (cursor->selection.xStart != cursor->selection.xEnd) {
+              int smallerX = cursor->selection.getXSmaller();
+              if (smallerX >= cursor->xOffset) {
+
+                float renderDistance = atlas.getAdvance(
+                    (*allLines)[yEnd - cursor->skip].second.substr(
+                        0, smallerX - cursor->xOffset));
+                float renderDistanceBigger = atlas.getAdvance(
+                    (*allLines)[yEnd - cursor->skip].second.substr(
+                        0, cursor->selection.getXBigger() - cursor->xOffset));
+                if (renderDistance < maxRenderWidth * 2) {
+                  float start = ((float)HEIGHT / 2) - 5 -
+                                (toOffset * ((yEnd - cursor->skip) + 1));
+                  selectionBoundaries.push_back(
+                      {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance +
+                                 renderDistance,
+                             start),
+                       vec2f(renderDistanceBigger - renderDistance, toOffset)});
+                } else {
+                  float renderDistanceBigger = atlas.getAdvance(
+                      (*allLines)[yEnd - cursor->skip].second.substr(
+                          0, cursor->selection.getXBigger() - cursor->xOffset));
+                  float start = ((float)HEIGHT / 2) - 5 -
+                                (toOffset * ((yEnd - cursor->skip) + 1));
+                  selectionBoundaries.push_back(
+                      {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance +
+                                 (maxRenderWidth - renderDistance),
+                             start),
+                       vec2f(maxRenderWidth > renderDistanceBigger
+                                 ? maxRenderWidth
+                                 : renderDistanceBigger,
+                             toOffset)});
+                }
               } else {
                 float renderDistanceBigger = atlas.getAdvance(
                     (*allLines)[yEnd - cursor->skip].second.substr(
@@ -706,145 +726,133 @@ int main(int argc, char **argv) {
                 float start = ((float)HEIGHT / 2) - 5 -
                               (toOffset * ((yEnd - cursor->skip) + 1));
                 selectionBoundaries.push_back(
-                    {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance +
-                               (maxRenderWidth - renderDistance),
-                           start),
-                     vec2f(maxRenderWidth > renderDistanceBigger
-                               ? maxRenderWidth
+                    {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance, start),
+                     vec2f(renderDistanceBigger > maxRenderWidth * 2
+                               ? maxRenderWidth * 2
                                : renderDistanceBigger,
                            toOffset)});
               }
-            } else {
-              float renderDistanceBigger = atlas.getAdvance(
-                  (*allLines)[yEnd - cursor->skip].second.substr(
-                      0, cursor->selection.getXBigger() - cursor->xOffset));
-              float start = ((float)HEIGHT / 2) - 5 -
-                            (toOffset * ((yEnd - cursor->skip) + 1));
-              selectionBoundaries.push_back(
-                  {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance, start),
-                   vec2f(renderDistanceBigger > maxRenderWidth * 2
-                             ? maxRenderWidth * 2
-                             : renderDistanceBigger,
-                         toOffset)});
             }
-          }
-        } else {
-          if (yStart >= cursor->skip &&
-              yStart <= (cursor->skip + cursor->maxLines) - 1) {
-            int yEffective = cursor->selection.getYStart() - cursor->skip;
-            int xStart = cursor->selection.getXStart();
-            float renderDistance =
-                atlas.getAdvance((*allLines)[yEffective].second.substr(
-                    0, xStart - cursor->xOffset));
-            if (xStart >= cursor->xOffset) {
-
-              if (renderDistance < (maxRenderWidth * 2)) {
-                if (yStart < yEnd) {
-
-                  float start =
-                      ((float)HEIGHT / 2) - 5 - (toOffset * (yEffective + 1));
-                  selectionBoundaries.push_back(
-                      {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance +
-                                 renderDistance,
-                             start),
-                       vec2f((maxRenderWidth * 2) - renderDistance, toOffset)});
-                } else {
-                  float start =
-                      ((float)HEIGHT / 2) - 5 - (toOffset * (yEffective + 1));
-                  selectionBoundaries.push_back(
-                      {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance, start),
-                       vec2f(renderDistance, toOffset)});
-                }
-              } else {
-                float start =
-                    ((float)HEIGHT / 2) - 5 - (toOffset * (yEffective + 1));
-                selectionBoundaries.push_back(
-                    {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance, start),
-                     vec2f((maxRenderWidth * 2), toOffset)});
-              }
-            }
-          }
-          if (yEnd >= cursor->skip && yEnd <= cursor->skip + cursor->maxLines) {
-            int yEffective = cursor->selection.getYEnd() - cursor->skip;
-            int xStart = cursor->selection.getXEnd();
-            if (xStart >= cursor->xOffset) {
+          } else {
+            if (yStart >= cursor->skip &&
+                yStart <= (cursor->skip + cursor->maxLines) - 1) {
+              int yEffective = cursor->selection.getYStart() - cursor->skip;
+              int xStart = cursor->selection.getXStart();
               float renderDistance =
                   atlas.getAdvance((*allLines)[yEffective].second.substr(
                       0, xStart - cursor->xOffset));
-              if (renderDistance < (maxRenderWidth * 2)) {
-                if (yEnd < yStart) {
-                  float start =
-                      ((float)HEIGHT / 2) - 5 - (toOffset * (yEffective + 1));
-                  selectionBoundaries.push_back(
-                      {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance +
-                                 renderDistance,
-                             start),
-                       vec2f((maxRenderWidth * 2) - renderDistance, toOffset)});
+              if (xStart >= cursor->xOffset) {
+
+                if (renderDistance < (maxRenderWidth * 2)) {
+                  if (yStart < yEnd) {
+
+                    float start =
+                        ((float)HEIGHT / 2) - 5 - (toOffset * (yEffective + 1));
+                    selectionBoundaries.push_back(
+                        {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance +
+                                   renderDistance,
+                               start),
+                         vec2f((maxRenderWidth * 2) - renderDistance,
+                               toOffset)});
+                  } else {
+                    float start =
+                        ((float)HEIGHT / 2) - 5 - (toOffset * (yEffective + 1));
+                    selectionBoundaries.push_back(
+                        {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance, start),
+                         vec2f(renderDistance, toOffset)});
+                  }
                 } else {
                   float start =
                       ((float)HEIGHT / 2) - 5 - (toOffset * (yEffective + 1));
                   selectionBoundaries.push_back(
                       {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance, start),
-                       vec2f(renderDistance, toOffset)});
+                       vec2f((maxRenderWidth * 2), toOffset)});
                 }
-              } else {
+              }
+            }
+            if (yEnd >= cursor->skip &&
+                yEnd <= cursor->skip + cursor->maxLines) {
+              int yEffective = cursor->selection.getYEnd() - cursor->skip;
+              int xStart = cursor->selection.getXEnd();
+              if (xStart >= cursor->xOffset) {
+                float renderDistance =
+                    atlas.getAdvance((*allLines)[yEffective].second.substr(
+                        0, xStart - cursor->xOffset));
+                if (renderDistance < (maxRenderWidth * 2)) {
+                  if (yEnd < yStart) {
+                    float start =
+                        ((float)HEIGHT / 2) - 5 - (toOffset * (yEffective + 1));
+                    selectionBoundaries.push_back(
+                        {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance +
+                                   renderDistance,
+                               start),
+                         vec2f((maxRenderWidth * 2) - renderDistance,
+                               toOffset)});
+                  } else {
+                    float start =
+                        ((float)HEIGHT / 2) - 5 - (toOffset * (yEffective + 1));
+                    selectionBoundaries.push_back(
+                        {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance, start),
+                         vec2f(renderDistance, toOffset)});
+                  }
+                } else {
 
-                float start =
-                    ((float)HEIGHT / 2) - 5 - (toOffset * (yEffective + 1));
-                selectionBoundaries.push_back(
-                    {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance, start),
-                     vec2f((maxRenderWidth * 2), toOffset)});
+                  float start =
+                      ((float)HEIGHT / 2) - 5 - (toOffset * (yEffective + 1));
+                  selectionBoundaries.push_back(
+                      {vec2f(-(int32_t)WIDTH / 2 + 20 + linesAdvance, start),
+                       vec2f((maxRenderWidth * 2), toOffset)});
+                }
               }
             }
-          }
-          bool found = false;
-          int offset = 0;
-          int count = 0;
-          for (int i = cursor->selection.getYSmaller();
-               i < cursor->selection.getYBigger() - 1; i++) {
-            if (i >= (cursor->skip + cursor->maxLines) - 1)
-              break;
-            if (i >= cursor->skip - 1) {
-              if (!found) {
-                found = true;
-                offset = i - cursor->skip;
+            bool found = false;
+            int offset = 0;
+            int count = 0;
+            for (int i = cursor->selection.getYSmaller();
+                 i < cursor->selection.getYBigger() - 1; i++) {
+              if (i >= (cursor->skip + cursor->maxLines) - 1)
+                break;
+              if (i >= cursor->skip - 1) {
+                if (!found) {
+                  found = true;
+                  offset = i - cursor->skip;
+                }
+                count++;
               }
-              count++;
             }
-          }
-          if (found) {
-            float start = (float)HEIGHT / 2 - 5 - (toOffset * (offset + 1));
-            selectionBoundaries.push_back(
-                {vec2f((-(int32_t)WIDTH / 2) + 20 + linesAdvance, start),
-                 vec2f(maxRenderWidth * 2, -(count * toOffset))});
+            if (found) {
+              float start = (float)HEIGHT / 2 - 5 - (toOffset * (offset + 1));
+              selectionBoundaries.push_back(
+                  {vec2f((-(int32_t)WIDTH / 2) + 20 + linesAdvance, start),
+                   vec2f(maxRenderWidth * 2, -(count * toOffset))});
+            }
           }
         }
-      }
-      if (selectionBoundaries.size()) {
-        selection_shader.use();
-        glBindVertexArray(state.sel_vao);
-        auto color = state.provider.colors.selection_color;
-        selection_shader.set4f("selection_color", color.x, color.y, color.z,
-                               color.w);
-        selection_shader.set2f("resolution", (float)WIDTH, (float)HEIGHT);
-        glBindBuffer(GL_ARRAY_BUFFER, state.sel_vbo);
+        if (selectionBoundaries.size()) {
+          selection_shader.use();
+          glBindVertexArray(state.sel_vao);
+          auto color = state.provider.colors.selection_color;
+          selection_shader.set4f("selection_color", color.x, color.y, color.z,
+                                 color.w);
+          selection_shader.set2f("resolution", (float)WIDTH, (float)HEIGHT);
+          glBindBuffer(GL_ARRAY_BUFFER, state.sel_vbo);
 
-        glBufferSubData(GL_ARRAY_BUFFER, 0,
-                        sizeof(SelectionEntry) * selectionBoundaries.size(),
-                        &selectionBoundaries[0]);
+          glBufferSubData(GL_ARRAY_BUFFER, 0,
+                          sizeof(SelectionEntry) * selectionBoundaries.size(),
+                          &selectionBoundaries[0]);
 
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 6,
-                              (GLsizei)selectionBoundaries.size());
+          glBindBuffer(GL_ARRAY_BUFFER, 0);
+          glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 6,
+                                (GLsizei)selectionBoundaries.size());
+        }
       }
+      glBindVertexArray(0);
+      glBindTexture(GL_TEXTURE_2D, 0);
+
+      glfwSwapBuffers(window);
+      state.cacheValid = true;
+      glfwWaitEvents();
     }
-    glBindVertexArray(0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    glfwSwapBuffers(window);
-    state.cacheValid = true;
-    glfwWaitEvents();
-  }
-  glfwTerminate();
-  return 0;
-};
+    glfwTerminate();
+    return 0;
+  };

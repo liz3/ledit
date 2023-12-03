@@ -56,8 +56,12 @@ void main() {
      if(hasColor > 0.5) {
           color = texture(font, t);
      } else {
-          vec4 sampled = vec4(1.0, 1.0, 1.0, texture(font, t).x);
-          color = glyph_fg_color * sampled;
+          float d = texture(font, t).r;
+          float aaf = fwidth(d);
+          float alpha = smoothstep(0.5 - aaf, 0.5 + aaf, d);
+          color = vec4(glyph_fg_color.rgb, alpha);
+          // vec4 sampled = vec4(1.0, 1.0, 1.0, texture(font, t).x);
+          // color = glyph_fg_color * sampled;
      }
 }
 )";
