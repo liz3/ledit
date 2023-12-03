@@ -217,6 +217,7 @@ C-x-n - Save to new location, note that this will not overwrite the default save
 C-x-o - Load new file, this will replace the current file, non existing files will still load but be marked as New Files.
 C-x-k - switch between open files(buffers) in the session,
 Note: pressing this again will rotate through files that where open.
+C-TAB - fast rotate through open files(buffers).
 
 C-z - Undo.
 M-w/C-c - Copy

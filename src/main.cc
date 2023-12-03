@@ -223,6 +223,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
        gState->undo();
      } else if (key == GLFW_KEY_W && isPress) {
        gState->cut();
+     } else if (key == GLFW_KEY_TAB && isPress) {
+       gState->fastSwitch();
+       return;
      } else if (key == GLFW_KEY_SPACE && isPress) {
        gState->toggleSelection();
      } else if (key == GLFW_KEY_C && action == GLFW_PRESS) {
