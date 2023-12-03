@@ -249,7 +249,7 @@ public:
                  (GLsizei)atlas_height_absolute, 0, GL_RGBA, GL_UNSIGNED_BYTE,
                  nullptr);
     xOffset = 0;
-    for (int i = 0; i < 128; i++) {
+    for (int i = 32; i < 128; i++) {
       CharacterEntry &entry = entries[i];
       entry.offset = (float)xOffset / (float)atlas_width;
       entry.xPos = xOffset;
