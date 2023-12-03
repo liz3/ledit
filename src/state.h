@@ -314,7 +314,10 @@ class State {
         }
 
       } else if (mode == 15) {
-         atlas->readFont(convert_str(miniBuf), fontSize);
+         atlas->readFont(convert_str(miniBuf), fontSize, true);
+         for(auto entry : provider.extraFonts){
+          atlas->readFont(path, fontSize);
+         }
          provider.fontPath = convert_str(miniBuf);
          provider.writeConfig();
          status = U"Loaded font: " + miniBuf;
