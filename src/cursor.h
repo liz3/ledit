@@ -69,6 +69,14 @@ public:
     }
     maxLines = next;
   }
+  void setBoundsDirect(int next) {
+    if (maxLines != 0) {
+      if (next < maxLines) {
+        skip += maxLines - next;
+      }
+    }
+    maxLines = next;
+  }
   void trimTrailingWhiteSpaces() {
     for (auto &line : lines) {
       char16_t last = line[line.length() - 1];
@@ -142,6 +150,10 @@ public:
       }
     }
     selection.stop();
+  }
+  void resetCursor() {
+    x = 0;
+    y = skip;
   }
   void setRenderStart(float x, float y) {
     startX = x;
@@ -387,6 +399,65 @@ public:
     selection.diffX(x);
     selection.diffY(y);
   }
+  std::pair<float, float> getPosLineWrapped(FontAtlas &atlas, float xBase,
+                                            float yBase, float maxRenderWidth,
+                                            float lineHeight, int x, int y) {
+    float cursorX = xBase;
+    float cursorY = yBase;
+    for (size_t i = skip; i < y; i++) {
+      const Utf8String &ref = lines[i];
+      auto vec = ref.getCodePoints();
+      for (char32_t e : vec) {
+        cursorX += atlas.getAdvance(e);
+        if (cursorX > maxRenderWidth + atlas.getAdvance(e)) {
+          cursorY += lineHeight;
+          cursorX = xBase;
+        }
+      }
+      cursorY += lineHeight;
+      cursorX = xBase;
+    }
+    if (x > 0) {
+      const Utf8String &ref = lines[y];
+      auto vec = ref.getCodePointsRange(0, x);
+      for (char32_t e : vec) {
+        cursorX += atlas.getAdvance(e);
+        if (cursorX > maxRenderWidth + atlas.getAdvance(e)) {
+          cursorY += lineHeight;
+          cursorX = xBase;
+        }
+      }
+    }
+    return std::pair(cursorX, cursorY);
+  }
+    int getMaxLinesWrapped(FontAtlas &atlas, float xBase,
+                                            float yBase, float maxRenderWidth,
+                                            float lineHeight, float height) {
+    int count = 0;
+    float heightRemaining = height;
+    float cursorX = xBase;
+    float cursorY = yBase;
+    for (size_t i = skip; i < lines.size(); i++) {
+      const Utf8String &ref = lines[i];
+      auto vec = ref.getCodePoints();
+      for (char32_t e : vec) {
+        cursorX += atlas.getAdvance(e);
+        if (cursorX > maxRenderWidth + atlas.getAdvance(e)) {
+          cursorY += lineHeight;
+          cursorX = xBase;
+          heightRemaining -= lineHeight;
+        }
+      }
+      cursorY += lineHeight;
+      cursorX = xBase;
+      heightRemaining -= lineHeight;
+      if(heightRemaining <= 0)
+        break;
+      count++;
+    }
+
+    return count;
+  }
   Utf8String deleteWord() {
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOf(target->substr(x), wordSeperator);
@@ -398,16 +469,16 @@ public:
     return w;
   }
   Utf8String deleteWordBackwards() {
-    if(x == 0)
+    if (x == 0)
       return U"";
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOfLast(target->substr(0, x), wordSeperator);
     if (offset == -1)
       offset = target->length();
-    Utf8String w = target->substr(x-offset, offset);
-    target->erase(x-offset, offset);
+    Utf8String w = target->substr(x - offset, offset);
+    target->erase(x - offset, offset);
 
-    x = x-offset;
+    x = x - offset;
     historyPush(3, w.length(), w);
     return w;
   }
@@ -1073,8 +1144,10 @@ public:
     edited = false;
     return true;
   }
-  std::vector<std::pair<int, Utf8String>> *
-  getContent(FontAtlas *atlas, float maxWidth, bool onlyCalculate, bool lineWrapping) {
+  std::vector<std::pair<int, Utf8String>> *getContent(FontAtlas *atlas,
+                                                      float maxWidth,
+                                                      bool onlyCalculate,
+                                                      bool lineWrapping) {
     prepare.clear();
     int end = skip + maxLines;
     if (end >= lines.size()) {
@@ -1104,7 +1177,7 @@ public:
       auto s = lines[i];
       prepare.push_back(std::pair<int, Utf8String>(s.length(), s));
     }
-    if(lineWrapping){
+    if (lineWrapping) {
       return &prepare;
     }
     float neededAdvance =
