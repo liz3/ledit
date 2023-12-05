@@ -75,10 +75,11 @@ There are more but these are self explaining.
 ledit can have a config in your home directory `~/.ledit/config.json`.  
 The following values can be set(without the comments)  
 For the colors there are default values, for the font face either remove it completely or make sure its a valid path.
-```json
+```jsonc
 {
   "use_spaces": true, // when pressing tab insert spaces equal to the tab_width, this is true by default.
-  "tab_width": 2, // This controls how many spaces the \t character is wide, further it controls the amount of spaces used in case "use_spaces" is true
+  "tab_width": 2, // This controls how many spaces the \t character is wide, further it controls the amount of spaces used in case "use_spaces" is true,
+  "auto_reload": false, // if a file changed on disk and the editor asks the OS, automatically reload buffer content
   "colors": {
     "comment_color": [
       127, 127, 127, 127 // Comment color if a active mode is present, in RGBA (0-255)
@@ -121,7 +122,10 @@ For the colors there are default values, for the font face either remove it comp
   "extra_fonts": [
   ],
   "window_transparency": true // if the window is allowed to be transparent
-  "font_face": "/Users/liz3/Library/Fonts/FiraCode-Regular.ttf" // TTF font face path
+  "font_face": "/Users/liz3/Library/Fonts/FiraCode-Regular.ttf", // TTF font face path
+  "commands": {
+      // see the command section
+  }
 }
 ```
 ## Highlighting for extra languages
@@ -173,6 +177,17 @@ This file is a json array which can support the following like this CMake exampl
 ]
 ```
 
+### Commands
+The config can contain the `commands` json object which can look like this:
+```json
+"command-name": "shell command here",
+```
+Then using `C-:` you can invoke the command name which will run the respective shell command.
+
+The shell command can contain certain Placeholders which will then be replaced at runtime:
+* `$file` - This will will be replaced with the relative path to the file path of the active buffer, relative to the cwd of the current ledit instance.
+* `$cwd` - Absolute path of ledits working directory.
+* `$selection_content` - if active the content of the current selection, note that the selection can contain new line characters, if not active this is a empty string `""`.
 ## Info
 Here are some infos.
 ### Standard input & output
@@ -215,6 +230,7 @@ C-r - replace, first asks for search then for replace\, use SHFT-RET to replace 
 C-x-/ - If a mode is active either comment or uncomment the cursor line or the selected lines, does not work for raw text mode.
 
 Operations:
+C-:   - Run commands
 C-x-s - Save to last path, if no path present, ledit will ask for a path.
 C-x-n - Save to new location, note that this will not overwrite the default save path, to overwrite the default path, save then load.
 C-x-o - Load new file, this will replace the current file, non existing files will still load but be marked as New Files.

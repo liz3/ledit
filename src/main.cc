@@ -224,6 +224,8 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       gState->search();
     } else if (key == GLFW_KEY_R && isPress) {
       gState->startReplace();
+    } else if (key == GLFW_KEY_SEMICOLON && isPress) {
+      gState->command();
     } else if (key == GLFW_KEY_Z && isPress) {
       gState->undo();
     } else if (key == GLFW_KEY_W && isPress) {

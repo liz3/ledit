@@ -12,6 +12,7 @@
 #include "languages.h"
 #include "providers.h"
 #include "u8String.h"
+#include "utf8String.h"
 struct CursorEntry {
   Cursor cursor;
   std::string path;
@@ -45,6 +46,7 @@ public:
   Utf8String status;
   Utf8String miniBuf;
   Utf8String dummyBuf;
+  std::string lastCmd;
   bool showLineNumbers = true;
   bool highlightLine = true;
   bool lineWrapping = false;
@@ -81,6 +83,12 @@ public:
     cursor->branch = provider.getBranchName(path);
     auto changed = cursor->didChange(path);
     if (changed) {
+      if(provider.autoReload) {
+        cursor->reloadFile(path);
+        reHighlight();
+        status = U"Reloaded";
+        return;
+      }
       miniBuf = U"";
       mode = 36;
       status = U"[" + create(path) + U"]: Changed on disk, reload?";
@@ -223,6 +231,50 @@ public:
     cursor->bindTo(&miniBuf);
     mode = 4;
     status = U"Open [" + create(provider.getCwdFormatted()) + U"]: ";
+  }
+  void command() {
+    if(mode != 0)
+      return;
+    if(lastCmd.size())
+      miniBuf = Utf8String(lastCmd);
+    else
+      miniBuf = U"";
+   cursor->bindTo(&miniBuf);
+    mode = 40;
+    status = U"cmd: ";
+   
+  }
+  void runCommand(std::string cmd) {
+    if(!cmd.size())
+      return;
+    if(!provider.commands.count(cmd)) {
+      status = U"Unregistered Command";
+      return;
+    }
+    std::string command = provider.commands[cmd];
+    std::map<std::string, std::string> replaces = {{"$file", path}, {"$cwd", provider.getCwdFormatted()}};
+    if(cursor->selection.active) {
+      replaces["$selection_content"] = cursor->getSelection();
+    } else {
+      replaces["$selection_content"] = "";
+    }
+
+    for(auto& entry : replaces) {
+        auto index = command.find(entry.first);
+        size_t offset = 0;
+        while(index != std::string::npos) {
+          if(index == 0 || command[index-1] != '\\') {
+              command.replace(index, entry.first.size(), entry.second);
+          } else if(index > 0 || command[index-1] == '\\') {
+            offset = index+1;
+          }
+          index = command.find(entry.first, offset);
+        }
+    }
+    int out = provider.runCommand(command);
+    status = U"cmd: [" + Utf8String(cmd) + U"]: " + Utf8String(std::to_string(out));
+    checkChanged();
+    lastCmd = cmd;
   }
   void reHighlight() {
     if (hasHighlighting)
@@ -391,6 +443,8 @@ public:
       } else if (mode == 36) {
         cursor->reloadFile(path);
         status = U"Reloaded";
+      } else if (mode == 40) {
+        runCommand(miniBuf.getStr());
       }
     } else {
       status = U"Aborted";

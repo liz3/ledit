@@ -413,10 +413,14 @@ public:
         localX = 0;
       }
     } else {
+     
       for (size_t yy = localY; yy > 0; yy--) {
+        if(lines[yy].size() == 0)
+          continue;
         if (yy != y)
-          localX = lines[yy].length() == 0 ? 0 : lines[yy].length() - 1;
-        for (size_t xx = localX; xx > 0; xx--) {
+          localX =  lines[yy].length()-1;
+
+        for (int64_t xx = localX; xx >= 0; xx--) {
           if (xx == x && yy == y)
             continue;
           char32_t local = lines[yy][xx];
