@@ -10,7 +10,7 @@ const std::vector<Language> LANGUAGES = {
       "return",  "double",  "true",   "false", "else",   "void",
       "delete",  "struct",  "class",  "case",  "break",  "const",
       "nullptr", "auto",    "bool",   "new",   "auto*",  "switch",
-      "case",    "typedef", "static", "enum",  "sizeof", "offsetof"},
+      "case",    "typedef", "static", "enum",  "sizeof", "offsetof", "continue"},
      {"#include", "public", "private", "#ifdef", "#define", "#endif", "#ifndef",
       "#else", "#if"},
      "//",

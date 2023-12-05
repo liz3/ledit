@@ -285,6 +285,8 @@ public:
   bool endsWith(const Utf8String &other) const {
     if (other.length() > character_length)
       return false;
+    if(other.length() == character_length)
+      return other.getStrRef() == getStrRef();
     const auto sub = substr(character_length - other.length());
     return sub == other;
   }

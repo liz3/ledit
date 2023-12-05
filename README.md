@@ -228,6 +228,7 @@ C-space - Toggles selection mode on and off.
 
 Misc:
 C-x-l - Toggle Line numbers.
+C-x-r - Toggle line wrapping(this is still half broken)
 C-+   - Increase font size
 C--(-)- decrease font size
 C-x-0 - Load new font file, note that doing this will persist it in the config.

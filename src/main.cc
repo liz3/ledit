@@ -1,4 +1,3 @@
-#include "utf8String.h"
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 120000) // Before macOS 12 Monterey
 #define kIOMainPortDefault kIOMasterPortDefault
 #endif
