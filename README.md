@@ -197,6 +197,7 @@ More generalised Navigation:
 C-x-a - jump to file start.
 C-x-e - jump to to the last line in the file.
 C-x-g - asks for a line number to jump to.
+C-%   - Jump to matching {[()]}
 
 Search:
 C-s will prompt for input and with enter its then possible to search that term case sensitive!

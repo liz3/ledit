@@ -10,6 +10,7 @@
 #include "selection.h"
 #include <deque>
 #include "u8String.h"
+#include "utf8String.h"
 #ifndef __APPLE__
 #include <filesystem>
 #endif
@@ -367,6 +368,77 @@ public:
 
     return -1;
   }
+  void jumpMatching() {
+    bool isBinding = bind != nullptr;
+    Utf8String &active = isBinding ? *bind : lines[y];
+    char32_t current = active[x == lines[y].length() ? x - 1 : x];
+    const std::pair<char32_t, char32_t> *pair = nullptr;
+    bool isClosing = false;
+    for (auto &p : PAIRS) {
+      if (p.first == current || p.second == current) {
+        pair = &p;
+        isClosing = p.second == current;
+        break;
+      }
+    }
+    if (pair == nullptr)
+      return;
+    const std::pair<char32_t, char32_t> &ref = *pair;
+    size_t level = 0;
+    auto localX = x;
+    auto localY = y;
+    if (!isClosing) {
+      for (size_t yy = localY; yy < lines.size(); yy++) {
+
+        for (size_t xx = localX; xx < lines[yy].length(); xx++) {
+          if (xx == x && yy == y)
+            continue;
+          char32_t local = lines[yy][xx];
+          if (local == ref.second) {
+            if (level == 0) {
+              x = xx;
+              y = yy;
+              selection.diffX(x);
+              selection.diffY(y);
+
+              center(yy + 1);
+              return;
+            } else {
+              level--;
+            }
+          } else if (local == ref.first) {
+            level++;
+          }
+        }
+        localX = 0;
+      }
+    } else {
+      for (size_t yy = localY; yy > 0; yy--) {
+        if (yy != y)
+          localX = lines[yy].length() == 0 ? 0 : lines[yy].length() - 1;
+        for (size_t xx = localX; xx > 0; xx--) {
+          if (xx == x && yy == y)
+            continue;
+          char32_t local = lines[yy][xx];
+          if (local == ref.first) {
+            if (level == 0) {
+              x = xx;
+              y = yy;
+              selection.diffX(x);
+              selection.diffY(y);
+
+              center(yy + 1);
+              return;
+            } else {
+              level--;
+            }
+          } else if (local == ref.second) {
+            level++;
+          }
+        }
+      }
+    }
+  }
   int findAnyOfLast(Utf8String str, Utf8String what) {
     if (str.length() == 0)
       return -1;
@@ -430,9 +502,8 @@ public:
     }
     return std::pair(cursorX, cursorY);
   }
-    int getMaxLinesWrapped(FontAtlas &atlas, float xBase,
-                                            float yBase, float maxRenderWidth,
-                                            float lineHeight, float height) {
+  int getMaxLinesWrapped(FontAtlas &atlas, float xBase, float yBase,
+                         float maxRenderWidth, float lineHeight, float height) {
     int count = 0;
     float heightRemaining = height;
     float cursorX = xBase;
@@ -451,7 +522,7 @@ public:
       cursorY += lineHeight;
       cursorX = xBase;
       heightRemaining -= lineHeight;
-      if(heightRemaining <= 0)
+      if (heightRemaining <= 0)
         break;
       count++;
     }

@@ -262,6 +262,8 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
         cursor->moveUp();
       else if (key == GLFW_KEY_N && isPress)
         cursor->moveDown();
+      else if(key == GLFW_KEY_5 && isPress)
+        cursor->jumpMatching();
       gState->renderCoords();
     }
   } else {

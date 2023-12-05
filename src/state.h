@@ -218,7 +218,7 @@ public:
   void open() {
     if (mode != 0)
       return;
-    miniBuf = U"";
+    miniBuf = U"./";
     provider.lastProvidedFolder = "";
     cursor->bindTo(&miniBuf);
     mode = 4;
