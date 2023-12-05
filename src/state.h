@@ -484,6 +484,11 @@ public:
       next = 0;
     activateCursor(next);
   }
+  void toggleLineWrapping(){
+    lineWrapping = !lineWrapping;
+    status = U"(Experimental) Linewrapping: ";
+    status += (lineWrapping ? U"True" : U"Off");
+  }
   void deleteCursor(size_t index) {
     if (mode != 0 || cursors.size() == 1 || index >= cursors.size())
       return;

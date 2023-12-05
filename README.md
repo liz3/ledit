@@ -75,8 +75,10 @@ There are more but these are self explaining.
 ledit can have a config in your home directory `~/.ledit/config.json`.  
 The following values can be set(without the comments)  
 For the colors there are default values, for the font face either remove it completely or make sure its a valid path.
-```¯
+```json
 {
+  "use_spaces": true, // when pressing tab insert spaces equal to the tab_width, this is true by default.
+  "tab_width": 2, // This controls how many spaces the \t character is wide, further it controls the amount of spaces used in case "use_spaces" is true
   "colors": {
     "comment_color": [
       127, 127, 127, 127 // Comment color if a active mode is present, in RGBA (0-255)

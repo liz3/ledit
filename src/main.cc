@@ -178,9 +178,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
         gState->showLineNumbers = !gState->showLineNumbers;
       }
       if (action == GLFW_PRESS && key == GLFW_KEY_R) {
-        gState->lineWrapping = !gState->lineWrapping;
-        // if (gState->lineWrapping)
-        //   cursor->resetCursor();
+        gState->toggleLineWrapping();
       }
       if (action == GLFW_PRESS && key == GLFW_KEY_H) {
         gState->highlightLine = !gState->highlightLine;
@@ -284,8 +282,14 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
     if (isPress && key == GLFW_KEY_TAB) {
       if (gState->mode != 0)
         gState->provideComplete(shift_pressed);
-      else
-        cursor->append(U"  ");
+      else{
+        bool useSpaces = gState->provider.useSpaces;
+        auto am = gState->provider.tabWidth;
+        if(useSpaces)
+        cursor->append(std::string(am, ' '));
+        else
+          cursor->append('\t');
+      }
     }
     if (isPress && key == GLFW_KEY_BACKSPACE) {
       if (alt_pressed) {
@@ -358,6 +362,7 @@ int main(int argc, char **argv) {
   for (auto &path : state.provider.extraFonts) {
     atlas.readFont(path, state.fontSize);
   }
+  atlas.tabWidth = state.provider.tabWidth;
   state.atlas = &atlas;
   if (atlas.errors.size()) {
     state.status += U" " + atlas.errors[0];
