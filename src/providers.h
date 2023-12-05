@@ -32,6 +32,8 @@ public:
   std::vector<std::string> extraFonts;
   std::vector<Language> extraLanguages;
   std::string configPath;
+  int32_t tabWidth = 2;
+  bool useSpaces = true;
   bool allowTransparency = false;
   Provider() {
     fs::path* homeDir = getHomeFolder();
@@ -65,6 +67,8 @@ public:
     }
   }
   std::string getBranchName(std::string path) {
+    if(1)
+    return "";
     std::string asPath = fs::path(path).parent_path().generic_string();
     const char* as_cstr = asPath.c_str();
     std::string branch = "";
@@ -151,6 +155,15 @@ public:
       return def;
 
     return (bool)e;
+  } 
+   int32_t getNumberOrDefault(json o, const std::string entry, int32_t def) {
+    if(!o.contains(entry))
+      return def;
+    json e = o[entry];
+    if(!e.is_number())
+      return def;
+
+    return (int32_t)e;
   }
   std::string getPathOrDefault(json o, const std::string entry, std::string def) {
     if(!o.contains(entry))
@@ -268,6 +281,8 @@ public:
         extraFonts.push_back(str);
       }
     }
+    useSpaces = getBoolOrDefault(*configRoot, "use_spaces", useSpaces);
+    tabWidth = getNumberOrDefault(*configRoot, "tab_width", tabWidth);
     allowTransparency = getBoolOrDefault(*configRoot, "window_transparency", allowTransparency);
   }
   json vecToJson(Vec4f value) {
@@ -297,6 +312,8 @@ public:
     cColors["minibuffer_color"] = vecToJson(colors.minibuffer_color);
     config["font_face"] = fontPath;
     config["window_transparency"] = allowTransparency;
+    config["use_spaces"] = useSpaces;
+    config["tab_width"] = tabWidth;
     config["colors"] = cColors;
     if(extraFonts.size()){
       json extra_fonts;

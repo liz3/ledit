@@ -47,6 +47,7 @@ public:
   Utf8String dummyBuf;
   bool showLineNumbers = true;
   bool highlightLine = true;
+  bool lineWrapping = false;
   int mode = 0;
   int round = 0;
   int fontSize;
@@ -217,7 +218,7 @@ public:
   void open() {
     if (mode != 0)
       return;
-    miniBuf = U"";
+    miniBuf = U"./";
     provider.lastProvidedFolder = "";
     cursor->bindTo(&miniBuf);
     mode = 4;
@@ -482,6 +483,11 @@ public:
     if (next == cursors.size())
       next = 0;
     activateCursor(next);
+  }
+  void toggleLineWrapping(){
+    lineWrapping = !lineWrapping;
+    status = U"(Experimental) Linewrapping: ";
+    status += (lineWrapping ? U"True" : U"Off");
   }
   void deleteCursor(size_t index) {
     if (mode != 0 || cursors.size() == 1 || index >= cursors.size())

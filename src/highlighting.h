@@ -191,7 +191,7 @@ public:
         state.busy = false;
         entries[i] = default_color;
         last_entry = i;
-      } else if (language.multiLineComment.first.length() && hasEnding(state.buffer, language.multiLineComment.first) && (!state.busy || state.mode == 2)) {
+      } else if ((!state.busy || state.mode == 2) && language.multiLineComment.first.length() && hasEnding(state.buffer, language.multiLineComment.first)) {
         entries[i- language.multiLineComment.first.length()] = comment_color;
         last_entry = i- (language.multiLineComment.first.length());
         state.buffer = U"";
@@ -203,7 +203,7 @@ public:
         state.mode = 0;
         entries[i] = default_color;
         last_entry = i;
-      } else if (language.singleLineComment.length() && hasEnding(state.buffer+current, language.singleLineComment) && !state.busy) {
+      } else if (!state.busy && language.singleLineComment.length() && hasEnding(state.buffer+current, language.singleLineComment)) {
 
         entries[i  - (language.singleLineComment.length()-1)] = comment_color;
         last_entry = i- (language.singleLineComment.length()-1);

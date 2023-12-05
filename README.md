@@ -75,8 +75,10 @@ There are more but these are self explaining.
 ledit can have a config in your home directory `~/.ledit/config.json`.  
 The following values can be set(without the comments)  
 For the colors there are default values, for the font face either remove it completely or make sure its a valid path.
-```¯
+```json
 {
+  "use_spaces": true, // when pressing tab insert spaces equal to the tab_width, this is true by default.
+  "tab_width": 2, // This controls how many spaces the \t character is wide, further it controls the amount of spaces used in case "use_spaces" is true
   "colors": {
     "comment_color": [
       127, 127, 127, 127 // Comment color if a active mode is present, in RGBA (0-255)
@@ -197,6 +199,7 @@ More generalised Navigation:
 C-x-a - jump to file start.
 C-x-e - jump to to the last line in the file.
 C-x-g - asks for a line number to jump to.
+C-%   - Jump to matching {[()]}
 
 Search:
 C-s will prompt for input and with enter its then possible to search that term case sensitive!
@@ -227,6 +230,7 @@ C-space - Toggles selection mode on and off.
 
 Misc:
 C-x-l - Toggle Line numbers.
+C-x-r - Toggle line wrapping(this is still half broken)
 C-+   - Increase font size
 C--(-)- decrease font size
 C-x-0 - Load new font file, note that doing this will persist it in the config.

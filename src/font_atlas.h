@@ -6,6 +6,7 @@
 #include "base64.h"
 #include "freetype/freetype.h"
 #include "freetype/fttypes.h"
+#include "shader.h"
 #include "utils.h"
 #include "glad.h"
 #include "utf8String.h"
@@ -30,6 +31,7 @@ public:
   FT_Library ft;
   bool wasGenerated = false;
   int xOffset = 0;
+  uint8_t tabWidth = 2;
   float scale = 1;
   std::vector<FontFace *> faces;
   RenderChar render(char32_t c, float x = 0.0, float y = 0.0,
@@ -60,7 +62,21 @@ public:
     r.hasColor = entry->hasColor ? 1 : 0;
     return r;
   }
-  float getAdvance(char32_t c) { return entries[c].advance * scale; }
+  void ensureTab() {
+    if(entries.count(U'\t'))
+      return;
+    CharacterEntry entry;
+    entry.advance = entries[U' '].advance * tabWidth;
+    entry.hasColor = false;
+    entry.width = 0;
+    entry.height = 0;
+    entries[U'\t'] = entry;
+  }
+  float getAdvance(char32_t c) {
+    if(c >= 128 || c<32)
+      lazyLoad(c);
+   return entries[c].advance * scale; 
+ }
   FontAtlas(std::string path, uint32_t fontSize) {
     errors.clear();
     if (FT_Init_FreeType(&ft)) {
@@ -265,6 +281,10 @@ public:
   void lazyLoad(char32_t c) {
     if (entries.count(c))
       return;
+    if(c == U'\t'){
+      ensureTab();
+      return;
+    }
     FontFace *faceEntry = nullptr;
     for (auto *e : faces) {
       uint32_t glyph_index = FT_Get_Char_Index(e->face, c);
@@ -275,7 +295,7 @@ public:
     }
     if (!faceEntry) {
       Utf8String errStr = U"No font file for char ";
-      errStr += c;
+      errStr += std::to_string((int)c);
       errors.push_back(errStr);
       return;
     }
@@ -378,7 +398,7 @@ public:
     float v = 0;
     std::string::const_iterator c;
     for (c = line.begin(); c != line.end(); c++) {
-      char16_t cc = (char16_t)(*c);
+      char32_t cc = (char32_t)(*c);
       v += entries[cc].advance * scale;
     }
     return v;

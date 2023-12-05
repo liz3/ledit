@@ -10,6 +10,7 @@
 #include "selection.h"
 #include <deque>
 #include "u8String.h"
+#include "utf8String.h"
 #ifndef __APPLE__
 #include <filesystem>
 #endif
@@ -62,6 +63,14 @@ public:
     this->height = height;
     this->lineHeight = lineHeight;
     float next = floor(height / lineHeight);
+    if (maxLines != 0) {
+      if (next < maxLines) {
+        skip += maxLines - next;
+      }
+    }
+    maxLines = next;
+  }
+  void setBoundsDirect(int next) {
     if (maxLines != 0) {
       if (next < maxLines) {
         skip += maxLines - next;
@@ -142,6 +151,10 @@ public:
       }
     }
     selection.stop();
+  }
+  void resetCursor() {
+    x = 0;
+    y = skip;
   }
   void setRenderStart(float x, float y) {
     startX = x;
@@ -355,6 +368,77 @@ public:
 
     return -1;
   }
+  void jumpMatching() {
+    bool isBinding = bind != nullptr;
+    Utf8String &active = isBinding ? *bind : lines[y];
+    char32_t current = active[x == lines[y].length() ? x - 1 : x];
+    const std::pair<char32_t, char32_t> *pair = nullptr;
+    bool isClosing = false;
+    for (auto &p : PAIRS) {
+      if (p.first == current || p.second == current) {
+        pair = &p;
+        isClosing = p.second == current;
+        break;
+      }
+    }
+    if (pair == nullptr)
+      return;
+    const std::pair<char32_t, char32_t> &ref = *pair;
+    size_t level = 0;
+    auto localX = x;
+    auto localY = y;
+    if (!isClosing) {
+      for (size_t yy = localY; yy < lines.size(); yy++) {
+
+        for (size_t xx = localX; xx < lines[yy].length(); xx++) {
+          if (xx == x && yy == y)
+            continue;
+          char32_t local = lines[yy][xx];
+          if (local == ref.second) {
+            if (level == 0) {
+              x = xx;
+              y = yy;
+              selection.diffX(x);
+              selection.diffY(y);
+
+              center(yy + 1);
+              return;
+            } else {
+              level--;
+            }
+          } else if (local == ref.first) {
+            level++;
+          }
+        }
+        localX = 0;
+      }
+    } else {
+      for (size_t yy = localY; yy > 0; yy--) {
+        if (yy != y)
+          localX = lines[yy].length() == 0 ? 0 : lines[yy].length() - 1;
+        for (size_t xx = localX; xx > 0; xx--) {
+          if (xx == x && yy == y)
+            continue;
+          char32_t local = lines[yy][xx];
+          if (local == ref.first) {
+            if (level == 0) {
+              x = xx;
+              y = yy;
+              selection.diffX(x);
+              selection.diffY(y);
+
+              center(yy + 1);
+              return;
+            } else {
+              level--;
+            }
+          } else if (local == ref.second) {
+            level++;
+          }
+        }
+      }
+    }
+  }
   int findAnyOfLast(Utf8String str, Utf8String what) {
     if (str.length() == 0)
       return -1;
@@ -387,6 +471,64 @@ public:
     selection.diffX(x);
     selection.diffY(y);
   }
+  std::pair<float, float> getPosLineWrapped(FontAtlas &atlas, float xBase,
+                                            float yBase, float maxRenderWidth,
+                                            float lineHeight, int x, int y) {
+    float cursorX = xBase;
+    float cursorY = yBase;
+    for (size_t i = skip; i < y; i++) {
+      const Utf8String &ref = lines[i];
+      auto vec = ref.getCodePoints();
+      for (char32_t e : vec) {
+        cursorX += atlas.getAdvance(e);
+        if (cursorX > maxRenderWidth + atlas.getAdvance(e)) {
+          cursorY += lineHeight;
+          cursorX = xBase;
+        }
+      }
+      cursorY += lineHeight;
+      cursorX = xBase;
+    }
+    if (x > 0) {
+      const Utf8String &ref = lines[y];
+      auto vec = ref.getCodePointsRange(0, x);
+      for (char32_t e : vec) {
+        cursorX += atlas.getAdvance(e);
+        if (cursorX > maxRenderWidth + atlas.getAdvance(e)) {
+          cursorY += lineHeight;
+          cursorX = xBase;
+        }
+      }
+    }
+    return std::pair(cursorX, cursorY);
+  }
+  int getMaxLinesWrapped(FontAtlas &atlas, float xBase, float yBase,
+                         float maxRenderWidth, float lineHeight, float height) {
+    int count = 0;
+    float heightRemaining = height;
+    float cursorX = xBase;
+    float cursorY = yBase;
+    for (size_t i = skip; i < lines.size(); i++) {
+      const Utf8String &ref = lines[i];
+      auto vec = ref.getCodePoints();
+      for (char32_t e : vec) {
+        cursorX += atlas.getAdvance(e);
+        if (cursorX > maxRenderWidth + atlas.getAdvance(e)) {
+          cursorY += lineHeight;
+          cursorX = xBase;
+          heightRemaining -= lineHeight;
+        }
+      }
+      cursorY += lineHeight;
+      cursorX = xBase;
+      heightRemaining -= lineHeight;
+      if (heightRemaining <= 0)
+        break;
+      count++;
+    }
+
+    return count;
+  }
   Utf8String deleteWord() {
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOf(target->substr(x), wordSeperator);
@@ -398,16 +540,16 @@ public:
     return w;
   }
   Utf8String deleteWordBackwards() {
-    if(x == 0)
+    if (x == 0)
       return U"";
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOfLast(target->substr(0, x), wordSeperator);
     if (offset == -1)
       offset = target->length();
-    Utf8String w = target->substr(x-offset, offset);
-    target->erase(x-offset, offset);
+    Utf8String w = target->substr(x - offset, offset);
+    target->erase(x - offset, offset);
 
-    x = x-offset;
+    x = x - offset;
     historyPush(3, w.length(), w);
     return w;
   }
@@ -1073,8 +1215,10 @@ public:
     edited = false;
     return true;
   }
-  std::vector<std::pair<int, Utf8String>> *
-  getContent(FontAtlas *atlas, float maxWidth, bool onlyCalculate) {
+  std::vector<std::pair<int, Utf8String>> *getContent(FontAtlas *atlas,
+                                                      float maxWidth,
+                                                      bool onlyCalculate,
+                                                      bool lineWrapping) {
     prepare.clear();
     int end = skip + maxLines;
     if (end >= lines.size()) {
@@ -1103,6 +1247,9 @@ public:
     for (size_t i = skip; i < end; i++) {
       auto s = lines[i];
       prepare.push_back(std::pair<int, Utf8String>(s.length(), s));
+    }
+    if (lineWrapping) {
+      return &prepare;
     }
     float neededAdvance =
         atlas->getAdvance((&lines[y])->substr(0, useXFallback ? xSave : x));
