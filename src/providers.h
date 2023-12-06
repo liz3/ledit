@@ -1,7 +1,7 @@
 #ifndef PROVIDERS_H
 #define PROVIDERS_H
-#include <_types/_uint64_t.h>
 #include <unordered_map>
+#include <atomic>
 #include <vector>
 #include <thread>
 #include <chrono>
