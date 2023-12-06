@@ -1,6 +1,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 #include "utf8String.h"
+#include <iomanip>
+#include <sstream>
 const Utf8String wordSeperator = U" \t\n[]{}/\\*()=_-,.";
 const std::vector<std::pair<char32_t, char32_t>> PAIRS = {
      {'{', '}'}, {'(', ')'}, {'[', ']'}};
@@ -10,6 +12,11 @@ std::string file_to_string(std::string path) {
   ss << stream.rdbuf();
   stream.close();
   return ss.str();
+}
+std::string toFixed(double number, int precision) {
+    std::stringstream out;
+    out << std::fixed << std::setprecision(precision) << number;
+    return out.str();
 }
 bool hasEnding(Utf8String fullString, Utf8String ending) {
   if (fullString.length() >= ending.length()) {

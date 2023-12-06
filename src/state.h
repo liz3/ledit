@@ -1,6 +1,7 @@
 #ifndef DEFS_H_H
 #define DEFS_H_H
 
+#include <iterator>
 #include <vector>
 #include <map>
 #include <string>
@@ -13,6 +14,7 @@
 #include "providers.h"
 #include "u8String.h"
 #include "utf8String.h"
+#include "utils.h"
 struct CursorEntry {
   Cursor cursor;
   std::string path;
@@ -50,6 +52,8 @@ public:
   bool showLineNumbers = true;
   bool highlightLine = true;
   bool lineWrapping = false;
+  bool isCommandRunning = false;
+  CursorEntry lastCommandOutCursor;
   int mode = 0;
   int round = 0;
   int fontSize;
@@ -77,13 +81,54 @@ public:
       return;
     cursor->comment(highlighter.language.singleLineComment);
   }
+  bool checkCommandRun() {
+    if (!provider.command_running && isCommandRunning) {
+      std::chrono::time_point<std::chrono::system_clock> now =
+          std::chrono::system_clock::now();
+      auto duration = now.time_since_epoch();
+      auto msNow =
+          std::chrono::duration_cast<std::chrono::milliseconds>(duration)
+              .count();
+      auto runDuration = msNow - provider.commandStartTime;
+      double secs = (double)runDuration / 1000;
+
+      provider.command_thread.join();
+      isCommandRunning = false;
+      checkChanged();
+      status = U"cmd: [" + Utf8String(lastCmd) + U" | " +
+               Utf8String(toFixed(secs, 2)) +
+               U"s"
+               U"]: " +
+               Utf8String(std::to_string(provider.commandExitCode));
+      return true;
+    }
+    return false;
+  }
+  void activateLastCommandBuffer() {
+    if (isCommandRunning)
+      return;
+    if (provider.lastCommandOutput.size() == 0)
+      return;
+    lastCommandOutCursor.cursor.reset();
+    lastCommandOutCursor.path = "";
+    lastCommandOutCursor.cursor.appendWithLines(
+        Utf8String(provider.lastCommandOutput));
+    auto offset =
+        std::find(cursors.begin(), cursors.end(), &lastCommandOutCursor);
+    if (offset == cursors.end()) {
+      cursors.push_back(&lastCommandOutCursor);
+      activateCursor(cursors.size() - 1);
+    } else {
+      activateCursor(offset - cursors.begin());
+    }
+  }
   void checkChanged() {
     if (!path.length())
       return;
     cursor->branch = provider.getBranchName(path);
     auto changed = cursor->didChange(path);
     if (changed) {
-      if(provider.autoReload) {
+      if (provider.autoReload) {
         cursor->reloadFile(path);
         reHighlight();
         status = U"Reloaded";
@@ -198,7 +243,7 @@ public:
     status = U"Copied " + numberToString(content.length()) + U" Characters";
   }
   void save() {
-    if (mode != 0)
+    if (mode != 0 && mode != 40)
       return;
     if (!path.length()) {
       saveNew();
@@ -233,48 +278,67 @@ public:
     status = U"Open [" + create(provider.getCwdFormatted()) + U"]: ";
   }
   void command() {
-    if(mode != 0)
+    if (mode != 0)
       return;
-    if(lastCmd.size())
+    if (lastCmd.size())
       miniBuf = Utf8String(lastCmd);
     else
       miniBuf = U"";
-   cursor->bindTo(&miniBuf);
+    cursor->bindTo(&miniBuf);
     mode = 40;
+    round = 0;
     status = U"cmd: ";
-   
   }
   void runCommand(std::string cmd) {
-    if(!cmd.size())
+    if (!cmd.size())
       return;
-    if(!provider.commands.count(cmd)) {
+    if (!provider.commands.count(cmd)) {
       status = U"Unregistered Command";
       return;
     }
+    if (provider.command_running) {
+      status = U"cmd: [" + Utf8String(lastCmd) + U"]: is running";
+      return;
+    }
+    std::map<std::string, std::string> replaces;
+
     std::string command = provider.commands[cmd];
-    std::map<std::string, std::string> replaces = {{"$file", path}, {"$cwd", provider.getCwdFormatted()}};
-    if(cursor->selection.active) {
+    if (path.length()) {
+      fs::path file(path);
+      std::string extension = file.extension().generic_string();
+      std::string filename = file.filename().generic_string();
+      std::string basename =
+          filename.substr(0, filename.length() - extension.length());
+      replaces["$file_path"] = path;
+      replaces["$file_name"] = filename;
+      replaces["$file_basename"] = basename;
+      replaces["$file_extension"] = extension;
+    }
+    replaces["$cwd"] = provider.getCwdFormatted();
+    if (cursor->selection.active) {
       replaces["$selection_content"] = cursor->getSelection();
     } else {
       replaces["$selection_content"] = "";
     }
 
-    for(auto& entry : replaces) {
-        auto index = command.find(entry.first);
-        size_t offset = 0;
-        while(index != std::string::npos) {
-          if(index == 0 || command[index-1] != '\\') {
-              command.replace(index, entry.first.size(), entry.second);
-          } else if(index > 0 || command[index-1] == '\\') {
-            offset = index+1;
-          }
-          index = command.find(entry.first, offset);
+    for (auto &entry : replaces) {
+      auto index = command.find(entry.first);
+      size_t offset = 0;
+      while (index != std::string::npos) {
+        if (index == 0 || command[index - 1] != '\\') {
+          command.replace(index, entry.first.size(), entry.second);
+        } else if (index > 0 || command[index - 1] == '\\') {
+          offset = index + 1;
         }
+        index = command.find(entry.first, offset);
+      }
     }
-    int out = provider.runCommand(command);
-    status = U"cmd: [" + Utf8String(cmd) + U"]: " + Utf8String(std::to_string(out));
-    checkChanged();
+    if (provider.saveBeforeCommand && path.length())
+      save();
     lastCmd = cmd;
+    isCommandRunning = true;
+    provider.runCommand(command);
+    status = U"cmd: [" + Utf8String(cmd) + U"]: executing";
   }
   void reHighlight() {
     if (hasHighlighting)
@@ -490,6 +554,16 @@ public:
         miniBuf = U"Text";
       else
         miniBuf = create(langs[round - 1]->modeName);
+    } else if (mode == 40) {
+      int next = round + (reverse ? -1 : 1);
+      if (next < 0)
+        next = provider.commands.size() - 1;
+      else if (next == provider.commands.size())
+        next = 0;
+      auto cursor = provider.commands.begin();
+      std::advance(cursor, next);
+      miniBuf = Utf8String(cursor->first);
+      round = next;
     }
   }
   void renderCoords() {
@@ -505,12 +579,14 @@ public:
     status = numberToString(cursor->y + 1) + U":" +
              numberToString(cursor->x + 1) + branch + U" [" + fileName + U": " +
              (hasHighlighting ? highlighter.languageName : U"Text") +
-             U"] History Size: " + numberToString(cursor->history.size());
+             U"]";
     if (cursor->selection.active)
       status +=
           U" Selected: [" + numberToString(cursor->getSelectionSize()) + U"]";
     if (atlas && atlas->errors.size())
       status += U" " + atlas->errors[0];
+    if (isCommandRunning)
+      status += U" cmd[" + Utf8String(lastCmd) + U"]: executing";
   }
   void gotoLine() {
     if (mode != 0)
@@ -538,7 +614,7 @@ public:
       next = 0;
     activateCursor(next);
   }
-  void toggleLineWrapping(){
+  void toggleLineWrapping() {
     lineWrapping = !lineWrapping;
     status = U"(Experimental) Linewrapping: ";
     status += (lineWrapping ? U"True" : U"Off");
@@ -547,10 +623,12 @@ public:
     if (mode != 0 || cursors.size() == 1 || index >= cursors.size())
       return;
     CursorEntry *entry = cursors[index];
-    delete entry;
+    if (entry != &lastCommandOutCursor) {
+      delete entry;
 
-    if (activeIndex != index)
-      return;
+      if (activeIndex != index)
+        return;
+    }
     size_t targetIndex = index == 0 ? 1 : index - 1;
     cursors.erase(cursors.begin() + index);
     activateCursor(targetIndex);
@@ -573,6 +651,10 @@ public:
         tryEnableHighlighting();
         checkChanged();
       }
+    } else if (entry == &lastCommandOutCursor) {
+      fileName = U"Output [" + Utf8String(lastCmd) + U"]";
+      hasHighlighting = false;
+      renderCoords();
     } else {
       fileName = U"New File";
       hasHighlighting = false;

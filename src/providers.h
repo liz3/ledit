@@ -1,8 +1,12 @@
 #ifndef PROVIDERS_H
 #define PROVIDERS_H
+#include <_types/_uint64_t.h>
 #include <unordered_map>
 #include <vector>
+#include <thread>
+#include <chrono>
 #include <filesystem>
+#include "GLFW/glfw3.h"
 #include "highlighting.h"
 #include "la.h"
 #include "utils.h"
@@ -34,10 +38,16 @@ public:
   std::vector<std::string> extraFonts;
   std::vector<Language> extraLanguages;
   std::string configPath;
+  std::string lastCommandOutput;
+  int commandExitCode = 0;
   int32_t tabWidth = 2;
   bool useSpaces = true;
   bool autoReload = false;
+  uint64_t commandStartTime = 0;
+  bool saveBeforeCommand = false;
   bool allowTransparency = false;
+  std::atomic_bool command_running;
+  std::thread command_thread;
   Provider() {
     fs::path *homeDir = getHomeFolder();
     if (homeDir) {
@@ -69,21 +79,43 @@ public:
       std::cerr << "Failed to load home env var\n";
     }
   }
-  int runCommand(std::string &command) {
-    FILE *fp;
+  int runCommand(std::string command) {
+    if (command_running)
+      return 0;
+    command_running = true;
+    std::chrono::time_point<std::chrono::system_clock> now =
+        std::chrono::system_clock::now();
+    auto duration = now.time_since_epoch();
+    commandStartTime =
+        std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+
+    command_thread = std::thread([this, command]() {
+      FILE *fp;
 #ifdef _WIN32
-    fp = _popen(command.c_str(), "r");
+      fp = _popen(command.c_str(), "r");
 #else
-    fp = popen(command.c_str(), "r");
+      fp = popen(command.c_str(), "r");
 #endif
-    if (fp == nullptr)
-      return -1;
+      std::string out;
+      char buffer[1024];
+      while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+        out += buffer;
+      }
+
+      if (fp == nullptr)
+        return -1;
 #ifdef _WIN32
-    int status = _pclose(fp);
+      int status = _pclose(fp);
 #else
-    int status = pclose(fp);
+      int status = pclose(fp);
 #endif
-    return status;
+      lastCommandOutput = out;
+      commandExitCode = status;
+      command_running = false;
+      glfwPostEmptyEvent();
+      return 0;
+    });
+    return 0;
   }
   std::string getBranchName(std::string path) {
     std::string asPath = fs::path(path).parent_path().generic_string();
@@ -327,6 +359,8 @@ public:
       }
     }
     useSpaces = getBoolOrDefault(*configRoot, "use_spaces", useSpaces);
+    saveBeforeCommand =
+        getBoolOrDefault(*configRoot, "save_before_command", saveBeforeCommand);
     autoReload = getBoolOrDefault(*configRoot, "auto_reload", autoReload);
     tabWidth = getNumberOrDefault(*configRoot, "tab_width", tabWidth);
     allowTransparency =

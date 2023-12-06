@@ -180,6 +180,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       if (action == GLFW_PRESS && key == GLFW_KEY_R) {
         gState->toggleLineWrapping();
       }
+      if (action == GLFW_PRESS && key == GLFW_KEY_SEMICOLON) {
+        gState->activateLastCommandBuffer();
+      }
       if (action == GLFW_PRESS && key == GLFW_KEY_H) {
         gState->highlightLine = !gState->highlightLine;
       }
@@ -393,6 +396,8 @@ int main(int argc, char **argv) {
         state.invalidateCache();
       gState->exitLoop = true;
     }
+    if(state.checkCommandRun())
+      state.invalidateCache();
     if (state.cacheValid) {
       glfwWaitEvents();
       continue;
