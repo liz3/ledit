@@ -99,22 +99,22 @@ For the colors there are default values, for the font face either remove it comp
     ],
    "background_color": [
      0, 0, 0, 255   // Editor background color RGBA (0-255)
-    ]
+    ],
    "selection_color": [
      0, 0, 0, 255   // Selection area color RGBA (0-255)
-    ]
+    ],
    "highlight_color": [
      0, 0, 0, 255   // Color of the active line background highlight. RGBA (0-255)
-    ]
+    ],
    "number_color": [
      0, 0, 160, 255   // Color used for numbers. RGBA (0-255)
-    ]
+    ],
    "line_number_color": [
      0, 0, 160, 255   // Color used for line numbers RGBA (0-255)
-    ]
+    ],
    "status_color": [
      0, 0, 160, 255   // Color used for the status line, buffer information RGBA (0-255)
-    ]
+    ],
    "minibuffer_color": [
      0, 0, 160, 255   // Color used for the Minibuffer, actions like search, replace, save new and so on. RGBA (0-255)
     ]
@@ -122,7 +122,7 @@ For the colors there are default values, for the font face either remove it comp
   // optional load additional font files
   "extra_fonts": [
   ],
-  "window_transparency": true // if the window is allowed to be transparent
+  "window_transparency": true, // if the window is allowed to be transparent
   "font_face": "/Users/liz3/Library/Fonts/FiraCode-Regular.ttf", // TTF font face path
   "commands": {
       // see the command section
