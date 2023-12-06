@@ -1,6 +1,7 @@
 #ifndef CURSOR_H
 #define CURSOR_H
 
+#include <complex.h>
 #include <string>
 #include <map>
 #include <vector>
@@ -80,7 +81,7 @@ public:
   }
   void trimTrailingWhiteSpaces() {
     for (auto &line : lines) {
-      char16_t last = line[line.length() - 1];
+      char32_t last = line[line.length() - 1];
       if (last == ' ' || last == '\t' || last == '\r') {
         int remaining = line.length();
         int count = 0;
@@ -413,12 +414,12 @@ public:
         localX = 0;
       }
     } else {
-     
+
       for (size_t yy = localY; yy > 0; yy--) {
-        if(lines[yy].size() == 0)
+        if (lines[yy].size() == 0)
           continue;
         if (yy != y)
-          localX =  lines[yy].length()-1;
+          localX = lines[yy].length() - 1;
 
         for (int64_t xx = localX; xx >= 0; xx--) {
           if (xx == x && yy == y)
@@ -532,6 +533,22 @@ public:
     }
 
     return count;
+  }
+  void deleteLines(int64_t start, int64_t am) {
+    if (start < 0)
+      start = 0;
+    if (start + am > lines.size())
+      am = lines.size() - start;
+    std::vector<Utf8String> ll;
+    for (size_t l = start; l < start + am; l++)
+      ll.push_back(lines[l]);
+    lines.erase(lines.begin() + start, lines.begin() + start + am);
+    y = start;
+    x = 0;
+    if (lines.size() == 0)
+      lines.push_back(U"");
+    historyPushWithExtra(50, 0, U"", ll);
+    y = y == 0 ? 0 : y-1;
   }
   Utf8String deleteWord() {
     Utf8String *target = bind ? bind : &lines[y];
@@ -721,6 +738,13 @@ public:
       (&lines[y])->erase(entry.length, data->commentStr.length());
       x = entry.x;
       delete data;
+      break;
+    }
+    case 50: {
+      y = entry.y;
+      x = entry.x;
+      for (size_t i = 0; i < entry.extra.size(); i++)
+        lines.insert(lines.begin() + y + i, entry.extra[i]);
       break;
     }
     default:

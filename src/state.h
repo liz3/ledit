@@ -15,6 +15,8 @@
 #include "u8String.h"
 #include "utf8String.h"
 #include "utils.h"
+#include "vim.h"
+void register_vim_commands(Vim &vim, State &state);
 struct CursorEntry {
   Cursor cursor;
   std::string path;
@@ -57,6 +59,7 @@ public:
   int mode = 0;
   int round = 0;
   int fontSize;
+  Vim *vim;
   State() {}
 
   void invalidateCache() { cacheValid = false; }
@@ -80,6 +83,10 @@ public:
     if (!hasHighlighting)
       return;
     cursor->comment(highlighter.language.singleLineComment);
+  }
+  void registerVim() {
+    this->vim = new Vim(this);
+    register_vim_commands(*vim, *this);
   }
   bool checkCommandRun() {
     if (!provider.command_running && isCommandRunning) {
@@ -576,13 +583,16 @@ public:
     if (cursor->branch.length()) {
       branch = U" [git: " + create(cursor->branch) + U"]";
     }
-    status = numberToString(cursor->y + 1) + U":" +
+    status = (vim ? Utf8String(vim->getModeName()) + U" " : U"") +
+             numberToString(cursor->y + 1) + U":" +
              numberToString(cursor->x + 1) + branch + U" [" + fileName + U": " +
-             (hasHighlighting ? highlighter.languageName : U"Text") +
-             U"]";
+             (hasHighlighting ? highlighter.languageName : U"Text") + U"]";
     if (cursor->selection.active)
       status +=
           U" Selected: [" + numberToString(cursor->getSelectionSize()) + U"]";
+    if(vim && vim->getCount() > 0) {
+      status += U" " + Utf8String(std::to_string(vim->getCount()));
+    }
     if (atlas && atlas->errors.size())
       status += U" " + atlas->errors[0];
     if (isCommandRunning)
@@ -638,6 +648,8 @@ public:
     activeIndex = cursorIndex;
     std::string path = entry->path;
     this->cursor = &(entry->cursor);
+    if (vim)
+      vim->setCursor(this->cursor);
     this->path = path;
     status = create(path);
     if (path.length()) {

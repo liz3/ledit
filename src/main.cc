@@ -1,3 +1,4 @@
+#include "utf8String.h"
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 120000) // Before macOS 12 Monterey
 #define kIOMainPortDefault kIOMasterPortDefault
 #endif
@@ -25,6 +26,7 @@
 #include "shaders.h"
 #include "highlighting.h"
 #include "languages.h"
+#include "vim_actions.h"
 State *gState = nullptr;
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   glViewport(0, 0, width, height);
@@ -68,6 +70,12 @@ void character_callback(GLFWwindow *window, unsigned int codepoint) {
   if (gState == nullptr)
     return;
   gState->invalidateCache();
+    if(gState->vim) {
+    auto r = gState->vim->processCharacter((char32_t)codepoint);
+    if(r && gState->vim->shouldRenderCoords())
+      gState->renderCoords();
+    return;
+  }
   gState->exitFlag = false;
   if (gState->exitLoop) {
     glfwSetWindowShouldClose(window, false);
@@ -105,6 +113,13 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
   if (gState == nullptr)
     return;
   gState->invalidateCache();
+  if(gState->vim) {
+    auto r = gState->vim->processKey(key, scancode, action, mods);
+    
+    if(r && gState->vim->shouldRenderCoords())
+      gState->renderCoords();
+    return;
+  }
   if (key == GLFW_KEY_ESCAPE) {
     if (action == GLFW_PRESS) {
       if (gState->cursor->selection.active) {
@@ -334,6 +349,8 @@ int main(int argc, char **argv) {
     glfwTerminate();
     return -1;
   }
+    if(state.provider.vim_emulation)
+    state.registerVim();
   state.window = window;
   state.addCursor(initialPath);
 
@@ -358,6 +375,7 @@ int main(int argc, char **argv) {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   state.init();
+
   Shader text_shader(text_shader_vert, text_shader_frag, {});
   text_shader.use();
   Shader cursor_shader(cursor_shader_vert, cursor_shader_frag,
@@ -664,7 +682,7 @@ int main(int argc, char **argv) {
       xpos += atlas.getAdvance(*c);
     }
     float statusAdvance = atlas.getAdvance(state.status);
-    if (state.mode != 0 && state.mode != 32) {
+    if (state.mode != 0 && state.mode != 32 || (state.vim && state.vim->isCommandBufferActive())) {
       // draw minibuffer
       xpos = (-(int32_t)WIDTH / 2) + 20 + statusAdvance;
       ypos = (float)HEIGHT / 2 - toOffset - 10;
@@ -695,7 +713,7 @@ int main(int argc, char **argv) {
       cursor_shader.use();
       cursor_shader.set1f("cursor_height", toOffset);
       cursor_shader.set2f("resolution", (float)WIDTH, (float)HEIGHT);
-      if (state.mode != 0 && state.mode != 32) {
+      if (state.mode != 0 && state.mode != 32 || (state.vim && state.vim->isCommandBufferActive())) {
         // use cursor for minibuffer
         float cursorX = -(int32_t)(WIDTH / 2) + 15 +
                         (atlas.getAdvance(cursor->getCurrentAdvance())) + 5 +
@@ -709,7 +727,7 @@ int main(int argc, char **argv) {
         glBindTexture(GL_TEXTURE_2D, 0);
       }
 
-      if (isSearchMode || state.mode == 0) {
+      if ((isSearchMode || state.mode == 0) && (!state.vim || !state.vim->isCommandBufferActive())) {
         if (state.lineWrapping) {
           auto out = cursor->getPosLineWrapped(
               atlas, -maxRenderWidth, -(int32_t)(HEIGHT / 2) + 4 + toOffset,

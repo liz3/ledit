@@ -43,6 +43,7 @@ public:
   int32_t tabWidth = 2;
   bool useSpaces = true;
   bool autoReload = false;
+  bool vim_emulation = false;
   uint64_t commandStartTime = 0;
   bool saveBeforeCommand = false;
   bool allowTransparency = false;
@@ -362,6 +363,7 @@ public:
     saveBeforeCommand =
         getBoolOrDefault(*configRoot, "save_before_command", saveBeforeCommand);
     autoReload = getBoolOrDefault(*configRoot, "auto_reload", autoReload);
+    vim_emulation = getBoolOrDefault(*configRoot, "vim_mode", vim_emulation);
     tabWidth = getNumberOrDefault(*configRoot, "tab_width", tabWidth);
     allowTransparency =
         getBoolOrDefault(*configRoot, "window_transparency", allowTransparency);
