@@ -5,6 +5,7 @@
 #include "cursor.h"
 #include "state.h"
 #include "utf8String.h"
+#include "utils.h"
 #include "vim.h"
 
 ActionResult withType(ResultType type) {
@@ -31,8 +32,9 @@ public:
       cursor->unbind();
       vim->setIsCommandBufferActive(false);
     }
+    cursor->selection.stop();
     if (mode == VimMode::VISUAL) {
-      cursor->selection.stop();
+
       vim->setMode(VimMode::NORMAL);
     }
     if (mode == VimMode::INSERT)
@@ -380,12 +382,8 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
-    // if (vim->activeAction()) {
-    //   state.direction = Direction::RIGHT;
-    //   ActionResult r;
-    //   r.type = ResultType::ExecuteSet;
-    //   return r;
-    // }
+    if (vim->activeAction())
+      return withType(ResultType::Silent);
     if (mode == VimMode::NORMAL) {
       cursor->jumpEnd();
       cursor->append('\n');
@@ -405,12 +403,8 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
-    // if (vim->activeAction()) {
-    //   state.direction = Direction::RIGHT;
-    //   ActionResult r;
-    //   r.type = ResultType::ExecuteSet;
-    //   return r;
-    // }
+    if (vim->activeAction())
+      return withType(ResultType::Silent);
     if (mode == VimMode::NORMAL) {
       cursor->jumpStart();
       cursor->append('\n');
@@ -431,14 +425,92 @@ public:
     if (state.isInital) {
       cursor->deleteLines(cursor->y, 1);
     } else {
+      if (state.action.length() == 1) {
+        for (auto &pair : PAIRS) {
+          if (state.action[0] == pair.first || state.action[0] == pair.second) {
+            Utf8String in(state.action);
+            bool isClosing = state.action[0] == pair.second;
+            auto result =
+                cursor->findGlobal(!isClosing, in, cursor->x, cursor->y);
+            if (result.first == -1 && result.second == -1) {
+              return {};
+            }
+            std::cout << result.first << ":" << result.second << "\n";
+            cursor->x = result.first;
+
+            cursor->y = result.second;
+
+            if (state.replaceMode == ReplaceMode::ALL && !isClosing)
+              cursor->selection.activate(cursor->x == 0 ? 0 : cursor->x - 1,
+                                         cursor->y);
+            else
+              cursor->selection.activate(state.replaceMode == ReplaceMode::ALL
+                                             ? cursor->x + 1
+                                             : cursor->x,
+                                         cursor->y);
+
+            cursor->jumpMatching();
+            if (state.replaceMode == ReplaceMode::ALL) {
+              cursor->x++;
+              cursor->selection.diffX(cursor->x);
+            }
+            if (state.replaceMode == ReplaceMode::INNER &&
+                (cursor->selection.xEnd == cursor->selection.xStart + 1 ||
+                 cursor->selection.xEnd == cursor->selection.xStart - 1) &&
+                cursor->selection.yStart == cursor->selection.yEnd) {
+              if (cursor->selection.xEnd == cursor->selection.xStart - 1)
+                cursor->x++;
+              cursor->selection.stop();
+              return {};
+            } else if (state.replaceMode == ReplaceMode::INNER &&
+                       cursor->selection.xStart == 0) {
+              cursor->selection.xStart++;
+            }
+            if (state.replaceMode == ReplaceMode::INNER && isClosing) {
+              cursor->x++;
+              cursor->selection.diffX(cursor->x);
+            } else if (state.replaceMode == ReplaceMode::ALL && isClosing) {
+              cursor->x--;
+              cursor->selection.diffX(cursor->x);
+            }
+            cursor->deleteSelection();
+            cursor->selection.stop();
+            return {};
+          }
+        }
+        if (state.action == "\"") {
+          auto result =
+              cursor->findGlobal(true, Utf8String("\""), cursor->x, cursor->y);
+          auto resultRight = cursor->findGlobal(false, Utf8String("\""),
+                                                cursor->x + 1, cursor->y);
+          if (result.first == -1 || result.second == -1 ||
+              resultRight.first == -1 || resultRight.second == -1)
+            return {};
+          cursor->x = result.first;
+
+          cursor->y = result.second;
+
+          if (state.replaceMode == ReplaceMode::ALL)
+            cursor->selection.activate(cursor->x == 0 ? 0 : cursor->x - 1,
+                                       cursor->y);
+          else
+            cursor->selection.activate(cursor->x, cursor->y);
+
+          cursor->selection.diff(state.replaceMode == ReplaceMode::ALL
+                                     ? resultRight.first + 1
+                                     : resultRight.first,
+                                 resultRight.second);
+
+          cursor->deleteSelection();
+          cursor->selection.stop();
+          return {};
+        }
+      }
       if (state.action == "w") {
         if (state.replaceMode == ReplaceMode::ALL) {
-          vim->iterate([cursor]() {
-            cursor->deleteWord();
-            cursor->removeOne();
-          });
+          vim->iterate([cursor]() { cursor->deleteWordVim(true); });
         } else {
-          vim->iterate([cursor]() { cursor->deleteWord(); });
+          vim->iterate([cursor]() { cursor->deleteWordVim(false); });
         }
       } else if (state.action == "b") {
         if (state.replaceMode == ReplaceMode::ALL) {
@@ -449,6 +521,12 @@ public:
         } else {
           vim->iterate([cursor]() { cursor->deleteWordBackwards(); });
         }
+      } else if (state.action == "$") {
+        Utf8String &str = cursor->lines[cursor->y];
+        auto length = str.size() - cursor->x;
+        Utf8String w = str.substr(cursor->x, length);
+        str.erase(cursor->x, length);
+        cursor->historyPush(3, w.length(), w);
       } else if (state.direction == Direction::UP) {
         cursor->deleteLines(cursor->y - 1 - state.count, 1 + state.count);
       } else if (state.direction == Direction::DOWN) {
@@ -504,7 +582,13 @@ public:
 
     if (!vim->activeAction() && mode == VimMode::NORMAL) {
       vim->setMode(VimMode::VISUAL);
+      if (cursor->x == cursor->lines[cursor->y].size() - 1)
+        cursor->x++;
       cursor->selection.activate(cursor->x, cursor->y);
+    } else if (mode == VimMode::VISUAL) {
+      auto a = withType(ResultType::Emit);
+      a.action_name = "ESC";
+      return a;
     }
     return {};
   }
@@ -546,6 +630,9 @@ public:
 
     if (!vim->activeAction()) {
       cursor->jumpEnd();
+    } else {
+      state.action = "$";
+      return withType(ResultType::ExecuteSet);
     }
     return withType(ResultType::Silent);
   }
@@ -710,7 +797,125 @@ public:
   }
 };
 
-class ParagraphUpAction : public Action {
+class ParagraphAction : public Action {
+private:
+  std::string symbol;
+
+public:
+  ParagraphAction(std::string symbol) { this->symbol = symbol; }
+  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override {
+
+    return {};
+  }
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override {
+    if (vim->activeAction()) {
+      state.action = symbol;
+      return withType(ResultType::ExecuteSet);
+    }
+    if (symbol == "{") {
+      if (cursor->y == 0)
+        return withType(ResultType::Silent);
+      for (int64_t i = cursor->y - 1; i >= 0; i--) {
+        bool allws = true;
+        auto ref = cursor->lines[i].getStrRef();
+        for (const char t : ref) {
+          if (t > ' ') {
+            allws = false;
+            break;
+          }
+        }
+        if (allws) {
+          cursor->gotoLine(i + 1);
+          return {};
+        }
+      }
+      cursor->gotoLine(1);
+      return {};
+    } else {
+      for (int64_t i = cursor->y + 1; i < cursor->lines.size(); i++) {
+        bool allws = true;
+        auto ref = cursor->lines[i].getStrRef();
+        for (const char t : ref) {
+          if (t > ' ') {
+            allws = false;
+            break;
+          }
+        }
+        if (allws) {
+          cursor->gotoLine(i + 1);
+          return {};
+        }
+      }
+      cursor->gotoLine(cursor->lines.size());
+      return {};
+    }
+    return {};
+  }
+};
+class BracketAction : public Action {
+private:
+  std::string symbol;
+
+public:
+  BracketAction(std::string symbol) { this->symbol = symbol; }
+  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override {
+
+    return {};
+  }
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override {
+    if (vim->activeAction()) {
+      state.action = symbol;
+      return withType(ResultType::ExecuteSet);
+    }
+    return {};
+  }
+};
+class ParenAction : public Action {
+private:
+  std::string symbol;
+
+public:
+  ParenAction(std::string symbol) { this->symbol = symbol; }
+  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override {
+
+    return {};
+  }
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override {
+    if (vim->activeAction()) {
+      state.action = symbol;
+      return withType(ResultType::ExecuteSet);
+    }
+    return {};
+  }
+};
+class QuoteAction : public Action {
+private:
+  std::string symbol;
+
+public:
+  QuoteAction(std::string symbol) { this->symbol = symbol; }
+  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override {
+
+    return {};
+  }
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override {
+    if (vim->activeAction()) {
+      state.action = symbol;
+      return withType(ResultType::ExecuteSet);
+    }
+    return {};
+  }
+};
+
+class SlashAction : public Action {
 public:
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
@@ -720,58 +925,17 @@ public:
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
     if (vim->activeAction()) {
-      return withType(ResultType::Silent);
+      return withType(ResultType::ExecuteSet);
+    } else if (mode != VimMode::INSERT) {
+      vim->getState().search();
+      ActionResult r;
+      r.allowCoords = false;
+      return r;
     }
-    if (cursor->y == 0)
-      return withType(ResultType::Silent);
-    for (int64_t i = cursor->y - 1; i >= 0; i--) {
-      bool allws = true;
-      auto ref = cursor->lines[i].getStrRef();
-      for (const char t : ref) {
-        if (t > ' ') {
-          allws = false;
-          break;
-        }
-      }
-      if (allws) {
-        cursor->gotoLine(i + 1);
-        return {};
-      }
-    }
-    cursor->gotoLine(1);
     return {};
   }
 };
-class ParagraphDownAction : public Action {
-public:
-  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
-                       Vim *vim) override {
 
-    return {};
-  }
-  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
-                    Vim *vim) override {
-    if (vim->activeAction()) {
-      return withType(ResultType::Silent);
-    }
-    for (int64_t i = cursor->y + 1; i < cursor->lines.size(); i++) {
-      bool allws = true;
-      auto ref = cursor->lines[i].getStrRef();
-      for (const char t : ref) {
-        if (t > ' ') {
-          allws = false;
-          break;
-        }
-      }
-      if (allws) {
-        cursor->gotoLine(i + 1);
-        return {};
-      }
-    }
-    cursor->gotoLine(cursor->lines.size());
-    return {};
-  }
-};
 void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrie(new EscapeAction(), "ESC", GLFW_KEY_ESCAPE);
   vim.registerTrie(new BackspaceAction(), "BACKSPACE", GLFW_KEY_BACKSPACE);
@@ -802,8 +966,14 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new IIAction(), "I", 'I');
   vim.registerTrieChar(new GAction(), "g", 'j');
   vim.registerTrieChar(new GGAction(), "G", 'J');
-  vim.registerTrieChar(new ParagraphUpAction(), "{", '{');
-  vim.registerTrieChar(new ParagraphDownAction(), "}", '}');
+  vim.registerTrieChar(new ParagraphAction("{"), "{", '{');
+  vim.registerTrieChar(new ParagraphAction("}"), "}", '}');
+  vim.registerTrieChar(new BracketAction("["), "[", '[');
+  vim.registerTrieChar(new BracketAction("]"), "]", ']');
+  vim.registerTrieChar(new ParenAction("("), "(", '(');
+  vim.registerTrieChar(new ParenAction(")"), ")", ')');
+  vim.registerTrieChar(new QuoteAction("\""), "\"", '\"');
+  vim.registerTrieChar(new SlashAction(), "/", '/');
 }
 
 #endif

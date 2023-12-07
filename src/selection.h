@@ -51,7 +51,9 @@ class Selection {
   int getYEnd() {
     return yEnd;
   }
-
+  bool isSame(){
+    return active && yStart == yEnd && xStart == xEnd;
+  }
   int getXSmaller() {
     return xEnd < xStart ? xEnd : xStart;
   }

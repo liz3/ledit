@@ -81,6 +81,9 @@ public:
     resetMotionState();
     this->cursor = cursor;
   }
+  VimMode getMode() {
+    return mode;
+  }
   bool processCharacter(char32_t c) {
     if (!cursor)
       return true;
@@ -156,17 +159,17 @@ private:
     if (result.type == ResultType::Emit) {
       if (tries.count(result.action_name))
         return exec(tries[result.action_name]);
-      return true;
+    return result.allowCoords;
     }
     if (result.type == ResultType::SetSelf) {
       activeTrie = trie;
-      return true;
+      return result.allowCoords;
     }
     if (result.type == ResultType::EmitAndSetFuture) {
       next = result.emit_next;
       if (tries.count(result.action_name))
         return exec(tries[result.action_name]);
-      return true;
+      return result.allowCoords;
     }
     if (result.type == ResultType::Done) {
       activeTrie = nullptr;

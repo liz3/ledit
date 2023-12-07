@@ -4,6 +4,7 @@
 #include <complex.h>
 #include <string>
 #include <map>
+#include <sys/_types/_int64_t.h>
 #include <vector>
 #include <sstream>
 #include <fstream>
@@ -370,6 +371,19 @@ public:
     return -1;
   }
   void jumpMatching() {
+    auto res = findMatchingWithCoords(x, y);
+    if (res.first == -1 && res.second == -1){
+      std::cout << "jum matching -1 " << lines[y][x] << "\n";
+      return;
+    }
+    x = res.first;
+    y = res.second;
+    selection.diffX(x);
+    selection.diffY(y);
+
+    center(res.second + 1);
+  }
+  std::pair<int, int> findMatchingWithCoords(int inx, int iny) {
     bool isBinding = bind != nullptr;
     Utf8String &active = isBinding ? *bind : lines[y];
     char32_t current = active[x == lines[y].length() ? x - 1 : x];
@@ -383,11 +397,11 @@ public:
       }
     }
     if (pair == nullptr)
-      return;
+      return std::pair(-1, -1);
     const std::pair<char32_t, char32_t> &ref = *pair;
     size_t level = 0;
-    auto localX = x;
-    auto localY = y;
+    auto localX = inx;
+    auto localY = iny;
     if (!isClosing) {
       for (size_t yy = localY; yy < lines.size(); yy++) {
 
@@ -397,13 +411,8 @@ public:
           char32_t local = lines[yy][xx];
           if (local == ref.second) {
             if (level == 0) {
-              x = xx;
-              y = yy;
-              selection.diffX(x);
-              selection.diffY(y);
 
-              center(yy + 1);
-              return;
+              return std::pair(xx, yy);
             } else {
               level--;
             }
@@ -415,7 +424,7 @@ public:
       }
     } else {
 
-      for (size_t yy = localY; yy > 0; yy--) {
+      for (int64_t yy = localY; yy >= 0; yy--) {
         if (lines[yy].size() == 0)
           continue;
         if (yy != y)
@@ -427,13 +436,13 @@ public:
           char32_t local = lines[yy][xx];
           if (local == ref.first) {
             if (level == 0) {
-              x = xx;
-              y = yy;
-              selection.diffX(x);
-              selection.diffY(y);
+              // x = xx;
+              // y = yy;
+              // selection.diffX(x);
+              // selection.diffY(y);
 
-              center(yy + 1);
-              return;
+              // center(yy + 1);
+              return std::pair(xx, yy);
             } else {
               level--;
             }
@@ -443,6 +452,7 @@ public:
         }
       }
     }
+    return std::pair(-1, -1);
   }
   int findAnyOfLast(Utf8String str, Utf8String what) {
     if (str.length() == 0)
@@ -458,6 +468,62 @@ public:
     }
 
     return -1;
+  }
+    int findAnyOfLastInclusive(Utf8String str, Utf8String what) {
+    if (str.length() == 0)
+      return -1;
+    Utf8String::const_iterator c;
+    int offset = 0;
+    for (c = str.end() - 1; c != str.begin(); c--) {
+
+      if ( what.find(*c) != std::string::npos) {
+        return offset;
+      }
+      offset++;
+    }
+     if ( what.find(*c) != std::string::npos) {
+        return offset+1;
+      }
+
+    return -1;
+  }
+  int findAnyOfInclusive(Utf8String str, Utf8String what) {
+    if (str.length() == 0)
+      return -1;
+    Utf8String::const_iterator c;
+    int offset = 0;
+    for (c = str.begin(); c != str.end(); c++) {
+
+      if ( what.find(*c) != std::string::npos) {
+        return offset;
+      }
+      offset++;
+    }
+
+    return -1;
+  }
+  std::pair<int, int> findGlobal(bool backwards, Utf8String what, int inx,
+                                 int iny) {
+
+    if (backwards) {
+      for (int64_t i = iny; i >= 0; i--) {
+        Utf8String ref = i == iny ? lines[i].substr(0, inx+1) : lines[i];
+        auto res = findAnyOfLastInclusive(ref, what);
+        if (res != -1) {
+          return std::pair(ref.length() - res, i);
+        }
+      }
+    } else {
+      for (int64_t i = iny; i < lines.size(); i++) {
+        Utf8String ref = i == iny ? lines[i].substr(inx) : lines[i];
+        auto res = findAnyOfInclusive(ref, what);
+        if (res != -1) {
+          return std::pair(i == iny ? inx + res : res, i);
+        }
+      }
+    }
+
+    return std::pair(-1, -1);
   }
 
   void advanceWord() {
@@ -548,7 +614,7 @@ public:
     if (lines.size() == 0)
       lines.push_back(U"");
     historyPushWithExtra(50, 0, U"", ll);
-    y = y == 0 ? 0 : y-1;
+    y = y == 0 ? 0 : y - 1;
   }
   Utf8String deleteWord() {
     Utf8String *target = bind ? bind : &lines[y];
@@ -557,6 +623,29 @@ public:
       offset = target->length() - x;
     Utf8String w = target->substr(x, offset);
     target->erase(x, offset);
+    historyPush(3, w.length(), w);
+    return w;
+  }
+  Utf8String deleteWordVim(bool withSpace) {
+    Utf8String *target = bind ? bind : &lines[y];
+    auto start = x;
+    auto end = x;
+    for (int64_t i = start - 1; i >= 0; i--) {
+      if (lines[y][i] <= ' ')
+        break;
+      start = i;
+    }
+    if (start > 0 && withSpace)
+      start--;
+    for (size_t i = x; i < lines[y].size(); i++) {
+      if (lines[y][i] <= ' ')
+        break;
+      end++;
+    }
+    auto length = end - start;
+    x = start;
+    Utf8String w = target->substr(x, length);
+    target->erase(x, length);
     historyPush(3, w.length(), w);
     return w;
   }
