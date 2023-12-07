@@ -573,6 +573,8 @@ public:
   }
 
   void setCurrent(char32_t character){
+    if(bind)
+      return;
     Utf8String temp;
     temp += lines[y][x];
     lines[y].set(x, character);
@@ -1299,6 +1301,10 @@ public:
   const int64_t getCurrentLineLength(){
     const Utf8String& ref = lines[y];
     return ref.length();
+  }
+  char32_t getCurrentChar(){
+    Utf8String& ref = lines[y];
+    return ref[x];
   }
   void moveRight() {
     Utf8String *current = bind ? bind : &lines[y];
