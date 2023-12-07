@@ -110,8 +110,16 @@ public:
       state.command();
       return;
     }
+    if(content == ":ck") {
+      state.killCommand();
+      return;
+    }
     if (content == ":co") {
       state.activateLastCommandBuffer();
+      return;
+    }
+    if(content == ":lw"){
+      state.toggleLineWrapping();
       return;
     }
     if (content == ":font") {

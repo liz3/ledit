@@ -129,6 +129,9 @@ public:
       activateCursor(offset - cursors.begin());
     }
   }
+  void killCommand(){
+    provider.killCommand();
+  }
   void checkChanged() {
     if (!path.length())
       return;

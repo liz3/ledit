@@ -741,7 +741,15 @@ int main(int argc, char **argv) {
           auto out = cursor->getPosLineWrapped(
               atlas, -maxRenderWidth, -(int32_t)(HEIGHT / 2) + 4 + toOffset,
               maxRenderWidth, toOffset, cursor->x, cursor->y);
+          if (state.vim) {
+            if (state.vim->getMode() == VimMode::INSERT) {
+              cursor_shader.set1f("cursor_width", 4);
 
+            } else {
+              cursor_shader.set1f("cursor_width", atlas.getAdvance(' '));
+              cursor_shader.set4f("cursor_color", 0.8, 0.8, 0.8, 0.5);
+            }
+          }
           cursor_shader.set2f("cursor_pos", out.first, -out.second);
         } else {
           auto cAdvance =

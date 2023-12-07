@@ -18,11 +18,64 @@
 #endif
 #ifdef __linux__
 #include <fontconfig/fontconfig.h>
-struct FontEntry {
-  std::string path;
-  std::string name;
-  std::string type;
-};
+#endif
+#ifdef __APPLE__
+#include <sys/sysctl.h>
+#include <sys/param.h>
+#include <sys/user.h>
+
+int pgetppid(int pid) {
+
+  struct kinfo_proc p;
+  size_t len = sizeof(struct kinfo_proc);
+  int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, pid};
+  if (sysctl(mib, 4, &p, &len, NULL, 0) < 0)
+    return 0;
+  if (len == 0)
+    return 0;
+  int ret;
+#if defined(__APPLE__)
+  ret = p.kp_eproc.e_ppid; // macOS
+#elif defined(__FreeBSD__)
+  ret = p.ki_ppid; // FreeBSD
+#else
+#error "Not supported, try adding an elif for this OS"
+#endif
+  return ret;
+}
+
+#endif
+#ifdef __linux__
+#define MAXBUF (BUFSIZ * 2)
+
+int pgetppid(int pid) {
+  int ppid;
+  char buf[MAXBUF];
+  char procname[32]; // Holds /proc/4294967296/status\0
+  FILE *fp;
+
+  snprintf(procname, sizeof(procname), "/proc/%u/status", pid);
+  fp = fopen(procname, "r");
+  if (fp != NULL) {
+    size_t ret = fread(buf, sizeof(char), MAXBUF - 1, fp);
+    if (!ret) {
+      return 0;
+    } else {
+      buf[ret++] = '\0'; // Terminate it.
+    }
+  }
+  fclose(fp);
+  char *ppid_loc = strstr(buf, "\nPPid:");
+  if (ppid_loc) {
+    int ret = sscanf(ppid_loc, "\nPPid:%d", &ppid);
+    if (!ret || ret == EOF) {
+      return 0;
+    }
+    return ppid;
+  } else {
+    return 0;
+  }
+}
 #endif
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -48,6 +101,7 @@ public:
   bool saveBeforeCommand = false;
   bool allowTransparency = false;
   std::atomic_bool command_running;
+  std::string lastCommand = "";
   std::thread command_thread;
   Provider() {
     fs::path *homeDir = getHomeFolder();
@@ -80,10 +134,56 @@ public:
       std::cerr << "Failed to load home env var\n";
     }
   }
+  bool killCommand() {
+    if (!command_running)
+      return false;
+    FILE *fp;
+#ifdef _WIN32
+    // title mycmd
+    // tasklist /v /fo csv | findstr /i "mycmd"
+
+    fp = _popen(command.c_str(), "r");
+#elif __APPLE__
+    std::string command = "pgrep " + lastCommand;
+    fp = popen(command.c_str(), "r");
+#else
+    std::string command = "pidof -s " + lastCommand;
+    fp = popen(command.c_str(), "r");
+#endif
+    std::string out;
+    char buffer[1024];
+    while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+      out += buffer;
+    }
+
+#ifdef _WIN32
+    int status = _pclose(fp);
+#else
+    int status = pclose(fp);
+#endif
+    if (out.length()) {
+      std::string number;
+      for (char c : out)
+        if (c >= '0' && c <= '9')
+          number += c;
+      if (number.length()) {
+        int64_t pid = std::stol(number);
+#ifdef _WIN32
+
+#else
+        if (pgetppid(pid) == getpid()) // make sure we created it
+          kill(pid, SIGKILL);
+#endif
+        return true;
+      }
+    }
+    return false;
+  }
   int runCommand(std::string command) {
     if (command_running)
       return 0;
     command_running = true;
+    lastCommand = command;
     std::chrono::time_point<std::chrono::system_clock> now =
         std::chrono::system_clock::now();
     auto duration = now.time_since_epoch();
@@ -97,14 +197,14 @@ public:
 #else
       fp = popen(command.c_str(), "r");
 #endif
+      if (fp == nullptr)
+        return -1;
       std::string out;
       char buffer[1024];
       while (fgets(buffer, sizeof(buffer), fp) != NULL) {
         out += buffer;
       }
 
-      if (fp == nullptr)
-        return -1;
 #ifdef _WIN32
       int status = _pclose(fp);
 #else
@@ -119,7 +219,7 @@ public:
     return 0;
   }
   std::string getBranchName(std::string path) {
-    if(true)
+    if (true)
       return "";
     std::string asPath = fs::path(path).parent_path().generic_string();
     const char *as_cstr = asPath.c_str();
