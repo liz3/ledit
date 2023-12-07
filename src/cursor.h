@@ -95,8 +95,8 @@ public:
         line = line.substr(0, line.length() - count);
       }
     }
-    if (x > lines[y].length())
-      x = lines[y].length();
+    if (x > getCurrentLineLength())
+      x = getCurrentLineLength();
   }
   void comment(Utf8String commentStr) {
     if (!selection.active) {
@@ -347,8 +347,8 @@ public:
       c++;
     }
     historyPush(31, c, U"");
-    if (x > lines[y].length()) {
-      x = lines[y].length();
+    if (x > getCurrentLineLength()) {
+      x = getCurrentLineLength();
       xSave = x;
     }
     return c;
@@ -866,7 +866,7 @@ public:
     if (offset == -1) {
       if (x == 0 && y > 0) {
         y--;
-        x = lines[y].length();
+        x = getCurrentLineLength();
       } else {
         x = 0;
       }
@@ -1041,8 +1041,8 @@ public:
       skip = 0;
     if (y > lines.size() - 1)
       y = lines.size() - 1;
-    if (x > lines[y].length())
-      x = lines[y].length();
+    if (x > getCurrentLineLength())
+      x = getCurrentLineLength();
     stream.close();
     last_write_time = std::filesystem::last_write_time(path);
     edited = false;
@@ -1092,8 +1092,8 @@ public:
       skip = 0;
     if (y > lines.size() - 1)
       y = lines.size() - 1;
-    if (x > lines[y].length())
-      x = lines[y].length();
+    if (x > getCurrentLineLength())
+      x = getCurrentLineLength();
     stream.close();
     last_write_time = std::filesystem::last_write_time(path);
     edited = false;
@@ -1293,10 +1293,13 @@ public:
     if (bind)
       x = bind->length();
     else
-      x = lines[y].length();
+      x = getCurrentLineLength();
     selection.diffX(x);
   }
-
+  const int64_t getCurrentLineLength(){
+    const Utf8String& ref = lines[y];
+    return ref.length();
+  }
   void moveRight() {
     Utf8String *current = bind ? bind : &lines[y];
     if (x == current->length()) {
@@ -1391,7 +1394,7 @@ public:
     int xOffset = 0;
     if (neededAdvance > maxWidth) {
       auto *all = atlas->getAllAdvance(lines[y], y - skip);
-      auto len = lines[y].length();
+      auto len = getCurrentLineLength();
       float acc = 0;
       xSkip = 0;
       for (auto value : *all) {

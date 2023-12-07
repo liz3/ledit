@@ -321,7 +321,7 @@ public:
     }
     if (mode == VimMode::NORMAL || mode == VimMode::VISUAL) {
       vim->iterate([cursor]() { 
-        if(cursor->x < cursor->lines[cursor->y].size())
+        if(cursor->x < cursor->getCurrentLineLength())
         cursor->moveRight(); 
       });
     }
@@ -342,7 +342,7 @@ public:
       return withType(ResultType::Silent);
     }
     if (mode == VimMode::NORMAL) {
-      if (cursor->x < cursor->lines[cursor->y].size())
+      if (cursor->x < cursor->getCurrentLineLength())
         cursor->moveRight();
       ActionResult r;
       r.type = ResultType::Emit;
@@ -475,7 +475,6 @@ public:
             if (result.first == -1 && result.second == -1) {
               return {};
             }
-            std::cout << result.first << ":" << result.second << "\n";
             cursor->x = result.first;
 
             cursor->y = result.second;
@@ -630,7 +629,7 @@ public:
 
     if (!vim->activeAction() && mode == VimMode::NORMAL) {
       vim->setMode(VimMode::VISUAL);
-      if (cursor->x == cursor->lines[cursor->y].size() - 1)
+      if (cursor->x == cursor->getCurrentLineLength() - 1)
         cursor->x++;
       cursor->selection.activate(cursor->x, cursor->y);
     } else if (mode == VimMode::VISUAL) {
