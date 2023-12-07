@@ -256,7 +256,10 @@ public:
       return r;
     }
     if (mode == VimMode::NORMAL || mode == VimMode::VISUAL) {
-      vim->iterate([cursor]() { cursor->moveLeft(); });
+      vim->iterate([cursor]() { 
+        if(cursor->x > 0)
+        cursor->moveLeft();
+         });
     }
     return {};
   }
@@ -317,7 +320,10 @@ public:
       return r;
     }
     if (mode == VimMode::NORMAL || mode == VimMode::VISUAL) {
-      vim->iterate([cursor]() { cursor->moveRight(); });
+      vim->iterate([cursor]() { 
+        if(cursor->x < cursor->lines[cursor->y].size())
+        cursor->moveRight(); 
+      });
     }
     return {};
   }

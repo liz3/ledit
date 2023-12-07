@@ -70,17 +70,18 @@ void character_callback(GLFWwindow *window, unsigned int codepoint) {
   if (gState == nullptr)
     return;
   gState->invalidateCache();
+   gState->exitFlag = false;
+  if (gState->exitLoop) {
+    glfwSetWindowShouldClose(window, false);
+  }
+  gState->exitLoop = false; 
   if (gState->vim) {
     auto r = gState->vim->processCharacter((char32_t)codepoint);
     if (r && gState->vim->shouldRenderCoords())
       gState->renderCoords();
     return;
   }
-  gState->exitFlag = false;
-  if (gState->exitLoop) {
-    glfwSetWindowShouldClose(window, false);
-  }
-  gState->exitLoop = false;
+
 #ifdef _WIN32
   bool ctrl_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
   if (ctrl_pressed)
