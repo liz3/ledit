@@ -89,6 +89,7 @@ public:
   EditorColors colors;
   std::string fontPath = getDefaultFontPath();
   std::vector<std::string> extraFonts;
+  std::unordered_map<char32_t, std::string> vimRemaps;
   std::vector<Language> extraLanguages;
   std::string configPath;
   std::string lastCommandOutput;
@@ -123,6 +124,12 @@ public:
           std::string contents = file_to_string(languages.generic_string());
           json parsed = json::parse(contents);
           loadExtraLanguages(parsed);
+        }
+        fs::path vimRemapPath = configDir / "vim_keys.json";
+             if (fs::exists(vimRemapPath)) {
+          std::string contents = file_to_string(vimRemapPath.generic_string());
+          json parsed = json::parse(contents);
+          setVimRemaps(parsed);
         }
       } else {
         fs::create_directory(configDir);
@@ -380,6 +387,12 @@ public:
     // fontconfig used
     return "";
 #endif
+  }
+  void setVimRemaps(json& in){
+    for(auto& entry : in.items()){
+      std::string k = entry.key();
+      vimRemaps[k[0]] = entry.value();
+    }
   }
   void loadExtraLanguages(json &languages) {
     if (!languages.is_array())

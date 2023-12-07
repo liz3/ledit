@@ -1245,10 +1245,10 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrie(new MoveAction(Direction::DOWN), "M_DOWN", GLFW_KEY_N);
   vim.registerTrie(new MoveAction(Direction::LEFT), "M_LEFT", GLFW_KEY_B);
   vim.registerTrieChar(new IAction(), "i", 'i');
-  vim.registerTrieChar(new HAction(), "h", 's');
-  vim.registerTrieChar(new JAction(), "j", 'd');
-  vim.registerTrieChar(new KAction(), "k", 'f');
-  vim.registerTrieChar(new LAction(), "l", 'g');
+  vim.registerTrieChar(new HAction(), "h", 'h');
+  vim.registerTrieChar(new JAction(), "j", 'j');
+  vim.registerTrieChar(new KAction(), "k", 'k');
+  vim.registerTrieChar(new LAction(), "l", 'l');
   vim.registerTrieChar(new AAction(), "a", 'a');
   vim.registerTrieChar(new AAAction(), "A", 'A');
   vim.registerTrieChar(new WAction(), "w", 'w');
@@ -1256,7 +1256,7 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new BAction(), "b", 'b');
   vim.registerTrieChar(new OAction(), "o", 'o');
   vim.registerTrieChar(new OOAction(), "O", 'O');
-  vim.registerTrieChar(new DAction(), "d", 'h');
+  vim.registerTrieChar(new DAction(), "d", 'd');
   vim.registerTrieChar(new UAction(), "u", 'u');
   vim.registerTrieChar(new VAction(), "v", 'v');
   vim.registerTrieChar(new CAction(), "c", 'c');
@@ -1267,8 +1267,8 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new PAction(), "p", 'p');
   vim.registerTrieChar(new PercentAction(), "%", '%');
   vim.registerTrieChar(new IIAction(), "I", 'I');
-  vim.registerTrieChar(new GAction(), "g", 'j');
-  vim.registerTrieChar(new GGAction(), "G", 'J');
+  vim.registerTrieChar(new GAction(), "g", 'g');
+  vim.registerTrieChar(new GGAction(), "G", 'G');
   vim.registerTrieChar(new ParagraphAction("{"), "{", '{');
   vim.registerTrieChar(new ParagraphAction("}"), "}", '}');
   vim.registerTrieChar(new BracketAction("["), "[", '[');
@@ -1278,12 +1278,15 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new QuoteAction("\""), "\"", '\"');
   vim.registerTrieChar(new SlashAction(), "/", '/');
   vim.registerTrieChar(new RAction(), "r", 'r');
-  vim.registerTrieChar(new FindAction(finder, false, false), "k", 'k');
+  vim.registerTrieChar(new FindAction(finder, false, false), "f", 'f');
   vim.registerTrieChar(new FindAction(finder, false, true), "t", 't');
-  vim.registerTrieChar(new FindAction(finder, true, false), "K", 'K');
+  vim.registerTrieChar(new FindAction(finder, true, false), "F", 'F');
   vim.registerTrieChar(new FindAction(finder, true, true), "T", 'T');
   vim.registerTrieChar(new SemicolonAction(finder), ";", ';');
   vim.registerTrieChar(new CommaAction(finder), ",", ',');
+
+  for(auto& entry: state.provider.vimRemaps)
+    vim.remapCharTrie(entry.first, entry.second);
 }
 
 #endif

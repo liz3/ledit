@@ -156,6 +156,17 @@ public:
     charTries[t] = trie;
     tries[action_name] = trie;
   }
+
+  void remapTrie(int glfwKey, std::string action){
+    if(!tries.count(action))
+        return;
+    keyTries[glfwKey] = tries[action];
+  }
+  void remapCharTrie(char32_t key, std::string action){
+    if(!tries.count(action))
+        return;
+    charTries[key] = tries[action];
+  }
   State &getState() { return *gState; }
   ActionTrie *activeAction() { return activeTrie; }
   bool isCommandBufferActive() { return commandBufferActive; }
@@ -169,7 +180,7 @@ public:
   LastKeyState& getKeyState() { return lastKeyState; }
   void setInterceptor(Interceptor* v) { interceptor = v;}
   Interceptor* getInterceptor() { return interceptor; }
-  
+
 private:
   bool exec(ActionTrie *trie) {
     if (activeTrie && trie != activeTrie)
