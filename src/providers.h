@@ -119,6 +119,8 @@ public:
     return 0;
   }
   std::string getBranchName(std::string path) {
+    if(true)
+      return "";
     std::string asPath = fs::path(path).parent_path().generic_string();
     const char *as_cstr = asPath.c_str();
     std::string branch = "";

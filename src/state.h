@@ -249,6 +249,10 @@ public:
     cursor->selection.stop();
     status = U"Copied " + numberToString(content.length()) + U" Characters";
   }
+  void tryCopyInput(Utf8String& in) {
+    const std::string& content = in.getStrRef();
+    glfwSetClipboardString(NULL, content.c_str());
+  }
   void save() {
     if (mode != 0 && mode != 40)
       return;

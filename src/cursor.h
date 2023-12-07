@@ -1,10 +1,8 @@
 #ifndef CURSOR_H
 #define CURSOR_H
 
-#include <complex.h>
 #include <string>
 #include <map>
-#include <sys/_types/_int64_t.h>
 #include <vector>
 #include <sstream>
 #include <fstream>
@@ -13,6 +11,7 @@
 #include <deque>
 #include "u8String.h"
 #include "utf8String.h"
+#include "utils.h"
 #ifndef __APPLE__
 #include <filesystem>
 #endif
@@ -372,8 +371,7 @@ public:
   }
   void jumpMatching() {
     auto res = findMatchingWithCoords(x, y);
-    if (res.first == -1 && res.second == -1){
-      std::cout << "jum matching -1 " << lines[y][x] << "\n";
+    if (res.first == -1 && res.second == -1) {
       return;
     }
     x = res.first;
@@ -469,21 +467,21 @@ public:
 
     return -1;
   }
-    int findAnyOfLastInclusive(Utf8String str, Utf8String what) {
+  int findAnyOfLastInclusive(Utf8String str, Utf8String what) {
     if (str.length() == 0)
       return -1;
     Utf8String::const_iterator c;
     int offset = 0;
     for (c = str.end() - 1; c != str.begin(); c--) {
 
-      if ( what.find(*c) != std::string::npos) {
+      if (what.find(*c) != std::string::npos) {
         return offset;
       }
       offset++;
     }
-     if ( what.find(*c) != std::string::npos) {
-        return offset+1;
-      }
+    if (what.find(*c) != std::string::npos) {
+      return offset + 1;
+    }
 
     return -1;
   }
@@ -494,7 +492,7 @@ public:
     int offset = 0;
     for (c = str.begin(); c != str.end(); c++) {
 
-      if ( what.find(*c) != std::string::npos) {
+      if (what.find(*c) != std::string::npos) {
         return offset;
       }
       offset++;
@@ -507,10 +505,10 @@ public:
 
     if (backwards) {
       for (int64_t i = iny; i >= 0; i--) {
-        Utf8String ref = i == iny ? lines[i].substr(0, inx+1) : lines[i];
+        Utf8String ref = i == iny ? lines[i].substr(0, inx + 1) : lines[i];
         auto res = findAnyOfLastInclusive(ref, what);
         if (res != -1) {
-          return std::pair(ref.length() - res, i);
+          return std::pair(ref.length() - 1 - res, i);
         }
       }
     } else {
@@ -573,6 +571,13 @@ public:
     }
     return std::pair(cursorX, cursorY);
   }
+
+  void setCurrent(char32_t character){
+    Utf8String temp;
+    temp += lines[y][x];
+    lines[y].set(x, character);
+    historyPush(51, 1, temp);
+  }
   int getMaxLinesWrapped(FontAtlas &atlas, float xBase, float yBase,
                          float maxRenderWidth, float lineHeight, float height) {
     int count = 0;
@@ -600,9 +605,10 @@ public:
 
     return count;
   }
-  void deleteLines(int64_t start, int64_t am) {
+  Utf8String deleteLines(int64_t start, int64_t am) {
     if (start < 0)
       start = 0;
+    Utf8String out;
     if (start + am > lines.size())
       am = lines.size() - start;
     std::vector<Utf8String> ll;
@@ -615,6 +621,12 @@ public:
       lines.push_back(U"");
     historyPushWithExtra(50, 0, U"", ll);
     y = y == 0 ? 0 : y - 1;
+    for (int64_t l = 0; l < ll.size(); l++) {
+      out += ll[l];
+      if (l < ll.size() - 1)
+        out += U"\n";
+    }
+    return out;
   }
   Utf8String deleteWord() {
     Utf8String *target = bind ? bind : &lines[y];
@@ -631,14 +643,14 @@ public:
     auto start = x;
     auto end = x;
     for (int64_t i = start - 1; i >= 0; i--) {
-      if (lines[y][i] <= ' ')
+      if (wordSeperator.find(lines[y][i]) != std::string::npos)
         break;
       start = i;
     }
     if (start > 0 && withSpace)
       start--;
     for (size_t i = x; i < lines[y].size(); i++) {
-      if (lines[y][i] <= ' ')
+      if (wordSeperator.find(lines[y][i]) != std::string::npos)
         break;
       end++;
     }
@@ -834,6 +846,12 @@ public:
       x = entry.x;
       for (size_t i = 0; i < entry.extra.size(); i++)
         lines.insert(lines.begin() + y + i, entry.extra[i]);
+      break;
+    }
+    case 51: {
+      y = entry.y;
+      x = entry.x;
+      lines[y].set(x, entry.content[0]);
       break;
     }
     default:

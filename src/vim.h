@@ -13,6 +13,7 @@ class Vim;
 enum class ResultType {
   Done,
   SetSelf,
+  SetSelfIntercept,
   Emit,
   ExecuteSet,
   EmitAndSetFuture,
@@ -45,6 +46,9 @@ public:
   virtual ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                             Vim *vim) = 0;
 };
+struct Interceptor {
+    virtual ActionResult intercept(char32_t in, Vim* vim, Cursor* cursor) = 0;
+};
 struct ActionTrie {
 public:
   ActionTrie(Action *action, std::string action_name, int glfwKey) {
@@ -65,6 +69,9 @@ public:
   bool useKey = false;
   Action *action;
 };
+struct LastKeyState {
+    int action, scancode, mods;
+};
 class Vim {
 public:
     Vim(State* state) : gState(state) {
@@ -77,8 +84,15 @@ public:
     state.action = "";
     state.replaceMode = ReplaceMode::UNSET;
   }
-  void setCursor(Cursor *cursor) {
+  void reset() {
     resetMotionState();
+    setMode(VimMode::NORMAL);
+    activeTrie = nullptr;
+    next = "";
+    last = "";
+  }
+  void setCursor(Cursor *cursor) {
+    reset();
     this->cursor = cursor;
   }
   VimMode getMode() {
@@ -90,6 +104,10 @@ public:
     if (mode == VimMode::INSERT || cursor->bind) {
       cursor->append(c);
       return true;
+    }
+    if(interceptor){
+        auto res =interceptor->intercept(c, this, cursor);
+        return res.allowCoords;
     }
     if (c >= '0' && c <= '9') {
       if (c != '0' || state.count > 0) {
@@ -112,6 +130,9 @@ public:
   }
   void setMode(VimMode mode) { this->mode = mode; }
   bool processKey(int key, int scancode, int action, int mods) {
+    lastKeyState.action = action;
+    lastKeyState.mods = mods;
+    lastKeyState.scancode = scancode;
     bool isPress = action == GLFW_PRESS || action == GLFW_REPEAT;
     if (isPress && keyTries.count(key)) {
       auto *trie = keyTries[key];
@@ -145,6 +166,10 @@ public:
   void setSpecialCase(bool v) { specialCase = v; }
   bool shouldRenderCoords() { return !specialCase && (!cursor || cursor->bind == nullptr); }
   size_t getCount() { return state.count; }
+  LastKeyState& getKeyState() { return lastKeyState; }
+  void setInterceptor(Interceptor* v) { interceptor = v;}
+  Interceptor* getInterceptor() { return interceptor; }
+  
 private:
   bool exec(ActionTrie *trie) {
     if (activeTrie && trie != activeTrie)
@@ -182,11 +207,12 @@ private:
     }
     return result.allowCoords;
   }
+
   Utf8String commandBuffer;
   VimMode mode = VimMode::NORMAL;
   Cursor *cursor = nullptr;
-  std::string numberBuffer;
   ActionTrie *activeTrie = nullptr;
+  Interceptor* interceptor = nullptr;
   std::unordered_map<char32_t, ActionTrie *> charTries;
   std::unordered_map<int, ActionTrie *> keyTries;
   std::unordered_map<std::string, ActionTrie *> tries;
@@ -195,6 +221,7 @@ private:
   std::string last;
   std::string next;
   MotionState state;
+  LastKeyState lastKeyState;
   State *gState;
 };
 
