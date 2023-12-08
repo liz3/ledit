@@ -628,7 +628,8 @@ public:
     y = y == 0 ? 0 : y - 1;
     for (int64_t l = 0; l < ll.size(); l++) {
       out += ll[l];
-        out += U"\n";
+      if(l < ll.size()-1)
+      out += U"\n";
     }
     return out;
   }
@@ -861,6 +862,12 @@ public:
       y = entry.y;
       x = entry.x;
       lines[y].set(x, entry.content[0]);
+      break;
+    }
+    case 53: {
+      y = entry.y;
+      x = entry.x;
+      lines.erase(lines.begin() + y+1, lines.begin() + 1 + y + entry.length);
       break;
     }
     default:
@@ -1156,7 +1163,7 @@ public:
       x++;
     }
   }
-  void appendWithLines(Utf8String content) {
+  void appendWithLines(Utf8String content, bool isVim = false) {
     if (bind) {
       append(content);
       return;
@@ -1169,6 +1176,17 @@ public:
     Utf8String save;
     Utf8String historySave;
     auto contentLines = split(content, U"\n");
+    if (isVim && content.find('\n') != std::string::npos) {
+      if(contentLines.size() >1 && !contentLines[contentLines.size()-1].length())
+          contentLines.erase(contentLines.begin()+(contentLines.size()-1), contentLines.begin()+(contentLines.size()));
+      historyPush(53, contentLines.size(), U"");
+
+      for (auto &l : contentLines) {
+        lines.insert(lines.begin() + y + 1, l);
+        y++;
+      }
+      return;
+    }
     int saveX = 0;
     int count = 0;
     for (int i = 0; i < contentLines.size(); i++) {

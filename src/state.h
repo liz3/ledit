@@ -221,7 +221,7 @@ public:
     const char *contents = glfwGetClipboardString(NULL);
     if (contents) {
       Utf8String str = create(std::string(contents));
-      cursor->appendWithLines(str);
+      cursor->appendWithLines(str, vim != nullptr);
       if (mode != 0)
         return;
       if (hasHighlighting)
