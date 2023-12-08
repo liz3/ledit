@@ -1,6 +1,10 @@
 #ifndef LEDIT_UTF8_STRING
 #define LEDIT_UTF8_STRING
+#ifdef __linux__
+#include <cstdint>
+#else
 #include <cstddef>
+#endif
 #include <string>
 #include <vector>
 class Utf8String {

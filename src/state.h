@@ -689,6 +689,15 @@ public:
     if (path.length() && std::filesystem::is_directory(path))
       path = "";
 
+    if(path.length())
+    for(size_t i = 0; i < cursors.size(); i++) {
+      auto* entry = cursors[i];
+      if(entry->path == path){
+        activateCursor(i);
+        return;
+      }
+    }
+
     Cursor newCursor = path.length() ? Cursor(path) : Cursor();
     if (path.length()) {
       newCursor.branch = provider.getBranchName(path);

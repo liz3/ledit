@@ -23,6 +23,11 @@
 #endif
 #ifdef __linux__
 #include <fontconfig/fontconfig.h>
+struct FontEntry {
+  std::string path;
+  std::string name;
+  std::string type;
+};
 #endif
 
 namespace fs = std::filesystem;
@@ -89,6 +94,15 @@ public:
     } else {
       std::cerr << "Failed to load home env var\n";
     }
+  }
+  std::string getConfigPath(){
+    fs::path *homeDir = getHomeFolder();
+    if(!homeDir)
+      return "";
+    fs::path config = (*homeDir) / ".ledit" / "config.json";
+    auto str = config.generic_string();
+    delete homeDir;
+    return str;
   }
   bool killCommand() {
     if (!command_running)

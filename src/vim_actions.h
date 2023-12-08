@@ -131,6 +131,10 @@ public:
       state.changeFont();
       return;
     }
+    if(content == ":config"){
+      state.addCursor(state.provider.getConfigPath());
+      return;
+    }
     if (content == ":mode") {
       state.switchMode();
       return;
