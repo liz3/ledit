@@ -591,7 +591,7 @@ public:
       branch = U" [git: " + create(cursor->branch) + U"]";
     }
     auto x = cursor->x+1;
-    if(vim && vim->getMode() != VimMode::INSERT && x == cursor->lines[cursor->y].size()+1 && x >1)
+    if(vim && vim->getMode() != VimMode::INSERT && x == cursor->getCurrentLineLength()+1 && x >1)
       x--;
     status = (vim ? Utf8String(vim->getModeName()) + U" " : U"") +
              numberToString(cursor->y + 1) + U":" +

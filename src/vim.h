@@ -17,7 +17,8 @@ enum class ResultType {
   Emit,
   ExecuteSet,
   EmitAndSetFuture,
-  Silent
+  Silent,
+  Cancel
 };
 
 struct ActionResult {
@@ -215,6 +216,10 @@ private:
         next = "";
         return exec(tries[v]);
       }
+    }
+    if(result.type == ResultType::Cancel){
+        activeTrie = nullptr;
+        next = "";
     }
     return result.allowCoords;
   }

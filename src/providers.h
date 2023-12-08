@@ -1,5 +1,8 @@
 #ifndef PROVIDERS_H
 #define PROVIDERS_H
+#ifdef __APPLE__
+#include <sys/signal.h>
+#endif
 #include <unordered_map>
 #include <atomic>
 #include <vector>
@@ -15,68 +18,13 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#else
+#include <windows.h>
 #endif
 #ifdef __linux__
 #include <fontconfig/fontconfig.h>
 #endif
-#ifdef __APPLE__
-#include <sys/sysctl.h>
-#include <sys/param.h>
-#include <sys/user.h>
 
-int pgetppid(int pid) {
-
-  struct kinfo_proc p;
-  size_t len = sizeof(struct kinfo_proc);
-  int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, pid};
-  if (sysctl(mib, 4, &p, &len, NULL, 0) < 0)
-    return 0;
-  if (len == 0)
-    return 0;
-  int ret;
-#if defined(__APPLE__)
-  ret = p.kp_eproc.e_ppid; // macOS
-#elif defined(__FreeBSD__)
-  ret = p.ki_ppid; // FreeBSD
-#else
-#error "Not supported, try adding an elif for this OS"
-#endif
-  return ret;
-}
-
-#endif
-#ifdef __linux__
-#define MAXBUF (BUFSIZ * 2)
-
-int pgetppid(int pid) {
-  int ppid;
-  char buf[MAXBUF];
-  char procname[32]; // Holds /proc/4294967296/status\0
-  FILE *fp;
-
-  snprintf(procname, sizeof(procname), "/proc/%u/status", pid);
-  fp = fopen(procname, "r");
-  if (fp != NULL) {
-    size_t ret = fread(buf, sizeof(char), MAXBUF - 1, fp);
-    if (!ret) {
-      return 0;
-    } else {
-      buf[ret++] = '\0'; // Terminate it.
-    }
-  }
-  fclose(fp);
-  char *ppid_loc = strstr(buf, "\nPPid:");
-  if (ppid_loc) {
-    int ret = sscanf(ppid_loc, "\nPPid:%d", &ppid);
-    if (!ret || ret == EOF) {
-      return 0;
-    }
-    return ppid;
-  } else {
-    return 0;
-  }
-}
-#endif
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
@@ -102,6 +50,7 @@ public:
   bool saveBeforeCommand = false;
   bool allowTransparency = false;
   std::atomic_bool command_running;
+  std::atomic_uint32_t command_pid = 0;
   std::string lastCommand = "";
   std::thread command_thread;
   Provider() {
@@ -126,7 +75,7 @@ public:
           loadExtraLanguages(parsed);
         }
         fs::path vimRemapPath = configDir / "vim_keys.json";
-             if (fs::exists(vimRemapPath)) {
+        if (fs::exists(vimRemapPath)) {
           std::string contents = file_to_string(vimRemapPath.generic_string());
           json parsed = json::parse(contents);
           setVimRemaps(parsed);
@@ -144,47 +93,12 @@ public:
   bool killCommand() {
     if (!command_running)
       return false;
-    FILE *fp;
-#ifdef _WIN32
-    // title mycmd
-    // tasklist /v /fo csv | findstr /i "mycmd"
-
-    fp = _popen(command.c_str(), "r");
-#elif __APPLE__
-    std::string command = "pgrep " + lastCommand;
-    fp = popen(command.c_str(), "r");
-#else
-    std::string command = "pidof -s " + lastCommand;
-    fp = popen(command.c_str(), "r");
-#endif
-    std::string out;
-    char buffer[1024];
-    while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-      out += buffer;
-    }
-
-#ifdef _WIN32
-    int status = _pclose(fp);
-#else
-    int status = pclose(fp);
-#endif
-    if (out.length()) {
-      std::string number;
-      for (char c : out)
-        if (c >= '0' && c <= '9')
-          number += c;
-      if (number.length()) {
-        int64_t pid = std::stol(number);
 #ifdef _WIN32
 
 #else
-        if (pgetppid(pid) == getpid()) // make sure we created it
-          kill(pid, SIGKILL);
+    kill(command_pid, SIGKILL);
 #endif
-        return true;
-      }
-    }
-    return false;
+    return true;
   }
   int runCommand(std::string command) {
     if (command_running)
@@ -198,31 +112,162 @@ public:
         std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
 
     command_thread = std::thread([this, command]() {
-      FILE *fp;
 #ifdef _WIN32
-      fp = _popen(command.c_str(), "r");
-#else
-      fp = popen(command.c_str(), "r");
-#endif
-      if (fp == nullptr)
-        return -1;
-      std::string out;
-      char buffer[1024];
-      while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-        out += buffer;
+      HANDLE hStdoutRead, hStdoutWrite;
+      SECURITY_ATTRIBUTES saAttr;
+      saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+      saAttr.bInheritHandle = TRUE;
+      saAttr.lpSecurityDescriptor = NULL;
+      if (!CreatePipe(&hStdoutRead, &hStdoutWrite, &saAttr, 0)) {
+        commandExitCode = 1;
+        lastCommandOutput = "__LEDIT__: SPAWN ERROR: Couldn't pipe";
+        command_running = false;
+        command_pid = 0;
+        glfwPostEmptyEvent();
+        return 0;
+      }
+      SetHandleInformation(hStdoutRead, HANDLE_FLAG_INHERIT, 0);
+      PROCESS_INFORMATION piProcInfo;
+      STARTUPINFO siStartInfo;
+      BOOL bSuccess = FALSE;
+      ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+      ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
+      siStartInfo.cb = sizeof(STARTUPINFO);
+      siStartInfo.hStdError = hStdoutWrite;
+      siStartInfo.hStdOutput = hStdoutWrite;
+      siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+      bSuccess =
+          CreateProcess(NULL,
+                        const_cast<char *>(command.c_str()), // command line
+                        NULL,         // process security attributes
+                        NULL,         // primary thread security attributes
+                        TRUE,         // handles are inherited
+                        0,            // creation flags
+                        NULL,         // use parent's environment
+                        NULL,         // use parent's current directory
+                        &siStartInfo, // STARTUPINFO pointer
+                        &piProcInfo); // receives PROCESS_INFORMATION
+      if (!bSuccess) {
+        CloseHandle(hStdoutWrite);
+        CloseHandle(hStdoutRead);
+        commandExitCode = 1;
+        lastCommandOutput = "__LEDIT__: SPAWN ERROR: CreateProcess failed";
+        command_running = false;
+        command_pid = 0;
+        glfwPostEmptyEvent();
+        return 0;
+      }
+      command_pid = piProcInfo.dwProcessId;
+      CloseHandle(hStdoutWrite);
+      CloseHandle(piProcInfo.hProcess);
+      CloseHandle(piProcInfo.hThread);
+
+      DWORD dwRead;
+      CHAR chBuf[4096];
+      std::string result;
+
+      for (;;) {
+        bSuccess = ReadFile(hStdoutRead, chBuf, 4096, &dwRead, NULL);
+        if (!bSuccess || dwRead == 0)
+          break;
+        std::string str(chBuf, dwRead);
+        result += str;
       }
 
-#ifdef _WIN32
-      int status = _pclose(fp);
-#else
-      int status = pclose(fp);
-#endif
-      lastCommandOutput = out;
-      commandExitCode = status;
+      CloseHandle(hStdoutRead);
+
+      WaitForSingleObject(piProcInfo.hProcess, INFINITE);
+
+      DWORD exitCode;
+      bool failedRetrieve = false;
+      if (!GetExitCodeProcess(piProcInfo.hProcess, &exitCode)) {
+        failedRetrieve = true;
+        commandExitCode = 1;
+      } else {
+        commandExitCode = exitCode;
+      }
+
+      result += "\n -- " + std::to_string(exitCode) +
+                (failedRetrieve ? " (retrieve failed)" : "") " ";
+      {
+        std::chrono::time_point<std::chrono::system_clock> now =
+            std::chrono::system_clock::now();
+        auto duration = now.time_since_epoch();
+        auto msNow =
+            std::chrono::duration_cast<std::chrono::milliseconds>(duration)
+                .count();
+        auto runDuration = msNow - commandStartTime;
+        double secs = (double)runDuration / 1000;
+        result += toFixed(secs, 2);
+      }
+      result += " --";
+      lastCommandOutput = result;
       command_running = false;
-      glfwPostEmptyEvent();
+      command_pid = 0;
+#else
+      int pipefd[2];
+      if (pipe(pipefd) == -1) {
+        commandExitCode = 1;
+        lastCommandOutput = "__LEDIT__: SPAWN ERROR: Couldn't pipe";
+        command_running = false;
+        command_pid = 0;
+        glfwPostEmptyEvent();
+        return 0;
+      }
+      pid_t pid = fork();
+      if (pid == -1) {
+        commandExitCode = 1;
+        lastCommandOutput = "__LEDIT__: SPAWN ERROR: fork() syscall: -1";
+        command_running = false;
+        command_pid = 0;
+        glfwPostEmptyEvent();
+        return 0;
+      }
+      if (pid == 0) {
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        dup2(pipefd[1], STDERR_FILENO);
+        close(pipefd[1]);
+        execlp("/bin/sh", "sh", "-c", command.c_str(), NULL);
+        exit(EXIT_FAILURE);
+      } else {
+        command_pid = pid;
+        close(pipefd[1]);
+        int exitCode;
+        std::string result;
+        char buffer[1024];
+        ssize_t count;
+        while ((count = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
+          buffer[count] = '\0';
+          result += buffer;
+        }
+        close(pipefd[0]);
+        waitpid(pid, &exitCode, 0);
+
+        commandExitCode = exitCode;
+        result += "\n -- " + std::to_string(exitCode) + " ";
+        {
+          std::chrono::time_point<std::chrono::system_clock> now =
+              std::chrono::system_clock::now();
+          auto duration = now.time_since_epoch();
+          auto msNow =
+              std::chrono::duration_cast<std::chrono::milliseconds>(duration)
+                  .count();
+          auto runDuration = msNow - commandStartTime;
+          double secs = (double)runDuration / 1000;
+          result += toFixed(secs, 2);
+        }
+        result += " --";
+        lastCommandOutput = result;
+        command_running = false;
+        command_pid = 0;
+        glfwPostEmptyEvent();
+      }
+
+#endif
       return 0;
     });
+
     return 0;
   }
   std::string getBranchName(std::string path) {
@@ -388,8 +433,8 @@ public:
     return "";
 #endif
   }
-  void setVimRemaps(json& in){
-    for(auto& entry : in.items()){
+  void setVimRemaps(json &in) {
+    for (auto &entry : in.items()) {
       std::string k = entry.key();
       vimRemaps[k[0]] = entry.value();
     }

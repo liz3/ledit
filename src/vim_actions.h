@@ -36,6 +36,11 @@ public:
     }
     vim->setInterceptor(nullptr);
     cursor->selection.stop();
+    if(vim->activeAction()) {
+      auto o = withType(ResultType::Cancel);
+      o.allowCoords = false;
+      return o;
+    }
     if (mode == VimMode::VISUAL) {
 
       vim->setMode(VimMode::NORMAL);
