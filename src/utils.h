@@ -3,7 +3,7 @@
 #include "utf8String.h"
 #include <iomanip>
 #include <sstream>
-const Utf8String wordSeperator = U" \t\n[]{}/\\*()=_-,.";
+const Utf8String wordSeperator = U" \t\n[]{}/\\*()=_-+,.\"";
 const std::vector<std::pair<char32_t, char32_t>> PAIRS = {
      {'{', '}'}, {'(', ')'}, {'[', ']'}};
 std::string file_to_string(std::string path) {
