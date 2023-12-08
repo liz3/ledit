@@ -36,7 +36,7 @@ public:
     }
     vim->setInterceptor(nullptr);
     cursor->selection.stop();
-    if(vim->activeAction()) {
+    if (vim->activeAction()) {
       auto o = withType(ResultType::Cancel);
       o.allowCoords = false;
       return o;
@@ -115,7 +115,7 @@ public:
       state.command();
       return;
     }
-    if(content == ":ck") {
+    if (content == ":ck") {
       state.killCommand();
       return;
     }
@@ -123,7 +123,7 @@ public:
       state.activateLastCommandBuffer();
       return;
     }
-    if(content == ":lw"){
+    if (content == ":lw") {
       state.toggleLineWrapping();
       return;
     }
@@ -131,7 +131,7 @@ public:
       state.changeFont();
       return;
     }
-    if(content == ":config"){
+    if (content == ":config") {
       state.addCursor(state.provider.getConfigPath());
       return;
     }
@@ -265,10 +265,10 @@ public:
       return r;
     }
     if (mode == VimMode::NORMAL || mode == VimMode::VISUAL) {
-      vim->iterate([cursor]() { 
-        if(cursor->x > 0)
-        cursor->moveLeft();
-         });
+      vim->iterate([cursor]() {
+        if (cursor->x > 0)
+          cursor->moveLeft();
+      });
     }
     return {};
   }
@@ -329,9 +329,9 @@ public:
       return r;
     }
     if (mode == VimMode::NORMAL || mode == VimMode::VISUAL) {
-      vim->iterate([cursor]() { 
-        if(cursor->x < cursor->getCurrentLineLength())
-        cursor->moveRight(); 
+      vim->iterate([cursor]() {
+        if (cursor->x < cursor->getCurrentLineLength())
+          cursor->moveRight();
       });
     }
     return {};
@@ -739,9 +739,9 @@ public:
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
-    if(state.isInital){
+    if (state.isInital) {
       auto l = cursor->lines[cursor->y];
-      l+= U"\n";
+      l += U"\n";
       vim->getState().tryCopyInput(l);
     }
     return {};
@@ -757,9 +757,10 @@ public:
       r.allowCoords = false;
       return r;
     }
-    if(!vim->activeAction())
+    if (!vim->activeAction())
       return withType(ResultType::SetSelf);
-
+    if (vim->activeAction() && vim->activeAction()->action_name == "y")
+      return execute(mode, state, cursor, vim);
     return {};
   }
 };
@@ -1301,7 +1302,7 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new SemicolonAction(finder), ";", ';');
   vim.registerTrieChar(new CommaAction(finder), ",", ',');
 
-  for(auto& entry: state.provider.vimRemaps)
+  for (auto &entry : state.provider.vimRemaps)
     vim.remapCharTrie(entry.first, entry.second);
 }
 
