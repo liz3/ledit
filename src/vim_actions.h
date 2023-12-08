@@ -466,6 +466,9 @@ public:
   }
 };
 class DAction : public Action {
+private:
+  bool onlyCopy = false;
+
 public:
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
@@ -489,7 +492,7 @@ public:
             cursor->y = result.second;
 
             if (state.replaceMode == ReplaceMode::ALL && !isClosing)
-              cursor->selection.activate(cursor->x == 0 ? 0 : cursor->x - 1,
+              cursor->selection.activate(cursor->x == 0 ? 0 : cursor->x,
                                          cursor->y);
             else
               cursor->selection.activate(state.replaceMode == ReplaceMode::ALL
@@ -522,9 +525,12 @@ public:
             }
             Utf8String cc(cursor->getSelection());
             vim->getState().tryCopyInput(cc);
-            cursor->deleteSelection();
+            if (!onlyCopy) {
+
+              cursor->deleteSelection();
+              cursor->center(cursor->y);
+            }
             cursor->selection.stop();
-            cursor->center(cursor->y);
             return {};
           }
         }
@@ -552,45 +558,77 @@ public:
                                  resultRight.second);
           Utf8String cc(cursor->getSelection());
           vim->getState().tryCopyInput(cc);
-          cursor->deleteSelection();
+          if (!onlyCopy)
+            cursor->deleteSelection();
           cursor->selection.stop();
           return {};
         }
       }
+      Utf8String outBuffer;
+      auto co = onlyCopy;
+      Utf8String *ptr = &outBuffer;
       if (state.action == "w") {
         if (state.replaceMode == ReplaceMode::ALL) {
-          vim->iterate([cursor]() { cursor->deleteWordVim(true); });
+          vim->iterate([cursor, ptr, co]() {
+            *ptr += cursor->deleteWordVim(true, !co);
+          });
         } else {
-          vim->iterate([cursor]() { cursor->deleteWordVim(false); });
+          vim->iterate([cursor, ptr, co]() {
+            *ptr += cursor->deleteWordVim(false, !co);
+          });
         }
       } else if (state.action == "b") {
         if (state.replaceMode == ReplaceMode::ALL) {
-          vim->iterate([cursor]() {
-            cursor->deleteWordBackwards();
-            cursor->removeOne();
+          vim->iterate([cursor, ptr, co]() {
+            *ptr += cursor->deleteWordBackwards(co);
+            auto ch = cursor->removeOne(co);
+            if (ch != 0)
+              *ptr += ch;
           });
         } else {
-          vim->iterate([cursor]() { cursor->deleteWordBackwards(); });
+          vim->iterate(
+              [cursor, ptr, co]() { *ptr += cursor->deleteWordBackwards(co); });
         }
       } else if (state.action == "$") {
         Utf8String &str = cursor->lines[cursor->y];
         auto length = str.size() - cursor->x;
         Utf8String w = str.substr(cursor->x, length);
-        str.erase(cursor->x, length);
-        cursor->historyPush(3, w.length(), w);
-        vim->getState().tryCopyInput(w);
+        if (!co) {
+
+          str.erase(cursor->x, length);
+          cursor->historyPush(3, w.length(), w);
+        }
       } else if (state.direction == Direction::UP) {
-        auto out =
-            cursor->deleteLines(cursor->y - 1 - state.count, 1 + state.count);
-        vim->getState().tryCopyInput(out);
+        auto out = cursor->deleteLines(cursor->y - state.count,
+                                       1 + state.count, !co);
+        *ptr += out;
       } else if (state.direction == Direction::DOWN) {
-        auto out = cursor->deleteLines(cursor->y, 1 + state.count);
-        vim->getState().tryCopyInput(out);
+        auto out = cursor->deleteLines(cursor->y, 1 + state.count, !co);
+        *ptr += out;
       } else if (state.direction == Direction::LEFT) {
-        vim->iterate([cursor, vim]() { cursor->removeOne(); });
+        vim->iterate([cursor, ptr, co]() {
+          auto out = cursor->removeOne(co);
+          if (out != 0)
+            *ptr += out;
+        });
       } else if (state.direction == Direction::RIGHT) {
-        vim->iterate([cursor]() { cursor->removeBeforeCursor(); });
+        int offset= 0;
+        int* off = &offset;
+        vim->iterate([cursor, co, ptr, off]() {
+          if (!co) {
+
+            *ptr += cursor->removeBeforeCursor();
+          } else {
+            auto target = cursor->x + *off;
+            if(target >= cursor->getCurrentLineLength())
+              return;
+            *ptr += cursor->lines[cursor->y][target];
+            (*off)++;
+          }
+        });
       }
+      if(outBuffer.length())
+        vim->getState().tryCopyInput(outBuffer);
     }
     return {};
   }
@@ -608,6 +646,17 @@ public:
     if (vim->activeAction() && vim->activeAction()->action_name == "d")
       return execute(mode, state, cursor, vim);
     return {};
+  }
+  ActionResult copyOnly(VimMode mode, MotionState &state, Cursor *cursor,
+                        Vim *vim) {
+    auto x = cursor->x;
+    auto y = cursor->y;
+    this->onlyCopy = true;
+    auto out = execute(mode, state, cursor, vim);
+    this->onlyCopy = false;
+    cursor->x = x;
+    cursor->y = y;
+    return out;
   }
 };
 
@@ -735,7 +784,11 @@ public:
   }
 };
 class YAction : public Action {
+private:
+  DAction *d = nullptr;
+
 public:
+  YAction(DAction *d) { this->d = d; }
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
@@ -743,6 +796,8 @@ public:
       auto l = cursor->lines[cursor->y];
       l += U"\n";
       vim->getState().tryCopyInput(l);
+    } else {
+      return d->copyOnly(mode, state, cursor, vim);
     }
     return {};
   }
@@ -1250,6 +1305,7 @@ private:
 
 void register_vim_commands(Vim &vim, State &state) {
   Finder *finder = new Finder();
+  auto *d = new DAction();
   vim.registerTrie(new EscapeAction(), "ESC", GLFW_KEY_ESCAPE);
   vim.registerTrie(new BackspaceAction(), "BACKSPACE", GLFW_KEY_BACKSPACE);
   vim.registerTrie(new EnterAction(), "ENTER", GLFW_KEY_ENTER);
@@ -1273,14 +1329,14 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new BAction(), "b", 'b');
   vim.registerTrieChar(new OAction(), "o", 'o');
   vim.registerTrieChar(new OOAction(), "O", 'O');
-  vim.registerTrieChar(new DAction(), "d", 'd');
+  vim.registerTrieChar(d, "d", 'd');
   vim.registerTrieChar(new UAction(), "u", 'u');
   vim.registerTrieChar(new VAction(), "v", 'v');
   vim.registerTrieChar(new CAction(), "c", 'c');
   vim.registerTrieChar(new DollarAction(), "$", '$');
   vim.registerTrieChar(new ZeroAction(), "0", '0');
   vim.registerTrieChar(new ColonAction(), ":", ':');
-  vim.registerTrieChar(new YAction(), "y", 'y');
+  vim.registerTrieChar(new YAction(d), "y", 'y');
   vim.registerTrieChar(new PAction(), "p", 'p');
   vim.registerTrieChar(new PercentAction(), "%", '%');
   vim.registerTrieChar(new IIAction(), "I", 'I');

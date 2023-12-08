@@ -572,8 +572,8 @@ public:
     return std::pair(cursorX, cursorY);
   }
 
-  void setCurrent(char32_t character){
-    if(bind)
+  void setCurrent(char32_t character) {
+    if (bind)
       return;
     Utf8String temp;
     temp += lines[y][x];
@@ -607,7 +607,7 @@ public:
 
     return count;
   }
-  Utf8String deleteLines(int64_t start, int64_t am) {
+  Utf8String deleteLines(int64_t start, int64_t am, bool del = true) {
     if (start < 0)
       start = 0;
     Utf8String out;
@@ -616,16 +616,18 @@ public:
     std::vector<Utf8String> ll;
     for (size_t l = start; l < start + am; l++)
       ll.push_back(lines[l]);
-    lines.erase(lines.begin() + start, lines.begin() + start + am);
     y = start;
     x = 0;
-    if (lines.size() == 0)
-      lines.push_back(U"");
-    historyPushWithExtra(50, 0, U"", ll);
+    if (del) {
+      if (lines.size() == 0)
+        lines.push_back(U"");
+      lines.erase(lines.begin() + start, lines.begin() + start + am);
+      historyPushWithExtra(50, 0, U"", ll);
+    }
+
     y = y == 0 ? 0 : y - 1;
     for (int64_t l = 0; l < ll.size(); l++) {
       out += ll[l];
-      if (l < ll.size() - 1)
         out += U"\n";
     }
     return out;
@@ -640,7 +642,7 @@ public:
     historyPush(3, w.length(), w);
     return w;
   }
-  Utf8String deleteWordVim(bool withSpace) {
+  Utf8String deleteWordVim(bool withSpace, bool del = true) {
     Utf8String *target = bind ? bind : &lines[y];
     auto start = x;
     auto end = x;
@@ -659,11 +661,14 @@ public:
     auto length = end - start;
     x = start;
     Utf8String w = target->substr(x, length);
-    target->erase(x, length);
-    historyPush(3, w.length(), w);
+    if (del) {
+
+      target->erase(x, length);
+      historyPush(3, w.length(), w);
+    }
     return w;
   }
-  Utf8String deleteWordBackwards() {
+  Utf8String deleteWordBackwards(bool onlyCopy = false) {
     if (x == 0)
       return U"";
     Utf8String *target = bind ? bind : &lines[y];
@@ -671,10 +676,12 @@ public:
     if (offset == -1)
       offset = target->length();
     Utf8String w = target->substr(x - offset, offset);
-    target->erase(x - offset, offset);
+    if (!onlyCopy) {
+      target->erase(x - offset, offset);
 
+      historyPush(3, w.length(), w);
+    }
     x = x - offset;
-    historyPush(3, w.length(), w);
     return w;
   }
   bool undo() {
@@ -1214,39 +1221,48 @@ public:
       return bind->substr(0, x);
     return lines[y].substr(0, x);
   }
-  void removeBeforeCursor() {
+  char32_t removeBeforeCursor() {
     if (selection.active)
-      return;
+      return 0;
     Utf8String *target = bind ? bind : &lines[y];
     if (x == target->length() && x > 0)
-      return;
+      return 0;
     if (x == 0 && target->length() == 0) {
       if (y == lines.size() - 1 || bind)
-        return;
+        return 0;
       if (target->length() == 0) {
         Utf8String next = lines[y + 1];
         lines[y] = next;
         lines.erase(lines.begin() + y + 1);
         historyPush(10, next.length(), next);
-        return;
+        return '\n';
       }
+      return 0;
     }
-    historyPush(11, 1, Utf8String(1, (*target)[x]));
+    auto out = (*target)[x];
+    historyPush(11, 1, Utf8String(1, out));
     target->erase(x, 1);
 
     if (x > target->length())
       x = target->length();
+    return out;
   }
-  void removeOne() {
+  char32_t removeOne(bool copyOnly = false) {
     if (selection.active) {
       deleteSelection();
       selection.stop();
-      return;
+      return 0;
+    }
+    if (copyOnly) {
+      if (x == 0)
+        return 0;
+      x--;
+      return lines[y][x];
     }
     Utf8String *target = bind ? bind : &lines[y];
     if (x == 0) {
       if (y == 0 || bind)
-        return;
+        return 0;
 
       Utf8String *copyTarget = &lines[y - 1];
       int xTarget = copyTarget->length();
@@ -1261,11 +1277,15 @@ public:
 
       y--;
       x = xTarget;
+      return '\n';
     } else {
+      char32_t out = (*target)[x - 1];
       historyPush(4, 1, Utf8String(1, (*target)[x - 1]));
       target->erase(x - 1, 1);
       x--;
+      return out;
     }
+    return 0;
   }
   void moveUp() {
     if (y == 0 || bind)
@@ -1298,12 +1318,12 @@ public:
       x = getCurrentLineLength();
     selection.diffX(x);
   }
-  const int64_t getCurrentLineLength(){
-    const Utf8String& ref = lines[y];
+  const int64_t getCurrentLineLength() {
+    const Utf8String &ref = lines[y];
     return ref.length();
   }
-  char32_t getCurrentChar(){
-    Utf8String& ref = lines[y];
+  char32_t getCurrentChar() {
+    Utf8String &ref = lines[y];
     return ref[x];
   }
   void moveRight() {
