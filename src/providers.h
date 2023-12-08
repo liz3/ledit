@@ -94,7 +94,11 @@ public:
     if (!command_running)
       return false;
 #ifdef _WIN32
-
+    HANDLE processHandle = OpenProcess(PROCESS_TERMINATE, FALSE, command_pid);
+    if(processHandle == NULL)
+      return false;
+    BOOL result = TerminateProcess(processHandle, 9); 
+    CloseHandle(processHandle); 
 #else
     kill(command_pid, SIGKILL);
 #endif
@@ -139,14 +143,14 @@ public:
       bSuccess =
           CreateProcess(NULL,
                         const_cast<char *>(command.c_str()), // command line
-                        NULL,         // process security attributes
-                        NULL,         // primary thread security attributes
-                        TRUE,         // handles are inherited
-                        0,            // creation flags
-                        NULL,         // use parent's environment
-                        NULL,         // use parent's current directory
-                        &siStartInfo, // STARTUPINFO pointer
-                        &piProcInfo); // receives PROCESS_INFORMATION
+                        NULL,         
+                        NULL,        
+                        TRUE,       
+                        0,           
+                        NULL,        
+                        NULL,       
+                        &siStartInfo,
+                        &piProcInfo);
       if (!bSuccess) {
         CloseHandle(hStdoutWrite);
         CloseHandle(hStdoutRead);
@@ -159,7 +163,6 @@ public:
       }
       command_pid = piProcInfo.dwProcessId;
       CloseHandle(hStdoutWrite);
-      CloseHandle(piProcInfo.hProcess);
       CloseHandle(piProcInfo.hThread);
 
       DWORD dwRead;
@@ -187,8 +190,9 @@ public:
         commandExitCode = exitCode;
       }
 
+      CloseHandle(piProcInfo.hProcess);
       result += "\n -- " + std::to_string(exitCode) +
-                (failedRetrieve ? " (retrieve failed)" : "") " ";
+                (failedRetrieve ? " (retrieve failed)" : "") + " ";
       {
         std::chrono::time_point<std::chrono::system_clock> now =
             std::chrono::system_clock::now();
@@ -198,12 +202,13 @@ public:
                 .count();
         auto runDuration = msNow - commandStartTime;
         double secs = (double)runDuration / 1000;
-        result += toFixed(secs, 2);
+        result += toFixed(secs, 2) + "s";
       }
       result += " --";
       lastCommandOutput = result;
       command_running = false;
       command_pid = 0;
+      glfwPostEmptyEvent();
 #else
       int pipefd[2];
       if (pipe(pipefd) == -1) {
@@ -255,7 +260,7 @@ public:
                   .count();
           auto runDuration = msNow - commandStartTime;
           double secs = (double)runDuration / 1000;
-          result += toFixed(secs, 2);
+          result += toFixed(secs, 2) + "s";
         }
         result += " --";
         lastCommandOutput = result;
