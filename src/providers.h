@@ -95,9 +95,9 @@ public:
       std::cerr << "Failed to load home env var\n";
     }
   }
-  std::string getConfigPath(){
+  std::string getConfigPath() {
     fs::path *homeDir = getHomeFolder();
-    if(!homeDir)
+    if (!homeDir)
       return "";
     fs::path config = (*homeDir) / ".ledit" / "config.json";
     auto str = config.generic_string();
@@ -109,10 +109,10 @@ public:
       return false;
 #ifdef _WIN32
     HANDLE processHandle = OpenProcess(PROCESS_TERMINATE, FALSE, command_pid);
-    if(processHandle == NULL)
+    if (processHandle == NULL)
       return false;
-    BOOL result = TerminateProcess(processHandle, 9); 
-    CloseHandle(processHandle); 
+    BOOL result = TerminateProcess(processHandle, 9);
+    CloseHandle(processHandle);
 #else
     kill(command_pid, SIGKILL);
 #endif
@@ -154,17 +154,10 @@ public:
       siStartInfo.hStdError = hStdoutWrite;
       siStartInfo.hStdOutput = hStdoutWrite;
       siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
-      bSuccess =
-          CreateProcess(NULL,
-                        const_cast<char *>(command.c_str()), // command line
-                        NULL,         
-                        NULL,        
-                        TRUE,       
-                        0,           
-                        NULL,        
-                        NULL,       
-                        &siStartInfo,
-                        &piProcInfo);
+      bSuccess = CreateProcess(
+          NULL,
+          const_cast<char *>(command.c_str()), // command line
+          NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo);
       if (!bSuccess) {
         CloseHandle(hStdoutWrite);
         CloseHandle(hStdoutRead);
