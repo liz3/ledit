@@ -22,6 +22,8 @@ struct EditorColors {
   Vec4f status_color = vec4f(0.8, 0.8, 1.0, 0.9);
   Vec4f minibuffer_color = vec4fs(1.0);
   Vec4f line_number_color = vec4fs(0.8);
+  Vec4f cursor_color_standard = vec4f(0.8, 0.8, 0.8, 1);
+  Vec4f cursor_color_vim = vec4f(0.8, 0.8, 0.8, 0.5);
 };
 struct Language {
   std::string modeName;

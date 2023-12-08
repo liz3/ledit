@@ -433,9 +433,9 @@ int main(int argc, char **argv) {
     const auto renderHeight = HEIGHT - state.atlas->atlas_height - 6;
     Cursor *cursor = state.cursor;
     if (state.vim && cursor->bind == nullptr && cursor->x > 0 &&
-        cursor->x >= cursor->lines[cursor->y].size() &&
+        cursor->x >= cursor->getCurrentLineLength() &&
         state.vim->getMode() == VimMode::NORMAL)
-      cursor->x = cursor->lines[cursor->y].size() - 1;
+      cursor->x = cursor->getCurrentLineLength() - 1;
     float toOffset = atlas.atlas_height;
     bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7 ||
                         state.mode == 32;
@@ -719,7 +719,7 @@ int main(int argc, char **argv) {
       cursor_shader.use();
       cursor_shader.set1f("cursor_height", toOffset);
       cursor_shader.set2f("resolution", (float)WIDTH, (float)HEIGHT);
-      cursor_shader.set4f("cursor_color", 0.8, 0.8, 0.8, 1);
+      cursor_shader.set4f("cursor_color", state.provider.colors.cursor_color_standard);
       if (state.mode != 0 && state.mode != 32 ||
           (state.vim && state.vim->isCommandBufferActive())) {
         // use cursor for minibuffer
@@ -748,7 +748,7 @@ int main(int argc, char **argv) {
 
             } else {
               cursor_shader.set1f("cursor_width", atlas.getAdvance(' '));
-              cursor_shader.set4f("cursor_color", 0.8, 0.8, 0.8, 0.5);
+              cursor_shader.set4f("cursor_color", state.provider.colors.cursor_color_vim);
             }
           }
           cursor_shader.set2f("cursor_pos", out.first, -out.second);
@@ -767,7 +767,7 @@ int main(int argc, char **argv) {
 
             } else {
               cursor_shader.set1f("cursor_width", atlas.getAdvance(' '));
-              cursor_shader.set4f("cursor_color", 0.8, 0.8, 0.8, 0.5);
+              cursor_shader.set4f("cursor_color", state.provider.colors.cursor_color_vim);
             }
           }
           cursor_shader.set2f("cursor_pos", cursorX, -cursorY);

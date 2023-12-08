@@ -739,6 +739,11 @@ public:
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
+    if(state.isInital){
+      auto l = cursor->lines[cursor->y];
+      l+= U"\n";
+      vim->getState().tryCopyInput(l);
+    }
     return {};
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
@@ -752,6 +757,9 @@ public:
       r.allowCoords = false;
       return r;
     }
+    if(!vim->activeAction())
+      return withType(ResultType::SetSelf);
+
     return {};
   }
 };

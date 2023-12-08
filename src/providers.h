@@ -517,6 +517,8 @@ public:
           configColors, "line_number_color", colors.line_number_color);
       colors.minibuffer_color = getVecOrDefault(
           configColors, "minibuffer_color", colors.minibuffer_color);
+      colors.cursor_color_standard = getVecOrDefault(configColors, "cursor_color", colors.cursor_color_standard);
+      colors.cursor_color_vim = getVecOrDefault(configColors, "vim_cursor_color", colors.cursor_color_vim);
     }
     if (configRoot->contains("commands")) {
       for (const auto &entry : (*configRoot)["commands"].items()) {
@@ -554,6 +556,8 @@ public:
     json config;
     json cColors;
     cColors["string_color"] = vecToJson(colors.string_color);
+    cColors["cursor_color"] = vecToJson(colors.cursor_color_standard);
+    cColors["vim_cursor_color"] = vecToJson(colors.cursor_color_vim);
     cColors["default_color"] = vecToJson(colors.default_color);
     cColors["keyword_color"] = vecToJson(colors.keyword_color);
     cColors["special_color"] = vecToJson(colors.special_color);
