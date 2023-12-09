@@ -1,6 +1,8 @@
 name: Build
 on:
-  push: vim
+  push:
+    branches:
+      - vim
 jobs:
   build-project:
     name: Build Project
