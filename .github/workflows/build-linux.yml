@@ -30,28 +30,3 @@ jobs:
           name: ledit_linux_x86_64_x11
           path: |
             build/ledit
-  build-project:
-    name: Build Project
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.1.1
-        with:
-          submodules: true
-      - name: install deps
-        run: |
-          sudo apt-get update && sudo apt-get install -y build-essential cmake git wayland-protocols --no-install-recommends
-
-      - name: Build Project
-        run: |
-          mkdir build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Release -DGLFW_USE_WAYLAND=ON ..
-          make
-
-      - name: Archive production artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: ledit_linux_x86_64_wayland
-          path: |
-            build/ledit

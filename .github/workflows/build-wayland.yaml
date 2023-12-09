@@ -1,0 +1,32 @@
+name: Build
+on:
+  push:
+    branches:
+      - vim
+
+jobs:
+  build-project:
+    name: Build Project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.1
+        with:
+          submodules: true
+      - name: install deps
+        run: |
+          sudo apt-get update && sudo apt-get install -y build-essential cmake git libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev --no-install-recommends
+
+      - name: Build Project
+        run: |
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release -DGLFW_USE_WAYLAND=ON ..
+          make
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ledit_linux_x86_64-wayland
+          path: |
+            build/ledit
