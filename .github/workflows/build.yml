@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - vim
+
 jobs:
   build-project:
     name: Build Project
@@ -17,7 +18,7 @@ jobs:
         uses: threeal/cmake-action@v1.3.0
         with:
           options:
-            - MAKE_BUILD_TYPE=Release
+            MAKE_BUILD_TYPE=Release
 
       - name: Build Project
         runs: cmake --build build
