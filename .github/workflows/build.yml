@@ -21,7 +21,7 @@ jobs:
             MAKE_BUILD_TYPE=Release
 
       - name: Build Project
-        runs: cmake --build build
+        run: cmake --build build
 
       - name: Archive production artifacts
         uses: actions/upload-artifact@v3
