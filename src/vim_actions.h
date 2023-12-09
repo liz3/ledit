@@ -1339,9 +1339,11 @@ public:
         glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
         mods & GLFW_MOD_CONTROL;
     if (!vim->activeAction()) {
-      if (mode == VimMode::NORMAL ||
-          (mode == VimMode::INSERT && control && ctrl_pressed))
+      if ((mode == VimMode::NORMAL  && !control)||
+          (mode == VimMode::INSERT && control && ctrl_pressed)){
+
         cursor->removeBeforeCursor();
+      }
     }
     return withType(ResultType::Silent);
   }

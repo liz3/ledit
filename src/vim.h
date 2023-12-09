@@ -71,7 +71,8 @@ public:
   Action *action;
 };
 struct LastKeyState {
-    int action, scancode, mods;
+    int action=0, scancode=0, mods=0;
+
 };
 class Vim {
 public:
