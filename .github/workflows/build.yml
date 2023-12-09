@@ -15,7 +15,7 @@ jobs:
           submodules: true
       - name: install deps
         run: |
-          sudo apt-get update && sudo apt-get install -y build-essential cmake git libxrandr-dev --no-install-recommends
+          sudo apt-get update && sudo apt-get install -y build-essential cmake git libxrandr-dev libxinerama-dev --no-install-recommends
 
       - name: Build Project
         run: |
