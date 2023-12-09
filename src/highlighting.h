@@ -5,7 +5,6 @@
 #include <string>
 #include <map>
 #include <sstream>
-#include <uchar.h>
 #include <unordered_map>
 #include <vector>
 #include "utf8String.h"
