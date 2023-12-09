@@ -73,11 +73,16 @@ public:
           json j;
           parseConfig(&j);
         }
-        fs::path languages = configDir / "languages.json";
+        fs::path languages = configDir / "languages";
         if (fs::exists(languages)) {
-          std::string contents = file_to_string(languages.generic_string());
-          json parsed = json::parse(contents);
-          loadExtraLanguages(parsed);
+          if (fs::is_directory(languages)) {
+            for (const auto &entry : fs::directory_iterator(languages)) {
+              std::string contents =
+                  file_to_string(entry.path().generic_string());
+              json parsed = json::parse(contents);
+              loadExtraLanguage(parsed);
+            }
+          }
         }
         fs::path vimRemapPath = configDir / "vim_keys.json";
         if (fs::exists(vimRemapPath)) {
@@ -451,43 +456,40 @@ public:
       vimRemaps[k[0]] = entry.value();
     }
   }
-  void loadExtraLanguages(json &languages) {
-    if (!languages.is_array())
+  void loadExtraLanguage(json &entry) {
+    if (!entry.is_object())
       return;
-    for (const auto &entry : languages) {
-      Language language;
-      language.modeName = entry["mode_name"];
-      if (entry.contains("key_words") && entry["key_words"].is_array()) {
-        for (auto &word : entry["key_words"])
-          language.keyWords.push_back(word);
-      }
-      if (entry.contains("special_words") &&
-          entry["special_words"].is_array()) {
-        for (auto &word : entry["special_words"])
-          language.specialWords.push_back(word);
-      }
-      language.singleLineComment = entry.contains("single_line_comment")
-                                       ? entry["single_line_comment"]
-                                       : "";
-      if (entry.contains("multi_line_comment") &&
-          entry["multi_line_comment"].is_array()) {
-        language.multiLineComment = std::pair(entry["multi_line_comment"][0],
-                                              entry["multi_line_comment"][1]);
-      }
-      language.stringCharacters =
-          entry.contains("string_characters") ? entry["string_characters"] : "";
-      if (entry.contains("escape_character")) {
-        std::string content = entry["escape_character"];
-        language.escapeChar = content[0];
-      }
-      if (entry.contains("file_extensions") &&
-          entry["file_extensions"].is_array()) {
-        for (auto &word : entry["file_extensions"])
-          language.fileExtensions.push_back(word);
-      }
-      if (language.modeName.length() && language.fileExtensions.size()) {
-        extraLanguages.push_back(language);
-      }
+    Language language;
+    language.modeName = entry["mode_name"];
+    if (entry.contains("key_words") && entry["key_words"].is_array()) {
+      for (auto &word : entry["key_words"])
+        language.keyWords.push_back(word);
+    }
+    if (entry.contains("special_words") && entry["special_words"].is_array()) {
+      for (auto &word : entry["special_words"])
+        language.specialWords.push_back(word);
+    }
+    language.singleLineComment = entry.contains("single_line_comment")
+                                     ? entry["single_line_comment"]
+                                     : "";
+    if (entry.contains("multi_line_comment") &&
+        entry["multi_line_comment"].is_array()) {
+      language.multiLineComment = std::pair(entry["multi_line_comment"][0],
+                                            entry["multi_line_comment"][1]);
+    }
+    language.stringCharacters =
+        entry.contains("string_characters") ? entry["string_characters"] : "";
+    if (entry.contains("escape_character")) {
+      std::string content = entry["escape_character"];
+      language.escapeChar = content[0];
+    }
+    if (entry.contains("file_extensions") &&
+        entry["file_extensions"].is_array()) {
+      for (auto &word : entry["file_extensions"])
+        language.fileExtensions.push_back(word);
+    }
+    if (language.modeName.length() && language.fileExtensions.size()) {
+      extraLanguages.push_back(language);
     }
   }
   void parseConfig(json *configRoot) {
@@ -517,8 +519,10 @@ public:
           configColors, "line_number_color", colors.line_number_color);
       colors.minibuffer_color = getVecOrDefault(
           configColors, "minibuffer_color", colors.minibuffer_color);
-      colors.cursor_color_standard = getVecOrDefault(configColors, "cursor_color", colors.cursor_color_standard);
-      colors.cursor_color_vim = getVecOrDefault(configColors, "vim_cursor_color", colors.cursor_color_vim);
+      colors.cursor_color_standard = getVecOrDefault(
+          configColors, "cursor_color", colors.cursor_color_standard);
+      colors.cursor_color_vim = getVecOrDefault(
+          configColors, "vim_cursor_color", colors.cursor_color_vim);
     }
     if (configRoot->contains("commands")) {
       for (const auto &entry : (*configRoot)["commands"].items()) {
