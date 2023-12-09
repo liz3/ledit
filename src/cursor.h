@@ -628,8 +628,8 @@ public:
     y = y == 0 ? 0 : y - 1;
     for (int64_t l = 0; l < ll.size(); l++) {
       out += ll[l];
-      if(l < ll.size()-1)
-      out += U"\n";
+      if (l < ll.size() - 1)
+        out += U"\n";
     }
     return out;
   }
@@ -644,27 +644,49 @@ public:
     return w;
   }
   Utf8String deleteWordVim(bool withSpace, bool del = true) {
-    Utf8String *target = bind ? bind : &lines[y];
+    Utf8String &target = bind ? *bind : lines[y];
     auto start = x;
     auto end = x;
-    for (int64_t i = start - 1; i >= 0; i--) {
-      if (wordSeperator.find(lines[y][i]) != std::string::npos)
-        break;
-      start = i;
-    }
-    if (start > 0 && withSpace)
+    bool startIsWhitespace =
+        x > 0 && wordSeperator.find(target[start - 1]) != std::string::npos;
+    bool endIswhiteSpace =
+        x < target.size() &&
+        wordSeperator.find(target[start]) != std::string::npos;
+    if (!startIsWhitespace)
+      for (int64_t i = start - 1; i >= 0; i--) {
+        if (wordSeperator.find(lines[y][i]) != std::string::npos) {
+          if (!startIsWhitespace) {
+            if (i > 0 && withSpace)
+              start--;
+            break;
+          }
+        } else {
+          if (startIsWhitespace)
+            startIsWhitespace = false;
+        }
+        start = i;
+      }
+    else if (withSpace)
       start--;
+
     for (size_t i = x; i < lines[y].size(); i++) {
-      if (wordSeperator.find(lines[y][i]) != std::string::npos)
-        break;
+      if (wordSeperator.find(lines[y][i]) != std::string::npos) {
+        if (!endIswhiteSpace) {
+
+          break;
+        }
+      } else {
+        if (endIswhiteSpace)
+          endIswhiteSpace = false;
+      }
       end++;
     }
     auto length = end - start;
     x = start;
-    Utf8String w = target->substr(x, length);
+    Utf8String w = target.substr(x, length);
     if (del) {
 
-      target->erase(x, length);
+      target.erase(x, length);
       historyPush(3, w.length(), w);
     }
     return w;
@@ -867,7 +889,7 @@ public:
     case 53: {
       y = entry.y;
       x = entry.x;
-      lines.erase(lines.begin() + y+1, lines.begin() + 1 + y + entry.length);
+      lines.erase(lines.begin() + y + 1, lines.begin() + 1 + y + entry.length);
       break;
     }
     default:
@@ -1177,8 +1199,10 @@ public:
     Utf8String historySave;
     auto contentLines = split(content, U"\n");
     if (isVim && content.find('\n') != std::string::npos) {
-      if(contentLines.size() >1 && !contentLines[contentLines.size()-1].length())
-          contentLines.erase(contentLines.begin()+(contentLines.size()-1), contentLines.begin()+(contentLines.size()));
+      if (contentLines.size() > 1 &&
+          !contentLines[contentLines.size() - 1].length())
+        contentLines.erase(contentLines.begin() + (contentLines.size() - 1),
+                           contentLines.begin() + (contentLines.size()));
       historyPush(53, contentLines.size(), U"");
       auto off = getCurrentLineLength() ? 1 : 0;
       for (auto &l : contentLines) {
