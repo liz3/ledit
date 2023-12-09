@@ -2,12 +2,12 @@ name: Build
 on:
   push:
     branches:
-      - master
+      - vim
 
 jobs:
   build-project:
     name: Build Project
-    runs-on: macos-latest
+    runs-on: macos-arm64
     steps:
       - name: Checkout
         uses: actions/checkout@v4.1.1
@@ -27,6 +27,6 @@ jobs:
       - name: Archive production artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ledit_darwin_x86_x64
+          name: ledit_darwin_aarch64
           path: |
             build/ledit
