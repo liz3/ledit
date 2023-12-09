@@ -599,8 +599,8 @@ public:
           cursor->historyPush(3, w.length(), w);
         }
       } else if (state.direction == Direction::UP) {
-        auto out = cursor->deleteLines(cursor->y - state.count,
-                                       1 + state.count, !co);
+        auto out =
+            cursor->deleteLines(cursor->y - state.count, 1 + state.count, !co);
         *ptr += out;
       } else if (state.direction == Direction::DOWN) {
         auto out = cursor->deleteLines(cursor->y, 1 + state.count, !co);
@@ -612,22 +612,22 @@ public:
             *ptr += out;
         });
       } else if (state.direction == Direction::RIGHT) {
-        int offset= 0;
-        int* off = &offset;
+        int offset = 0;
+        int *off = &offset;
         vim->iterate([cursor, co, ptr, off]() {
           if (!co) {
 
             *ptr += cursor->removeBeforeCursor();
           } else {
             auto target = cursor->x + *off;
-            if(target >= cursor->getCurrentLineLength())
+            if (target >= cursor->getCurrentLineLength())
               return;
             *ptr += cursor->lines[cursor->y][target];
             (*off)++;
           }
         });
       }
-      if(outBuffer.length())
+      if (outBuffer.length())
         vim->getState().tryCopyInput(outBuffer);
     }
     return {};
@@ -635,11 +635,13 @@ public:
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
     if (mode == VimMode::VISUAL) {
+      vim->getState().tryCopy();
       cursor->deleteSelection();
       cursor->selection.stop();
       ActionResult r;
       r.type = ResultType::Emit;
       r.action_name = "ESC";
+      return r;
     }
     if (vim->activeAction() == nullptr && mode == VimMode::NORMAL)
       return withType(ResultType::SetSelf);

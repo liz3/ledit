@@ -6,13 +6,18 @@
 #include "la.h"
 const std::vector<Language> LANGUAGES = {
     {"C/C++",
-     {"char",    "for",     "while",  "if",    "int",    "float",
-      "return",  "double",  "true",   "false", "else",   "void",
-      "delete",  "struct",  "class",  "case",  "break",  "const",
-      "nullptr", "auto",    "bool",   "new",   "auto*",  "switch",
-      "case",    "typedef", "static", "enum",  "sizeof", "offsetof", "continue"},
-     {"#include", "public", "private", "#ifdef", "#define", "#endif", "#ifndef",
-      "#else", "#if"},
+     {
+         "char",     "for",     "while",  "if",    "int",    "float",
+         "return",   "double",  "true",   "false", "else",   "void",
+         "delete",   "struct",  "class",  "case",  "break",  "const",
+         "nullptr",  "auto",    "bool",   "new",   "auto*",  "switch",
+         "case",     "typedef", "static", "enum",  "sizeof", "offsetof",
+         "continue",
+     },
+     {"#include", "public",   "private", "#ifdef",   "#define", "#endif",
+      "#ifndef",  "#else",    "#if",     "size_t",   "int8_t",  "uint8_t",
+      "int16_t",  "uint16_t", "int32_t", "uint32_t", "int64_t", "uint64_t",
+      "char_t",   "char16_t", "char32_t"},
      "//",
      {"/*", "*/"},
      "\"'",
@@ -175,12 +180,17 @@ const std::vector<Language> LANGUAGES = {
      {"sh", "bash"}},
     {"JSON", {"true", "false", "null"}, {}, "", {"", ""}, "\"", '\\', {"json"}},
     {"Zig",
-     {"const",     "var",           "if",          "else",  "return", "pub",
-      "undefined", "null",          "fn",          "false", "true",   "void",
-      "bool",      "usize",         "comptime",    "c_int", "i8",     "u8",
-      "i16",       "u16",           "i32",         "u32",   "i64",    "u64",
-      "struct",    "catch",         "unreachable", "defer", "break",  "switch",
-      "type",      "usingnamespace", "export", "callconv", "for", "while", "threadlocal", "orelse", "or", "and", "anyopaque", "anytype"},
+     {"const",       "var",      "if",          "else",
+      "return",      "pub",      "undefined",   "null",
+      "fn",          "false",    "true",        "void",
+      "bool",        "usize",    "comptime",    "c_int",
+      "i8",          "u8",       "i16",         "u16",
+      "i32",         "u32",      "i64",         "u64",
+      "struct",      "catch",    "unreachable", "defer",
+      "break",       "switch",   "type",        "usingnamespace",
+      "export",      "callconv", "for",         "while",
+      "threadlocal", "orelse",   "or",          "and",
+      "anyopaque",   "anytype"},
      {"@addrSpaceCast",
       "@addWithOverflow",
       "@alignCast",
@@ -303,13 +313,14 @@ const std::vector<Language> LANGUAGES = {
      "\"'",
      '\\',
      {"zig"}}};
-inline const Language *has_language(const std::string& name, const std::string& ext) {
-   for(const auto& language : LANGUAGES){
-      for(const auto& extension : language.fileExtensions) {
-        if(extension == ext || name == extension)
-          return &language;
-      }
+inline const Language *has_language(const std::string &name,
+                                    const std::string &ext) {
+  for (const auto &language : LANGUAGES) {
+    for (const auto &extension : language.fileExtensions) {
+      if (extension == ext || name == extension)
+        return &language;
     }
+  }
   return nullptr;
 }
 
