@@ -107,12 +107,15 @@ public:
       state.search();
       return;
     }
-    if (content == ":b" || content == ":b ") {
+    if (content == ":b") {
       state.switchBuffer();
       return;
     }
-    if (content == ":c" || content == ":c ") {
+    if (content == ":c") {
       state.command();
+      return;
+    } else if (content.find(":c ") == 0 && content.length() > 3) {
+      state.runCommand(content.substr(3));
       return;
     }
     if (content == ":ck") {
@@ -123,8 +126,20 @@ public:
       state.activateLastCommandBuffer();
       return;
     }
+    if (content == ":%s" || content == ":replace") {
+      state.startReplace();
+      return;
+    }
     if (content == ":lw") {
       state.toggleLineWrapping();
+      return;
+    }
+    if (content == ":hl") {
+      state.highlightLine = !state.highlightLine;
+      return;
+    }
+    if (content == ":ln") {
+      state.showLineNumbers = !state.showLineNumbers;
       return;
     }
     if (content == ":font") {
@@ -138,9 +153,14 @@ public:
     if (content == ":mode") {
       state.switchMode();
       return;
+    } else if (content.find(":mode ") == 0 && content.length() > 6) {
+      state.directlyEnableLanguage(content.substr(6));
     }
-    if (content == ":e" || content == ":e ") {
+    if (content == ":e") {
       state.open();
+      return;
+    } else if (content.find(":e ") == 0 && content.length() > 3) {
+      state.addCursor(content.substr(3));
       return;
     }
     if (content == ":n" || content == ":new") {
@@ -1301,6 +1321,34 @@ public:
 private:
   Finder *finder;
 };
+class XAction : public Action {
+
+public:
+  XAction(bool control_) : control(control_) {}
+  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override {
+
+    return {};
+  }
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override {
+    auto window = vim->getState().window;
+    auto mods = vim->getKeyState().mods;
+    bool ctrl_pressed =
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
+        mods & GLFW_MOD_CONTROL;
+    if (!vim->activeAction()) {
+      if (mode == VimMode::NORMAL ||
+          (mode == VimMode::INSERT && control && ctrl_pressed))
+        cursor->removeBeforeCursor();
+    }
+    return withType(ResultType::Silent);
+  }
+
+private:
+  bool control = false;
+};
 
 void register_vim_commands(Vim &vim, State &state) {
   Finder *finder = new Finder();
@@ -1309,6 +1357,7 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrie(new BackspaceAction(), "BACKSPACE", GLFW_KEY_BACKSPACE);
   vim.registerTrie(new EnterAction(), "ENTER", GLFW_KEY_ENTER);
   vim.registerTrie(new TabAction(), "TAB", GLFW_KEY_TAB);
+  vim.registerTrie(new XAction(true), "X_CTRL", GLFW_KEY_D);
   vim.registerTrie(new FontSizeAction(true), "F_INCREASE", GLFW_KEY_EQUAL);
   vim.registerTrie(new FontSizeAction(false), "F_DECREASE", GLFW_KEY_MINUS);
   vim.registerTrie(new TabAction(), "TAB", GLFW_KEY_TAB);
@@ -1330,6 +1379,7 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new OOAction(), "O", 'O');
   vim.registerTrieChar(d, "d", 'd');
   vim.registerTrieChar(new UAction(), "u", 'u');
+  vim.registerTrieChar(new XAction(false), "x", 'x');
   vim.registerTrieChar(new VAction(), "v", 'v');
   vim.registerTrieChar(new CAction(), "c", 'c');
   vim.registerTrieChar(new DollarAction(), "$", '$');

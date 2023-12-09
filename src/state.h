@@ -129,9 +129,7 @@ public:
       activateCursor(offset - cursors.begin());
     }
   }
-  void killCommand(){
-    provider.killCommand();
-  }
+  void killCommand() { provider.killCommand(); }
   void checkChanged() {
     if (!path.length())
       return;
@@ -252,8 +250,8 @@ public:
     cursor->selection.stop();
     status = U"Copied " + numberToString(content.length()) + U" Characters";
   }
-  void tryCopyInput(Utf8String& in) {
-    const std::string& content = in.getStrRef();
+  void tryCopyInput(Utf8String &in) {
+    const std::string &content = in.getStrRef();
     glfwSetClipboardString(NULL, content.c_str());
   }
   void save() {
@@ -383,6 +381,19 @@ public:
       }
     }
     return has_language(name, ext);
+  }
+  void directlyEnableLanguage(std::string name) {
+    const Language *lang =
+        try_load_language(name, name.find_last_of(".") != std::string::npos
+                                    ? name.substr(name.find_last_of(".") + 1)
+                                    : name);
+    if (lang) {
+      highlighter.setLanguage(*lang, lang->modeName);
+      highlighter.highlight(cursor->lines, &provider.colors, cursor->skip,
+                            cursor->maxLines, cursor->y,
+                            cursor->history.size());
+      hasHighlighting = true;
+    }
   }
   void tryEnableHighlighting() {
     fs::path path = fs::path(fileName.getStrRef());
@@ -590,17 +601,18 @@ public:
     if (cursor->branch.length()) {
       branch = U" [git: " + create(cursor->branch) + U"]";
     }
-    auto x = cursor->x+1;
-    if(vim && vim->getMode() != VimMode::INSERT && x == cursor->getCurrentLineLength()+1 && x >1)
+    auto x = cursor->x + 1;
+    if (vim && vim->getMode() != VimMode::INSERT &&
+        x == cursor->getCurrentLineLength() + 1 && x > 1)
       x--;
     status = (vim ? Utf8String(vim->getModeName()) + U" " : U"") +
-             numberToString(cursor->y + 1) + U":" +
-             numberToString(x) + branch + U" [" + fileName + U": " +
+             numberToString(cursor->y + 1) + U":" + numberToString(x) + branch +
+             U" [" + fileName + U": " +
              (hasHighlighting ? highlighter.languageName : U"Text") + U"]";
     if (cursor->selection.active)
       status +=
           U" Selected: [" + numberToString(cursor->getSelectionSize()) + U"]";
-    if(vim && vim->getCount() > 0) {
+    if (vim && vim->getCount() > 0) {
       status += U" " + Utf8String(std::to_string(vim->getCount()));
     }
     if (atlas && atlas->errors.size())
@@ -689,14 +701,14 @@ public:
     if (path.length() && std::filesystem::is_directory(path))
       path = "";
 
-    if(path.length())
-    for(size_t i = 0; i < cursors.size(); i++) {
-      auto* entry = cursors[i];
-      if(entry->path == path){
-        activateCursor(i);
-        return;
+    if (path.length())
+      for (size_t i = 0; i < cursors.size(); i++) {
+        auto *entry = cursors[i];
+        if (entry->path == path) {
+          activateCursor(i);
+          return;
+        }
       }
-    }
 
     Cursor newCursor = path.length() ? Cursor(path) : Cursor();
     if (path.length()) {

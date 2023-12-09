@@ -199,6 +199,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       if (action == GLFW_PRESS && key == GLFW_KEY_SEMICOLON) {
         gState->activateLastCommandBuffer();
       }
+      if (action == GLFW_PRESS && key == GLFW_KEY_P) {
+        gState->killCommand();
+      }
       if (action == GLFW_PRESS && key == GLFW_KEY_H) {
         gState->highlightLine = !gState->highlightLine;
       }

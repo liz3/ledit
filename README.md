@@ -1,6 +1,6 @@
 # Ledit
-Very simple GPU Rendered text editor without any bullshit.  
-With keybinds inspired by emacs.  
+Very simple GPU Rendered text editor without Bloat.  
+With keybinds inspired by emacs and a(partial) vim mode.  
 Ledit runs on all 3 major operating systems: GNU/linux, macOS and Windows.
 if you just want to test the editor then [download it from the releases](https://github.com/liz3/ledit/releases/latest)
 
@@ -8,17 +8,9 @@ if you just want to test the editor then [download it from the releases](https:/
 The base motivation was just simply that i wanted to have a look into OpenGL and doing GPU accelerated things, i did not plan to create a text editor from the get go.  
 After starting to experiment a bit i decided to call this a small side Project and implement a proper editor.
 
-### About the no bullshit
-My issue with modern software is that they get more bloated and complex without any aparent reason.
+**Edit:** When i started this project it was really just a simple simple text editor, but ive added features like commands, the vim mode and so on since i use this editor on a daily basis and needed them. I try to keep it as simple as possible, while respecting what i need of it.
 
-A text editor should be a program to allow the user editing of text-based files. Maybe some visual highlighting, but thats IT.
 
-Take Visual studio code, when it started, i saw it as a good text editor, one could argue its from a bad company AND web based, but for me it solved the problem of a text editor well.  
-**But** Over the years they added nonsense features like live sharing and the "directory protection pop up" feature which popped up on every start.
-
-I dont care if these features can be disabled or ignored, they solve no problem related to a text editor and bloat the program.  
-Thats why i use emacs or this.
-Ledit is in a way the same, it does not have a plugin system, neither does it even have a redo, but for me it solves the problem of a text editor and it does not need to be anything more then that.
 
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot.png?raw=true)
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot2.png?raw=true)
@@ -67,8 +59,10 @@ cmake --build . --config Release
 - src/provider.h: This contains the config parser and providers for folder autocomplete and other related things.
 - src/selection.h: Small structure to keep track of selection state.
 - src/la.(cc/h): Vectors implementation for coords and RGBA colors.
-- src/utf8String.h: Utf8 string implementation
-- third-party: ledit dependencies
+- src/utf8String.h: Utf8 string implementation.
+- src/vim.h: Vim state management.
+- src/vim_actions.h: Implementation of all the vim motions.
+- third-party: ledit dependencies.
 ```
 There are more but these are self explaining.
 ## Config
@@ -81,6 +75,7 @@ For the colors there are default values, for the font face either remove it comp
   "tab_width": 2, // This controls how many spaces the \t character is wide, further it controls the amount of spaces used in case "use_spaces" is true,
   "auto_reload": false, // if a file changed on disk and the editor asks the OS, automatically reload buffer content
   "save_before_command": false, // save_buffer before running command
+  "vim_mode": false, // vim mode, see vim section
   "colors": {
     "comment_color": [
       127, 127, 127, 127 // Comment color if a active mode is present, in RGBA (0-255)
@@ -117,6 +112,12 @@ For the colors there are default values, for the font face either remove it comp
     ],
    "minibuffer_color": [
      0, 0, 160, 255   // Color used for the Minibuffer, actions like search, replace, save new and so on. RGBA (0-255)
+    ],
+   "cursor_color": [
+     0, 0, 160, 255   // Color used for the default cursor RGBA (0-255)
+    ],
+   "vim_cursor_color": [
+     0, 0, 160, 255   // Color used for the vim cursor(NORMAL/VISUAL mode) RGBA (0-255)
     ]
   },
   // optional load additional font files
@@ -130,10 +131,13 @@ For the colors there are default values, for the font face either remove it comp
 }
 ```
 ## Highlighting for extra languages
-ledit can load support for highlighting extra languages via the file `~/.ledit/languages.json`.
-This file is a json array which can support the following like this CMake example(note that this is not complete)
+**Note**: There are a few examples in [language-syntaxes](/language-syntaxes)
+
+ledit can load support for highlighting extra languages via the folder `~/.ledit/languages/`.
+A file in languages supports the properties shown in the following CMake example(note that this is not complete)
+
+`~/.ledit/languages/cmake.json`
 ```json
-[
   {
     "mode_name": "CMake",
     "key_words": [
@@ -175,7 +179,6 @@ This file is a json array which can support the following like this CMake exampl
     ],
     "string_characters": "\""
   }
-]
 ```
 
 ### Commands
@@ -192,11 +195,58 @@ The shell command can contain certain Placeholders which will then be replaced a
 * `$file_basename` - File basename without extension, or empty string.
 * `$cwd` - Absolute path of ledits working directory.
 * `$selection_content` - if active the content of the current selection, note that the selection can contain new line characters, if not active this is a empty string `""`.
+
+### Vim mode
+Ledit does support a limited set of vim motions using the `vim_mode`, this is because ive been using vim motions and wanted my editor to support it.
+Enabling the vim mode drastically changes how the key mapping works, the emacs like keybindings are hardcoded in the main.cc file, since vim motions are a lot more complex then that,
+they are seperated and you can actually edit them.
+
+There are a lot of unspported options but most of the basics do work.
+
+#### Commands:
+The way the command input works is most cases is that you use something like `:e` and press enter, the editor will then switch into the existing implementation for the emacs mode and prompt again,
+i am aware this isn't entirely convinient but it was a loooot less work to implement and it was already a lot.
+There are some commands where this is supported though,
+
+```
+:b - switch buffer
+:c - run a command
+:c <command> - run a command directly
+:ck - kill running command
+:co - open last command buffer
+:%s - Start replace
+:lw - toggle line wrapping(experimental)
+:hl - toggle highlighting of the active line
+:ln - toggle line numbers
+:font - switch main font
+:config - open ledits config in a buffer
+:mode - switch language mode
+:mode <extension> - switch to a mode given the extension like js/cpp/sh...
+:e - open new file
+:e <path> - directly open new path
+:n - create new empty buffer
+:bd - delete active buffer
+:w/q/a/! - exit actions
+
+```
+#### key remaps 
+You can create `~/.ledit/vim_keys.json` which has a mapping of character key => action.
+That means a config like
+```json
+{
+
+  "x": "d",
+  "d": "x"
+}
+```
+Switches key x to trigger delete and d to trigger x.
+
+
 ## Info
 Here are some infos.
 ### Standard input & output
 Ledit can work with stdin/out by passing `-` as file name, **NOTE**: saving will print once then exit!
-### Keybinds
+### Keybinds for default mode
 C stands for CTRL, M for alt/meta.
 ```
 ESC:
@@ -236,6 +286,7 @@ C-x-/ - If a mode is active either comment or uncomment the cursor line or the s
 Operations:
 C-:   - Run command
 C-x-: - See output from last command
+C-x-p - If theres a running command, kill it
 C-x-s - Save to last path, if no path present, ledit will ask for a path.
 C-x-n - Save to new location, note that this will not overwrite the default save path, to overwrite the default path, save then load.
 C-x-o - Load new file, this will replace the current file, non existing files will still load but be marked as New Files.
