@@ -833,13 +833,10 @@ public:
 
     if (!vim->activeAction() && mode == VimMode::NORMAL ||
         mode == VimMode::VISUAL) {
+      vim->getState().tryPaste();
       if (mode == VimMode::VISUAL) {
-        if (cursor->selection.active) {
-          cursor->deleteSelection();
-        }
         vim->setMode(VimMode::NORMAL);
       }
-      vim->getState().tryPaste();
       ActionResult r;
       r.allowCoords = false;
       return r;

@@ -1180,9 +1180,9 @@ public:
       if(contentLines.size() >1 && !contentLines[contentLines.size()-1].length())
           contentLines.erase(contentLines.begin()+(contentLines.size()-1), contentLines.begin()+(contentLines.size()));
       historyPush(53, contentLines.size(), U"");
-
+      auto off = getCurrentLineLength() ? 1 : 0;
       for (auto &l : contentLines) {
-        lines.insert(lines.begin() + y + 1, l);
+        lines.insert(lines.begin() + y + off, l);
         y++;
       }
       return;
