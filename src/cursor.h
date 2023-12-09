@@ -527,6 +527,8 @@ public:
   void advanceWord() {
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOf(target->substr(x), wordSeperator);
+    bool currentWs = wordSeperator2.find((*target)[x+offset]) != std::string::npos;
+    auto currentX = x;
     if (offset == -1) {
       if (x == target->length() && y < lines.size() - 1) {
         x = 0;
@@ -539,6 +541,9 @@ public:
     }
     selection.diffX(x);
     selection.diffY(y);
+    if(currentWs && x == currentX+1 && wordSeperator2.find((*target)[x]) != std::string::npos){
+      advanceWord();
+    }
   }
   std::pair<float, float> getPosLineWrapped(FontAtlas &atlas, float xBase,
                                             float yBase, float maxRenderWidth,
@@ -901,6 +906,8 @@ public:
   void advanceWordBackwards() {
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOfLast(target->substr(0, x), wordSeperator);
+    auto currentX = x;
+    bool currentWs = wordSeperator2.find((*target)[x-offset]) != std::string::npos;
     if (offset == -1) {
       if (x == 0 && y > 0) {
         y--;
@@ -913,6 +920,9 @@ public:
     }
     selection.diffX(x);
     selection.diffY(y);
+    if(x > 0 && x == currentX -1 &&  wordSeperator2.find((*target)[x]) != std::string::npos){
+      advanceWordBackwards();
+    }
   }
 
   void gotoLine(int l) {
