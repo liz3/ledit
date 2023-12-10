@@ -229,7 +229,14 @@ public:
       out.allowCoords = false;
       return out;
     }
-    if (mode == VimMode::INSERT) {
+    auto window = vim->getState().window;
+    auto mods = vim->getKeyState().mods;
+
+    bool ctrl_pressed =
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
+        mods & GLFW_MOD_CONTROL;
+    if (mode == VimMode::INSERT && !ctrl_pressed) {
       State &st = vim->getState();
       bool useSpaces = st.provider.useSpaces;
       auto am = st.provider.tabWidth;
@@ -238,12 +245,7 @@ public:
       else
         cursor->append('\t');
     } else if (mode == VimMode::NORMAL) {
-      auto window = vim->getState().window;
-      auto mods = vim->getKeyState().mods;
-      bool ctrl_pressed =
-          glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
-          glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
-          mods & GLFW_MOD_CONTROL;
+
       if (ctrl_pressed)
         vim->getState().fastSwitch();
     }
@@ -853,6 +855,8 @@ public:
 
     if (!vim->activeAction() && mode == VimMode::NORMAL ||
         mode == VimMode::VISUAL) {
+      if (cursor->x == cursor->getCurrentLineLength()-1)
+        cursor->moveRight();
       vim->getState().tryPaste();
       if (mode == VimMode::VISUAL) {
         vim->setMode(VimMode::NORMAL);
@@ -1339,8 +1343,8 @@ public:
         glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
         mods & GLFW_MOD_CONTROL;
     if (!vim->activeAction()) {
-      if ((mode == VimMode::NORMAL  && !control)||
-          (mode == VimMode::INSERT && control && ctrl_pressed)){
+      if ((mode == VimMode::NORMAL && !control) ||
+          (mode == VimMode::INSERT && control && ctrl_pressed)) {
 
         cursor->removeBeforeCursor();
       }
