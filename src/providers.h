@@ -1,5 +1,8 @@
 #ifndef PROVIDERS_H
 #define PROVIDERS_H
+#ifdef __APPLE__
+#include <sys/signal.h>
+#endif
 #include <unordered_map>
 #include <atomic>
 #include <vector>
@@ -15,6 +18,8 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#else
+#include <windows.h>
 #endif
 #ifdef __linux__
 #include <fontconfig/fontconfig.h>
@@ -24,6 +29,7 @@ struct FontEntry {
   std::string type;
 };
 #endif
+
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
@@ -36,6 +42,7 @@ public:
   EditorColors colors;
   std::string fontPath = getDefaultFontPath();
   std::vector<std::string> extraFonts;
+  std::unordered_map<char32_t, std::string> vimRemaps;
   std::vector<Language> extraLanguages;
   std::string configPath;
   std::string lastCommandOutput;
@@ -43,10 +50,13 @@ public:
   int32_t tabWidth = 2;
   bool useSpaces = true;
   bool autoReload = false;
+  bool vim_emulation = false;
   uint64_t commandStartTime = 0;
   bool saveBeforeCommand = false;
   bool allowTransparency = false;
   std::atomic_bool command_running;
+  std::atomic_uint32_t command_pid = 0;
+  std::string lastCommand = "";
   std::thread command_thread;
   Provider() {
     fs::path *homeDir = getHomeFolder();
@@ -63,11 +73,22 @@ public:
           json j;
           parseConfig(&j);
         }
-        fs::path languages = configDir / "languages.json";
+        fs::path languages = configDir / "languages";
         if (fs::exists(languages)) {
-          std::string contents = file_to_string(languages.generic_string());
+          if (fs::is_directory(languages)) {
+            for (const auto &entry : fs::directory_iterator(languages)) {
+              std::string contents =
+                  file_to_string(entry.path().generic_string());
+              json parsed = json::parse(contents);
+              loadExtraLanguage(parsed);
+            }
+          }
+        }
+        fs::path vimRemapPath = configDir / "vim_keys.json";
+        if (fs::exists(vimRemapPath)) {
+          std::string contents = file_to_string(vimRemapPath.generic_string());
           json parsed = json::parse(contents);
-          loadExtraLanguages(parsed);
+          setVimRemaps(parsed);
         }
       } else {
         fs::create_directory(configDir);
@@ -79,10 +100,34 @@ public:
       std::cerr << "Failed to load home env var\n";
     }
   }
+  std::string getConfigPath() {
+    fs::path *homeDir = getHomeFolder();
+    if (!homeDir)
+      return "";
+    fs::path config = (*homeDir) / ".ledit" / "config.json";
+    auto str = config.generic_string();
+    delete homeDir;
+    return str;
+  }
+  bool killCommand() {
+    if (!command_running)
+      return false;
+#ifdef _WIN32
+    HANDLE processHandle = OpenProcess(PROCESS_TERMINATE, FALSE, command_pid);
+    if (processHandle == NULL)
+      return false;
+    BOOL result = TerminateProcess(processHandle, 9);
+    CloseHandle(processHandle);
+#else
+    kill(command_pid, SIGKILL);
+#endif
+    return true;
+  }
   int runCommand(std::string command) {
     if (command_running)
       return 0;
     command_running = true;
+    lastCommand = command;
     std::chrono::time_point<std::chrono::system_clock> now =
         std::chrono::system_clock::now();
     auto duration = now.time_since_epoch();
@@ -90,34 +135,161 @@ public:
         std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
 
     command_thread = std::thread([this, command]() {
-      FILE *fp;
 #ifdef _WIN32
-      fp = _popen(command.c_str(), "r");
-#else
-      fp = popen(command.c_str(), "r");
-#endif
-      std::string out;
-      char buffer[1024];
-      while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-        out += buffer;
+      HANDLE hStdoutRead, hStdoutWrite;
+      SECURITY_ATTRIBUTES saAttr;
+      saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+      saAttr.bInheritHandle = TRUE;
+      saAttr.lpSecurityDescriptor = NULL;
+      if (!CreatePipe(&hStdoutRead, &hStdoutWrite, &saAttr, 0)) {
+        commandExitCode = 1;
+        lastCommandOutput = "__LEDIT__: SPAWN ERROR: Couldn't pipe";
+        command_running = false;
+        command_pid = 0;
+        glfwPostEmptyEvent();
+        return 0;
+      }
+      SetHandleInformation(hStdoutRead, HANDLE_FLAG_INHERIT, 0);
+      PROCESS_INFORMATION piProcInfo;
+      STARTUPINFO siStartInfo;
+      BOOL bSuccess = FALSE;
+      ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+      ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
+      siStartInfo.cb = sizeof(STARTUPINFO);
+      siStartInfo.hStdError = hStdoutWrite;
+      siStartInfo.hStdOutput = hStdoutWrite;
+      siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+      bSuccess = CreateProcess(
+          NULL,
+          const_cast<char *>(command.c_str()), // command line
+          NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo);
+      if (!bSuccess) {
+        CloseHandle(hStdoutWrite);
+        CloseHandle(hStdoutRead);
+        commandExitCode = 1;
+        lastCommandOutput = "__LEDIT__: SPAWN ERROR: CreateProcess failed";
+        command_running = false;
+        command_pid = 0;
+        glfwPostEmptyEvent();
+        return 0;
+      }
+      command_pid = piProcInfo.dwProcessId;
+      CloseHandle(hStdoutWrite);
+      CloseHandle(piProcInfo.hThread);
+
+      DWORD dwRead;
+      CHAR chBuf[4096];
+      std::string result;
+
+      for (;;) {
+        bSuccess = ReadFile(hStdoutRead, chBuf, 4096, &dwRead, NULL);
+        if (!bSuccess || dwRead == 0)
+          break;
+        std::string str(chBuf, dwRead);
+        result += str;
       }
 
-      if (fp == nullptr)
-        return -1;
-#ifdef _WIN32
-      int status = _pclose(fp);
-#else
-      int status = pclose(fp);
-#endif
-      lastCommandOutput = out;
-      commandExitCode = status;
+      CloseHandle(hStdoutRead);
+
+      WaitForSingleObject(piProcInfo.hProcess, INFINITE);
+
+      DWORD exitCode;
+      bool failedRetrieve = false;
+      if (!GetExitCodeProcess(piProcInfo.hProcess, &exitCode)) {
+        failedRetrieve = true;
+        commandExitCode = 1;
+      } else {
+        commandExitCode = exitCode;
+      }
+
+      CloseHandle(piProcInfo.hProcess);
+      result += "\n -- " + std::to_string(exitCode) +
+                (failedRetrieve ? " (retrieve failed)" : "") + " ";
+      {
+        std::chrono::time_point<std::chrono::system_clock> now =
+            std::chrono::system_clock::now();
+        auto duration = now.time_since_epoch();
+        auto msNow =
+            std::chrono::duration_cast<std::chrono::milliseconds>(duration)
+                .count();
+        auto runDuration = msNow - commandStartTime;
+        double secs = (double)runDuration / 1000;
+        result += toFixed(secs, 2) + "s";
+      }
+      result += " --";
+      lastCommandOutput = result;
       command_running = false;
+      command_pid = 0;
       glfwPostEmptyEvent();
+#else
+      int pipefd[2];
+      if (pipe(pipefd) == -1) {
+        commandExitCode = 1;
+        lastCommandOutput = "__LEDIT__: SPAWN ERROR: Couldn't pipe";
+        command_running = false;
+        command_pid = 0;
+        glfwPostEmptyEvent();
+        return 0;
+      }
+      pid_t pid = fork();
+      if (pid == -1) {
+        commandExitCode = 1;
+        lastCommandOutput = "__LEDIT__: SPAWN ERROR: fork() syscall: -1";
+        command_running = false;
+        command_pid = 0;
+        glfwPostEmptyEvent();
+        return 0;
+      }
+      if (pid == 0) {
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        dup2(pipefd[1], STDERR_FILENO);
+        close(pipefd[1]);
+        execlp("/bin/sh", "sh", "-c", command.c_str(), NULL);
+        exit(EXIT_FAILURE);
+      } else {
+        command_pid = pid;
+        close(pipefd[1]);
+        int exitCode;
+        std::string result;
+        char buffer[1024];
+        ssize_t count;
+        while ((count = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
+          buffer[count] = '\0';
+          result += buffer;
+        }
+        close(pipefd[0]);
+        waitpid(pid, &exitCode, 0);
+
+        commandExitCode = exitCode;
+        result += "\n -- " + std::to_string(exitCode) + " ";
+        {
+          std::chrono::time_point<std::chrono::system_clock> now =
+              std::chrono::system_clock::now();
+          auto duration = now.time_since_epoch();
+          auto msNow =
+              std::chrono::duration_cast<std::chrono::milliseconds>(duration)
+                  .count();
+          auto runDuration = msNow - commandStartTime;
+          double secs = (double)runDuration / 1000;
+          result += toFixed(secs, 2) + "s";
+        }
+        result += " --";
+        lastCommandOutput = result;
+        command_running = false;
+        command_pid = 0;
+        glfwPostEmptyEvent();
+      }
+
+#endif
       return 0;
     });
+
     return 0;
   }
   std::string getBranchName(std::string path) {
+    if (true)
+      return "";
     std::string asPath = fs::path(path).parent_path().generic_string();
     const char *as_cstr = asPath.c_str();
     std::string branch = "";
@@ -278,43 +450,46 @@ public:
     return "";
 #endif
   }
-  void loadExtraLanguages(json &languages) {
-    if (!languages.is_array())
+  void setVimRemaps(json &in) {
+    for (auto &entry : in.items()) {
+      std::string k = entry.key();
+      vimRemaps[k[0]] = entry.value();
+    }
+  }
+  void loadExtraLanguage(json &entry) {
+    if (!entry.is_object())
       return;
-    for (const auto &entry : languages) {
-      Language language;
-      language.modeName = entry["mode_name"];
-      if (entry.contains("key_words") && entry["key_words"].is_array()) {
-        for (auto &word : entry["key_words"])
-          language.keyWords.push_back(word);
-      }
-      if (entry.contains("special_words") &&
-          entry["special_words"].is_array()) {
-        for (auto &word : entry["special_words"])
-          language.specialWords.push_back(word);
-      }
-      language.singleLineComment = entry.contains("single_line_comment")
-                                       ? entry["single_line_comment"]
-                                       : "";
-      if (entry.contains("multi_line_comment") &&
-          entry["multi_line_comment"].is_array()) {
-        language.multiLineComment = std::pair(entry["multi_line_comment"][0],
-                                              entry["multi_line_comment"][1]);
-      }
-      language.stringCharacters =
-          entry.contains("string_characters") ? entry["string_characters"] : "";
-      if (entry.contains("escape_character")) {
-        std::string content = entry["escape_character"];
-        language.escapeChar = content[0];
-      }
-      if (entry.contains("file_extensions") &&
-          entry["file_extensions"].is_array()) {
-        for (auto &word : entry["file_extensions"])
-          language.fileExtensions.push_back(word);
-      }
-      if (language.modeName.length() && language.fileExtensions.size()) {
-        extraLanguages.push_back(language);
-      }
+    Language language;
+    language.modeName = entry["mode_name"];
+    if (entry.contains("key_words") && entry["key_words"].is_array()) {
+      for (auto &word : entry["key_words"])
+        language.keyWords.push_back(word);
+    }
+    if (entry.contains("special_words") && entry["special_words"].is_array()) {
+      for (auto &word : entry["special_words"])
+        language.specialWords.push_back(word);
+    }
+    language.singleLineComment = entry.contains("single_line_comment")
+                                     ? entry["single_line_comment"]
+                                     : "";
+    if (entry.contains("multi_line_comment") &&
+        entry["multi_line_comment"].is_array()) {
+      language.multiLineComment = std::pair(entry["multi_line_comment"][0],
+                                            entry["multi_line_comment"][1]);
+    }
+    language.stringCharacters =
+        entry.contains("string_characters") ? entry["string_characters"] : "";
+    if (entry.contains("escape_character")) {
+      std::string content = entry["escape_character"];
+      language.escapeChar = content[0];
+    }
+    if (entry.contains("file_extensions") &&
+        entry["file_extensions"].is_array()) {
+      for (auto &word : entry["file_extensions"])
+        language.fileExtensions.push_back(word);
+    }
+    if (language.modeName.length() && language.fileExtensions.size()) {
+      extraLanguages.push_back(language);
     }
   }
   void parseConfig(json *configRoot) {
@@ -344,6 +519,10 @@ public:
           configColors, "line_number_color", colors.line_number_color);
       colors.minibuffer_color = getVecOrDefault(
           configColors, "minibuffer_color", colors.minibuffer_color);
+      colors.cursor_color_standard = getVecOrDefault(
+          configColors, "cursor_color", colors.cursor_color_standard);
+      colors.cursor_color_vim = getVecOrDefault(
+          configColors, "vim_cursor_color", colors.cursor_color_vim);
     }
     if (configRoot->contains("commands")) {
       for (const auto &entry : (*configRoot)["commands"].items()) {
@@ -362,6 +541,7 @@ public:
     saveBeforeCommand =
         getBoolOrDefault(*configRoot, "save_before_command", saveBeforeCommand);
     autoReload = getBoolOrDefault(*configRoot, "auto_reload", autoReload);
+    vim_emulation = getBoolOrDefault(*configRoot, "vim_mode", vim_emulation);
     tabWidth = getNumberOrDefault(*configRoot, "tab_width", tabWidth);
     allowTransparency =
         getBoolOrDefault(*configRoot, "window_transparency", allowTransparency);
@@ -380,6 +560,8 @@ public:
     json config;
     json cColors;
     cColors["string_color"] = vecToJson(colors.string_color);
+    cColors["cursor_color"] = vecToJson(colors.cursor_color_standard);
+    cColors["vim_cursor_color"] = vecToJson(colors.cursor_color_vim);
     cColors["default_color"] = vecToJson(colors.default_color);
     cColors["keyword_color"] = vecToJson(colors.keyword_color);
     cColors["special_color"] = vecToJson(colors.special_color);

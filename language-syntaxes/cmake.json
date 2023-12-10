@@ -1,0 +1,44 @@
+  {
+    "mode_name": "CMake",
+    "key_words": [
+      "if",
+      "else",
+      "endif",
+      "BOOL",
+      "AND",
+      "OR",
+      "ON",
+      "OFF",
+      "GLOB",
+      "FORCE",
+      "CACHE"
+    ],
+    "special_words": [
+      "set",
+      "include_directories",
+      "add_library",
+      "add_executable",
+      "target_include_directories",
+      "target_link_libraries",
+      "project",
+      "add_subdirectory",
+      "cmake_minimum_required",
+      "link_libraries",
+      "set_target_properties",
+      "execute_process",
+      "add_definitions",
+      "string",
+      "message"
+    ],
+    "single_line_comment": "#",
+    "multi_line_comment": [
+      "#[[",
+      "]]"
+    ],
+    "escape_character": "\\",
+    "file_extensions": [
+      "CMakeLists.txt",
+      "cmake"
+    ],
+    "string_characters": "\""
+  }

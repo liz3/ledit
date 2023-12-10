@@ -11,6 +11,7 @@
 #include <deque>
 #include "u8String.h"
 #include "utf8String.h"
+#include "utils.h"
 #ifndef __APPLE__
 #include <filesystem>
 #endif
@@ -80,7 +81,7 @@ public:
   }
   void trimTrailingWhiteSpaces() {
     for (auto &line : lines) {
-      char16_t last = line[line.length() - 1];
+      char32_t last = line[line.length() - 1];
       if (last == ' ' || last == '\t' || last == '\r') {
         int remaining = line.length();
         int count = 0;
@@ -94,8 +95,8 @@ public:
         line = line.substr(0, line.length() - count);
       }
     }
-    if (x > lines[y].length())
-      x = lines[y].length();
+    if (x > getCurrentLineLength())
+      x = getCurrentLineLength();
   }
   void comment(Utf8String commentStr) {
     if (!selection.active) {
@@ -346,8 +347,8 @@ public:
       c++;
     }
     historyPush(31, c, U"");
-    if (x > lines[y].length()) {
-      x = lines[y].length();
+    if (x > getCurrentLineLength()) {
+      x = getCurrentLineLength();
       xSave = x;
     }
     return c;
@@ -369,6 +370,18 @@ public:
     return -1;
   }
   void jumpMatching() {
+    auto res = findMatchingWithCoords(x, y);
+    if (res.first == -1 && res.second == -1) {
+      return;
+    }
+    x = res.first;
+    y = res.second;
+    selection.diffX(x);
+    selection.diffY(y);
+
+    center(res.second + 1);
+  }
+  std::pair<int, int> findMatchingWithCoords(int inx, int iny) {
     bool isBinding = bind != nullptr;
     Utf8String &active = isBinding ? *bind : lines[y];
     char32_t current = active[x == lines[y].length() ? x - 1 : x];
@@ -382,11 +395,11 @@ public:
       }
     }
     if (pair == nullptr)
-      return;
+      return std::pair(-1, -1);
     const std::pair<char32_t, char32_t> &ref = *pair;
     size_t level = 0;
-    auto localX = x;
-    auto localY = y;
+    auto localX = inx;
+    auto localY = iny;
     if (!isClosing) {
       for (size_t yy = localY; yy < lines.size(); yy++) {
 
@@ -396,13 +409,8 @@ public:
           char32_t local = lines[yy][xx];
           if (local == ref.second) {
             if (level == 0) {
-              x = xx;
-              y = yy;
-              selection.diffX(x);
-              selection.diffY(y);
 
-              center(yy + 1);
-              return;
+              return std::pair(xx, yy);
             } else {
               level--;
             }
@@ -413,12 +421,12 @@ public:
         localX = 0;
       }
     } else {
-     
-      for (size_t yy = localY; yy > 0; yy--) {
-        if(lines[yy].size() == 0)
+
+      for (int64_t yy = localY; yy >= 0; yy--) {
+        if (lines[yy].size() == 0)
           continue;
         if (yy != y)
-          localX =  lines[yy].length()-1;
+          localX = lines[yy].length() - 1;
 
         for (int64_t xx = localX; xx >= 0; xx--) {
           if (xx == x && yy == y)
@@ -426,13 +434,13 @@ public:
           char32_t local = lines[yy][xx];
           if (local == ref.first) {
             if (level == 0) {
-              x = xx;
-              y = yy;
-              selection.diffX(x);
-              selection.diffY(y);
+              // x = xx;
+              // y = yy;
+              // selection.diffX(x);
+              // selection.diffY(y);
 
-              center(yy + 1);
-              return;
+              // center(yy + 1);
+              return std::pair(xx, yy);
             } else {
               level--;
             }
@@ -442,6 +450,7 @@ public:
         }
       }
     }
+    return std::pair(-1, -1);
   }
   int findAnyOfLast(Utf8String str, Utf8String what) {
     if (str.length() == 0)
@@ -458,10 +467,68 @@ public:
 
     return -1;
   }
+  int findAnyOfLastInclusive(Utf8String str, Utf8String what) {
+    if (str.length() == 0)
+      return -1;
+    Utf8String::const_iterator c;
+    int offset = 0;
+    for (c = str.end() - 1; c != str.begin(); c--) {
+
+      if (what.find(*c) != std::string::npos) {
+        return offset;
+      }
+      offset++;
+    }
+    if (what.find(*c) != std::string::npos) {
+      return offset + 1;
+    }
+
+    return -1;
+  }
+  int findAnyOfInclusive(Utf8String str, Utf8String what) {
+    if (str.length() == 0)
+      return -1;
+    Utf8String::const_iterator c;
+    int offset = 0;
+    for (c = str.begin(); c != str.end(); c++) {
+
+      if (what.find(*c) != std::string::npos) {
+        return offset;
+      }
+      offset++;
+    }
+
+    return -1;
+  }
+  std::pair<int, int> findGlobal(bool backwards, Utf8String what, int inx,
+                                 int iny) {
+
+    if (backwards) {
+      for (int64_t i = iny; i >= 0; i--) {
+        Utf8String ref = i == iny ? lines[i].substr(0, inx + 1) : lines[i];
+        auto res = findAnyOfLastInclusive(ref, what);
+        if (res != -1) {
+          return std::pair(ref.length() - 1 - res, i);
+        }
+      }
+    } else {
+      for (int64_t i = iny; i < lines.size(); i++) {
+        Utf8String ref = i == iny ? lines[i].substr(inx) : lines[i];
+        auto res = findAnyOfInclusive(ref, what);
+        if (res != -1) {
+          return std::pair(i == iny ? inx + res : res, i);
+        }
+      }
+    }
+
+    return std::pair(-1, -1);
+  }
 
   void advanceWord() {
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOf(target->substr(x), wordSeperator);
+    bool currentWs = wordSeperator2.find((*target)[x+offset]) != std::string::npos;
+    auto currentX = x;
     if (offset == -1) {
       if (x == target->length() && y < lines.size() - 1) {
         x = 0;
@@ -474,6 +541,9 @@ public:
     }
     selection.diffX(x);
     selection.diffY(y);
+    if(currentWs && x == currentX+1 && wordSeperator2.find((*target)[x]) != std::string::npos){
+      advanceWord();
+    }
   }
   std::pair<float, float> getPosLineWrapped(FontAtlas &atlas, float xBase,
                                             float yBase, float maxRenderWidth,
@@ -506,6 +576,15 @@ public:
     }
     return std::pair(cursorX, cursorY);
   }
+
+  void setCurrent(char32_t character) {
+    if (bind)
+      return;
+    Utf8String temp;
+    temp += lines[y][x];
+    lines[y].set(x, character);
+    historyPush(51, 1, temp);
+  }
   int getMaxLinesWrapped(FontAtlas &atlas, float xBase, float yBase,
                          float maxRenderWidth, float lineHeight, float height) {
     int count = 0;
@@ -533,6 +612,32 @@ public:
 
     return count;
   }
+  Utf8String deleteLines(int64_t start, int64_t am, bool del = true) {
+    if (start < 0)
+      start = 0;
+    Utf8String out;
+    if (start + am > lines.size())
+      am = lines.size() - start;
+    std::vector<Utf8String> ll;
+    for (size_t l = start; l < start + am; l++)
+      ll.push_back(lines[l]);
+    y = start;
+    x = 0;
+    if (del) {
+      if (lines.size() == 0)
+        lines.push_back(U"");
+      lines.erase(lines.begin() + start, lines.begin() + start + am);
+      historyPushWithExtra(50, 0, U"", ll);
+    }
+
+    y = y == 0 ? 0 : y - 1;
+    for (int64_t l = 0; l < ll.size(); l++) {
+      out += ll[l];
+      if (l < ll.size() - 1)
+        out += U"\n";
+    }
+    return out;
+  }
   Utf8String deleteWord() {
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOf(target->substr(x), wordSeperator);
@@ -543,7 +648,55 @@ public:
     historyPush(3, w.length(), w);
     return w;
   }
-  Utf8String deleteWordBackwards() {
+  Utf8String deleteWordVim(bool withSpace, bool del = true) {
+    Utf8String &target = bind ? *bind : lines[y];
+    auto start = x;
+    auto end = x;
+    bool startIsWhitespace =
+        x > 0 && wordSeperator.find(target[start - 1]) != std::string::npos;
+    bool endIswhiteSpace =
+        x < target.size() &&
+        wordSeperator.find(target[start]) != std::string::npos;
+    if (!startIsWhitespace)
+      for (int64_t i = start - 1; i >= 0; i--) {
+        if (wordSeperator.find(lines[y][i]) != std::string::npos) {
+          if (!startIsWhitespace) {
+            if (i > 0 && withSpace)
+              start--;
+            break;
+          }
+        } else {
+          if (startIsWhitespace)
+            startIsWhitespace = false;
+        }
+        start = i;
+      }
+    else if (withSpace)
+      start--;
+
+    for (size_t i = x; i < lines[y].size(); i++) {
+      if (wordSeperator.find(lines[y][i]) != std::string::npos) {
+        if (!endIswhiteSpace) {
+
+          break;
+        }
+      } else {
+        if (endIswhiteSpace)
+          endIswhiteSpace = false;
+      }
+      end++;
+    }
+    auto length = end - start;
+    x = start;
+    Utf8String w = target.substr(x, length);
+    if (del) {
+
+      target.erase(x, length);
+      historyPush(3, w.length(), w);
+    }
+    return w;
+  }
+  Utf8String deleteWordBackwards(bool onlyCopy = false) {
     if (x == 0)
       return U"";
     Utf8String *target = bind ? bind : &lines[y];
@@ -551,10 +704,12 @@ public:
     if (offset == -1)
       offset = target->length();
     Utf8String w = target->substr(x - offset, offset);
-    target->erase(x - offset, offset);
+    if (!onlyCopy) {
+      target->erase(x - offset, offset);
 
+      historyPush(3, w.length(), w);
+    }
     x = x - offset;
-    historyPush(3, w.length(), w);
     return w;
   }
   bool undo() {
@@ -723,6 +878,25 @@ public:
       delete data;
       break;
     }
+    case 50: {
+      y = entry.y;
+      x = entry.x;
+      for (size_t i = 0; i < entry.extra.size(); i++)
+        lines.insert(lines.begin() + y + i, entry.extra[i]);
+      break;
+    }
+    case 51: {
+      y = entry.y;
+      x = entry.x;
+      lines[y].set(x, entry.content[0]);
+      break;
+    }
+    case 53: {
+      y = entry.y;
+      x = entry.x;
+      lines.erase(lines.begin() + y + 1, lines.begin() + 1 + y + entry.length);
+      break;
+    }
     default:
       return false;
     }
@@ -732,10 +906,12 @@ public:
   void advanceWordBackwards() {
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOfLast(target->substr(0, x), wordSeperator);
+    auto currentX = x;
+    bool currentWs = wordSeperator2.find((*target)[x-offset]) != std::string::npos;
     if (offset == -1) {
       if (x == 0 && y > 0) {
         y--;
-        x = lines[y].length();
+        x = getCurrentLineLength();
       } else {
         x = 0;
       }
@@ -744,6 +920,9 @@ public:
     }
     selection.diffX(x);
     selection.diffY(y);
+    if(x > 0 && x == currentX -1 &&  wordSeperator2.find((*target)[x]) != std::string::npos){
+      advanceWordBackwards();
+    }
   }
 
   void gotoLine(int l) {
@@ -910,8 +1089,8 @@ public:
       skip = 0;
     if (y > lines.size() - 1)
       y = lines.size() - 1;
-    if (x > lines[y].length())
-      x = lines[y].length();
+    if (x > getCurrentLineLength())
+      x = getCurrentLineLength();
     stream.close();
     last_write_time = std::filesystem::last_write_time(path);
     edited = false;
@@ -961,8 +1140,8 @@ public:
       skip = 0;
     if (y > lines.size() - 1)
       y = lines.size() - 1;
-    if (x > lines[y].length())
-      x = lines[y].length();
+    if (x > getCurrentLineLength())
+      x = getCurrentLineLength();
     stream.close();
     last_write_time = std::filesystem::last_write_time(path);
     edited = false;
@@ -1016,7 +1195,7 @@ public:
       x++;
     }
   }
-  void appendWithLines(Utf8String content) {
+  void appendWithLines(Utf8String content, bool isVim = false) {
     if (bind) {
       append(content);
       return;
@@ -1029,6 +1208,19 @@ public:
     Utf8String save;
     Utf8String historySave;
     auto contentLines = split(content, U"\n");
+    if (isVim && content.find('\n') != std::string::npos) {
+      if (contentLines.size() > 1 &&
+          !contentLines[contentLines.size() - 1].length())
+        contentLines.erase(contentLines.begin() + (contentLines.size() - 1),
+                           contentLines.begin() + (contentLines.size()));
+      historyPush(53, contentLines.size(), U"");
+      auto off = getCurrentLineLength() ? 1 : 0;
+      for (auto &l : contentLines) {
+        lines.insert(lines.begin() + y + off, l);
+        y++;
+      }
+      return;
+    }
     int saveX = 0;
     int count = 0;
     for (int i = 0; i < contentLines.size(); i++) {
@@ -1081,39 +1273,48 @@ public:
       return bind->substr(0, x);
     return lines[y].substr(0, x);
   }
-  void removeBeforeCursor() {
+  char32_t removeBeforeCursor() {
     if (selection.active)
-      return;
+      return 0;
     Utf8String *target = bind ? bind : &lines[y];
     if (x == target->length() && x > 0)
-      return;
+      return 0;
     if (x == 0 && target->length() == 0) {
       if (y == lines.size() - 1 || bind)
-        return;
+        return 0;
       if (target->length() == 0) {
         Utf8String next = lines[y + 1];
         lines[y] = next;
         lines.erase(lines.begin() + y + 1);
         historyPush(10, next.length(), next);
-        return;
+        return '\n';
       }
+      return 0;
     }
-    historyPush(11, 1, Utf8String(1, (*target)[x]));
+    auto out = (*target)[x];
+    historyPush(11, 1, Utf8String(1, out));
     target->erase(x, 1);
 
     if (x > target->length())
       x = target->length();
+    return out;
   }
-  void removeOne() {
+  char32_t removeOne(bool copyOnly = false) {
     if (selection.active) {
       deleteSelection();
       selection.stop();
-      return;
+      return 0;
+    }
+    if (copyOnly) {
+      if (x == 0)
+        return 0;
+      x--;
+      return lines[y][x];
     }
     Utf8String *target = bind ? bind : &lines[y];
     if (x == 0) {
       if (y == 0 || bind)
-        return;
+        return 0;
 
       Utf8String *copyTarget = &lines[y - 1];
       int xTarget = copyTarget->length();
@@ -1128,11 +1329,15 @@ public:
 
       y--;
       x = xTarget;
+      return '\n';
     } else {
+      char32_t out = (*target)[x - 1];
       historyPush(4, 1, Utf8String(1, (*target)[x - 1]));
       target->erase(x - 1, 1);
       x--;
+      return out;
     }
+    return 0;
   }
   void moveUp() {
     if (y == 0 || bind)
@@ -1162,10 +1367,17 @@ public:
     if (bind)
       x = bind->length();
     else
-      x = lines[y].length();
+      x = getCurrentLineLength();
     selection.diffX(x);
   }
-
+  const int64_t getCurrentLineLength() {
+    const Utf8String &ref = lines[y];
+    return ref.length();
+  }
+  char32_t getCurrentChar() {
+    Utf8String &ref = lines[y];
+    return ref[x];
+  }
   void moveRight() {
     Utf8String *current = bind ? bind : &lines[y];
     if (x == current->length()) {
@@ -1260,7 +1472,7 @@ public:
     int xOffset = 0;
     if (neededAdvance > maxWidth) {
       auto *all = atlas->getAllAdvance(lines[y], y - skip);
-      auto len = lines[y].length();
+      auto len = getCurrentLineLength();
       float acc = 0;
       xSkip = 0;
       for (auto value : *all) {

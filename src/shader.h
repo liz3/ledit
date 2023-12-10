@@ -86,6 +86,9 @@ public:
   void set4f(std::string name, float x, float y, float z, float w) {
     glUniform4f(glGetUniformLocation(pid, name.c_str()), x, y, z, w);
   }
+   void set4f(std::string name, Vec4f in) {
+    glUniform4f(glGetUniformLocation(pid, name.c_str()), in.x, in.y, in.z, in.w);
+  }
   void set1f(std::string name, float v) {
     glUniform1f(glGetUniformLocation(pid, name.c_str()), v);
   }

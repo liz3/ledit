@@ -1,6 +1,10 @@
 #ifndef LEDIT_UTF8_STRING
 #define LEDIT_UTF8_STRING
+#ifdef __linux__
+#include <cstdint>
+#else
 #include <cstddef>
+#endif
 #include <string>
 #include <vector>
 class Utf8String {
@@ -290,7 +294,14 @@ public:
     const auto sub = substr(character_length - other.length());
     return sub == other;
   }
+  void set(size_t idx, char32_t cc){
+    Utf8String temp;
+    temp += cc;
+    auto p = calculateByteLength(idx, 1);
+    this->base.erase(p.first, p.second);
+    this->base.insert(p.first, temp.getStrRef());
 
+  }
 private:
   std::string unicodeToUtf8(std::vector<char32_t> &in) {
     std::string out = "";
@@ -527,6 +538,7 @@ private:
   }
   std::string base;
   size_t character_length = 0;
+  size_t idx;
 };
 
 #endif

@@ -62,6 +62,9 @@ public:
     r.hasColor = entry->hasColor ? 1 : 0;
     return r;
   }
+  float getColonWidth() {
+    return fs * scale;
+  }
   void ensureTab() {
     if(entries.count(U'\t'))
       return;

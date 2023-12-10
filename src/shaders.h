@@ -85,19 +85,22 @@ const std::string cursor_shader_vert = R"(
 
 uniform vec2 resolution;
 uniform vec2 cursor_pos;
+uniform vec4 cursor_color;
 
-#define WIDTH 4.0
+uniform float cursor_width;
 uniform float cursor_height;
 
 out vec2 uv;
+out vec4 color;
 
 vec2 camera_project(vec2 point);
 
 void main() {
     uv = vec2(float(gl_VertexID & 1),
               float((gl_VertexID >> 1) & 1));
+    color = cursor_color;
     gl_Position = vec4(
-        camera_project(uv * vec2(WIDTH, cursor_height) + cursor_pos),
+        camera_project(uv * vec2(cursor_width, cursor_height) + cursor_pos),
         0.0,
         1.0);
 }
@@ -109,10 +112,13 @@ const std::string cursor_shader_frag = R"(
 
 #version 330 core
 
+in vec2 uv;
+in vec4 color;
 
 out vec4 diffuseColor;
 void main() {
-    diffuseColor = vec4(0.8,0.8,1.0,1.0);
+    //diffuseColor = vec4(0.8,0.8,1.0,1.0);
+    diffuseColor = color;
 }
 
 )";

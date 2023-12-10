@@ -15,6 +15,8 @@
 #include "u8String.h"
 #include "utf8String.h"
 #include "utils.h"
+#include "vim.h"
+void register_vim_commands(Vim &vim, State &state);
 struct CursorEntry {
   Cursor cursor;
   std::string path;
@@ -57,6 +59,7 @@ public:
   int mode = 0;
   int round = 0;
   int fontSize;
+  Vim *vim;
   State() {}
 
   void invalidateCache() { cacheValid = false; }
@@ -80,6 +83,10 @@ public:
     if (!hasHighlighting)
       return;
     cursor->comment(highlighter.language.singleLineComment);
+  }
+  void registerVim() {
+    this->vim = new Vim(this);
+    register_vim_commands(*vim, *this);
   }
   bool checkCommandRun() {
     if (!provider.command_running && isCommandRunning) {
@@ -122,6 +129,7 @@ public:
       activateCursor(offset - cursors.begin());
     }
   }
+  void killCommand() { provider.killCommand(); }
   void checkChanged() {
     if (!path.length())
       return;
@@ -211,7 +219,7 @@ public:
     const char *contents = glfwGetClipboardString(NULL);
     if (contents) {
       Utf8String str = create(std::string(contents));
-      cursor->appendWithLines(str);
+      cursor->appendWithLines(str, vim != nullptr);
       if (mode != 0)
         return;
       if (hasHighlighting)
@@ -241,6 +249,10 @@ public:
     glfwSetClipboardString(NULL, content.c_str());
     cursor->selection.stop();
     status = U"Copied " + numberToString(content.length()) + U" Characters";
+  }
+  void tryCopyInput(Utf8String &in) {
+    const std::string &content = in.getStrRef();
+    glfwSetClipboardString(NULL, content.c_str());
   }
   void save() {
     if (mode != 0 && mode != 40)
@@ -369,6 +381,19 @@ public:
       }
     }
     return has_language(name, ext);
+  }
+  void directlyEnableLanguage(std::string name) {
+    const Language *lang =
+        try_load_language(name, name.find_last_of(".") != std::string::npos
+                                    ? name.substr(name.find_last_of(".") + 1)
+                                    : name);
+    if (lang) {
+      highlighter.setLanguage(*lang, lang->modeName);
+      highlighter.highlight(cursor->lines, &provider.colors, cursor->skip,
+                            cursor->maxLines, cursor->y,
+                            cursor->history.size());
+      hasHighlighting = true;
+    }
   }
   void tryEnableHighlighting() {
     fs::path path = fs::path(fileName.getStrRef());
@@ -576,13 +601,20 @@ public:
     if (cursor->branch.length()) {
       branch = U" [git: " + create(cursor->branch) + U"]";
     }
-    status = numberToString(cursor->y + 1) + U":" +
-             numberToString(cursor->x + 1) + branch + U" [" + fileName + U": " +
-             (hasHighlighting ? highlighter.languageName : U"Text") +
-             U"]";
+    auto x = cursor->x + 1;
+    if (vim && vim->getMode() != VimMode::INSERT &&
+        x == cursor->getCurrentLineLength() + 1 && x > 1)
+      x--;
+    status = (vim ? Utf8String(vim->getModeName()) + U" " : U"") +
+             numberToString(cursor->y + 1) + U":" + numberToString(x) + branch +
+             U" [" + fileName + U": " +
+             (hasHighlighting ? highlighter.languageName : U"Text") + U"]";
     if (cursor->selection.active)
       status +=
           U" Selected: [" + numberToString(cursor->getSelectionSize()) + U"]";
+    if (vim && vim->getCount() > 0) {
+      status += U" " + Utf8String(std::to_string(vim->getCount()));
+    }
     if (atlas && atlas->errors.size())
       status += U" " + atlas->errors[0];
     if (isCommandRunning)
@@ -638,6 +670,8 @@ public:
     activeIndex = cursorIndex;
     std::string path = entry->path;
     this->cursor = &(entry->cursor);
+    if (vim)
+      vim->setCursor(this->cursor);
     this->path = path;
     status = create(path);
     if (path.length()) {
@@ -666,6 +700,15 @@ public:
   void addCursor(std::string path) {
     if (path.length() && std::filesystem::is_directory(path))
       path = "";
+
+    if (path.length())
+      for (size_t i = 0; i < cursors.size(); i++) {
+        auto *entry = cursors[i];
+        if (entry->path == path) {
+          activateCursor(i);
+          return;
+        }
+      }
 
     Cursor newCursor = path.length() ? Cursor(path) : Cursor();
     if (path.length()) {
