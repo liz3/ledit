@@ -131,7 +131,7 @@ For the colors there are default values, for the font face either remove it comp
 }
 ```
 ## Highlighting for extra languages
-**Note**: There are a few examples in [language-syntaxes](/language-syntaxes)
+**Note: There are a few examples in [language-syntaxes](/language-syntaxes), further since this folder takes priority, it is possible to overwrite existing build in modes too by specifying the extensions, ledit will first use the folder and only if theres no match use its built in langauge support.**
 
 ledit can load support for highlighting extra languages via the folder `~/.ledit/languages/`.
 A file in languages supports the properties shown in the following CMake example(note that this is not complete)
