@@ -103,7 +103,7 @@ const std::vector<Language> LANGUAGES = {
      {"", ""},
      "\"",
      '\\',
-     {"dockerfile"}},
+     {"dockerfile", "Dockerfile"}},
     {"Elixir",
      {"def",
       "defp",
