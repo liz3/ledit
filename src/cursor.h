@@ -527,10 +527,10 @@ public:
   void advanceWord() {
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOf(target->substr(x), wordSeperator);
-    bool currentWs = wordSeperator2.find((*target)[x+offset]) != std::string::npos;
+    bool currentWs = offset != -1 && wordSeperator2.find((*target)[x+offset]) != std::string::npos;
     auto currentX = x;
     if (offset == -1) {
-      if (x == target->length() && y < lines.size() - 1) {
+      if (y < lines.size() - 1) {
         x = 0;
         y++;
       } else {
@@ -541,7 +541,7 @@ public:
     }
     selection.diffX(x);
     selection.diffY(y);
-    if(currentWs && x == currentX+1 && wordSeperator2.find((*target)[x]) != std::string::npos){
+    if(currentWs && x == currentX+1 && x < target->length() && wordSeperator2.find((*target)[x]) != std::string::npos){
       advanceWord();
     }
   }
@@ -907,7 +907,7 @@ public:
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOfLast(target->substr(0, x), wordSeperator);
     auto currentX = x;
-    bool currentWs = wordSeperator2.find((*target)[x-offset]) != std::string::npos;
+    bool currentWs = offset != -1 && wordSeperator2.find((*target)[x-offset]) != std::string::npos;
     if (offset == -1) {
       if (x == 0 && y > 0) {
         y--;
@@ -926,8 +926,12 @@ public:
   }
 
   void gotoLine(int l) {
-    if (l - 1 > lines.size())
-      return;
+    if (l > lines.size() || l < 1) {
+        if(l < 1)
+          l = 1;
+        else
+          l = lines.size();
+    }
     x = 0;
     xSave = 0;
     y = l - 1;
