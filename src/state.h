@@ -425,7 +425,7 @@ public:
             auto split = cursor->split(path, "/");
             std::string fName = split[split.size() - 1];
             fileName = create(fName);
-            std::string window_name = "ledit: " + path;
+            std::string window_name = path;
             glfwSetWindowTitle(window, window_name.c_str());
             tryEnableHighlighting();
           }
@@ -694,7 +694,7 @@ public:
       hasHighlighting = false;
       renderCoords();
     }
-    std::string window_name = "ledit: " + (path.length() ? path : "New File");
+    std::string window_name = (path.length() ? path : "New File");
     glfwSetWindowTitle(window, window_name.c_str());
   }
   void addCursor(std::string path) {

@@ -64,7 +64,8 @@ void mouse_button_callback(GLFWwindow *window, int button, int action,
     gState->cursor->setPosFromMouse((float)xpos * xscale, (float)ypos * yscale,
                                     gState->atlas);
 
-    if(gState->mode == 0 && (!gState->vim || gState->vim->shouldRenderCoords()))
+    if (gState->mode == 0 &&
+        (!gState->vim || gState->vim->shouldRenderCoords()))
       gState->renderCoords();
   }
 }
@@ -73,11 +74,11 @@ void character_callback(GLFWwindow *window, unsigned int codepoint) {
   if (gState == nullptr)
     return;
   gState->invalidateCache();
-   gState->exitFlag = false;
+  gState->exitFlag = false;
   if (gState->exitLoop) {
     glfwSetWindowShouldClose(window, false);
   }
-  gState->exitLoop = false; 
+  gState->exitLoop = false;
   if (gState->vim) {
     auto r = gState->vim->processCharacter((char32_t)codepoint);
     if (r && gState->vim->shouldRenderCoords())
@@ -346,7 +347,7 @@ int main(int argc, char **argv) {
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
   const std::string window_name =
-      "ledit: " + (initialPath.length() ? initialPath : "New File");
+      (initialPath.length() ? initialPath : "New File");
   GLFWwindow *window = glfwCreateWindow(state.WIDTH, state.HEIGHT,
                                         window_name.c_str(), nullptr, nullptr);
   if (window == NULL) {
@@ -725,7 +726,8 @@ int main(int argc, char **argv) {
       cursor_shader.use();
       cursor_shader.set1f("cursor_height", toOffset);
       cursor_shader.set2f("resolution", (float)WIDTH, (float)HEIGHT);
-      cursor_shader.set4f("cursor_color", state.provider.colors.cursor_color_standard);
+      cursor_shader.set4f("cursor_color",
+                          state.provider.colors.cursor_color_standard);
       if (state.mode != 0 && state.mode != 32 ||
           (state.vim && state.vim->isCommandBufferActive())) {
         // use cursor for minibuffer
@@ -754,7 +756,8 @@ int main(int argc, char **argv) {
 
             } else {
               cursor_shader.set1f("cursor_width", atlas.getAdvance(' '));
-              cursor_shader.set4f("cursor_color", state.provider.colors.cursor_color_vim);
+              cursor_shader.set4f("cursor_color",
+                                  state.provider.colors.cursor_color_vim);
             }
           }
           cursor_shader.set2f("cursor_pos", out.first, -out.second);
@@ -773,7 +776,8 @@ int main(int argc, char **argv) {
 
             } else {
               cursor_shader.set1f("cursor_width", atlas.getAdvance(' '));
-              cursor_shader.set4f("cursor_color", state.provider.colors.cursor_color_vim);
+              cursor_shader.set4f("cursor_color",
+                                  state.provider.colors.cursor_color_vim);
             }
           }
           cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
