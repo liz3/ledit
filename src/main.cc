@@ -63,6 +63,9 @@ void mouse_button_callback(GLFWwindow *window, int button, int action,
     glfwGetWindowContentScale(window, &xscale, &yscale);
     gState->cursor->setPosFromMouse((float)xpos * xscale, (float)ypos * yscale,
                                     gState->atlas);
+
+    if(gState->mode == 0 && (!gState->vim || gState->vim->shouldRenderCoords()))
+      gState->renderCoords();
   }
 }
 
