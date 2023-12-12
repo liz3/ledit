@@ -95,6 +95,10 @@ public:
   }
   void setCursor(Cursor *cursor) {
     reset();
+    if(this->cursor && commandBufferActive) {
+            setIsCommandBufferActive(false);
+        this->cursor->unbind();
+    }
     this->cursor = cursor;
   }
   VimMode getMode() {

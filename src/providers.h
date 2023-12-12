@@ -119,7 +119,7 @@ public:
     BOOL result = TerminateProcess(processHandle, 9);
     CloseHandle(processHandle);
 #else
-    kill(command_pid, SIGKILL);
+    auto out = kill(command_pid, SIGKILL);
 #endif
     return true;
   }

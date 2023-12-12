@@ -129,7 +129,13 @@ public:
       activateCursor(offset - cursors.begin());
     }
   }
-  void killCommand() { provider.killCommand(); }
+  void killCommand() {
+    if (!isCommandRunning) {
+      status = U"No command running";
+      return;
+    }
+    provider.killCommand();
+  }
   void checkChanged() {
     if (!path.length())
       return;
