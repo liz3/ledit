@@ -12,7 +12,7 @@ const std::vector<Language> LANGUAGES = {
          "delete",   "struct",  "class",  "case",  "break",  "const",
          "nullptr",  "auto",    "bool",   "new",   "auto*",  "switch",
          "case",     "typedef", "static", "enum",  "sizeof", "offsetof",
-         "continue",
+         "continue", "using", "namespace",
      },
      {"#include", "public",   "private", "#ifdef",   "#define", "#endif",
       "#ifndef",  "#else",    "#if",     "size_t",   "int8_t",  "uint8_t",
