@@ -50,6 +50,7 @@ public:
   float xSkip = 0;
   float height = 0;
   float lineHeight = 0;
+  float maxWidth = 0;
   int maxLines = 0;
   int totalCharOffset = 0;
   int cachedY = 0;
@@ -161,12 +162,48 @@ public:
     startX = x;
     startY = y;
   }
-  void setPosFromMouse(float mouseX, float mouseY, FontAtlas *atlas) {
+  void setPosFromMouse(float mouseX, float mouseY, FontAtlas *atlas,
+                       bool lineWrapping) {
     if (bind != nullptr)
       return;
     if (mouseY < startY)
       return;
     int targetY = floor((mouseY - startY) / lineHeight);
+
+    if (lineWrapping) {
+      auto sY = startY + lineHeight;
+      auto sX = startX;
+      size_t xx = 0;
+      size_t yy = skip;
+      while (sY <= mouseY) {
+        if (yy == lines.size())
+          break;
+        if (xx == lines[yy].length()) {
+          sY += lineHeight;
+          sX = startX;
+          xx = 0;
+          yy++;
+          continue;
+        }
+        auto w = atlas->getAdvance(lines[yy][xx]);
+        sX += w;
+        xx++;
+        if (sX - startX * 2 > maxWidth * 2) {
+          sY += lineHeight;
+          sX = startX + w;
+        }
+      }
+      while (sX < mouseX) {
+        auto w = atlas->getAdvance(lines[yy][xx]);
+        sX += w;
+        xx++;
+      }
+      x = xx > 0 ? xx - 1 : xx;
+      y = yy;
+      selection.diffX(x);
+      selection.diffY(y);
+      return;
+    }
     if (skip + targetY >= lines.size())
       targetY = lines.size() - 1;
     else
@@ -527,7 +564,9 @@ public:
   void advanceWord() {
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOf(target->substr(x), wordSeperator);
-    bool currentWs = offset != -1 && wordSeperator2.find((*target)[x+offset]) != std::string::npos;
+    bool currentWs =
+        offset != -1 &&
+        wordSeperator2.find((*target)[x + offset]) != std::string::npos;
     auto currentX = x;
     if (offset == -1) {
       if (y < lines.size() - 1) {
@@ -541,7 +580,8 @@ public:
     }
     selection.diffX(x);
     selection.diffY(y);
-    if(currentWs && x == currentX+1 && x < target->length() && wordSeperator2.find((*target)[x]) != std::string::npos){
+    if (currentWs && x == currentX + 1 && x < target->length() &&
+        wordSeperator2.find((*target)[x]) != std::string::npos) {
       advanceWord();
     }
   }
@@ -907,7 +947,9 @@ public:
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOfLast(target->substr(0, x), wordSeperator);
     auto currentX = x;
-    bool currentWs = offset != -1 && wordSeperator2.find((*target)[x-offset]) != std::string::npos;
+    bool currentWs =
+        offset != -1 &&
+        wordSeperator2.find((*target)[x - offset]) != std::string::npos;
     if (offset == -1) {
       if (x == 0 && y > 0) {
         y--;
@@ -920,17 +962,18 @@ public:
     }
     selection.diffX(x);
     selection.diffY(y);
-    if(x > 0 && x == currentX -1 &&  wordSeperator2.find((*target)[x]) != std::string::npos){
+    if (x > 0 && x == currentX - 1 &&
+        wordSeperator2.find((*target)[x]) != std::string::npos) {
       advanceWordBackwards();
     }
   }
 
   void gotoLine(int l) {
     if (l > lines.size() || l < 1) {
-        if(l < 1)
-          l = 1;
-        else
-          l = lines.size();
+      if (l < 1)
+        l = 1;
+      else
+        l = lines.size();
     }
     x = 0;
     xSave = 0;
@@ -1463,6 +1506,7 @@ public:
     */
     if (onlyCalculate)
       return nullptr;
+    this->maxWidth = maxWidth;
     int maxSupport = 0;
     for (size_t i = skip; i < end; i++) {
       auto s = lines[i];

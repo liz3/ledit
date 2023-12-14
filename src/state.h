@@ -655,7 +655,7 @@ public:
   void toggleLineWrapping() {
     lineWrapping = !lineWrapping;
     status = U"(Experimental) Linewrapping: ";
-    status += (lineWrapping ? U"True" : U"Off");
+    status += (lineWrapping ? U"true" : U"false");
   }
   void deleteCursor(size_t index) {
     if (mode != 0 || cursors.size() == 1 || index >= cursors.size())
