@@ -566,7 +566,7 @@ public:
     allowTransparency =
         getBoolOrDefault(*configRoot, "window_transparency", allowTransparency);
     lineNumbers = getBoolOrDefault(*configRoot, "line_numbers", lineNumbers);
-    lineWrapping = getBoolOrDefault(*configRoot, "line_wrapping", lineNumbers);
+    lineWrapping = getBoolOrDefault(*configRoot, "line_wrapping", lineWrapping);
     highlightLine =
         getStringOrDefault(*configRoot, "highlight_active_line", highlightLine);
   }
