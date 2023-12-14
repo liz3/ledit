@@ -7,6 +7,7 @@
 #include "utf8String.h"
 #include "utils.h"
 #include "vim.h"
+  void add_window(std::string p);
 
 ActionResult withType(ResultType type) {
   ActionResult r;
@@ -165,6 +166,13 @@ public:
       return;
     } else if (content.find(":e ") == 0 && content.length() > 3) {
       state.addCursor(content.substr(3));
+      return;
+    }
+        if (content == ":w") {
+      add_window("");
+      return;
+    } else if (content.find(":w ") == 0 && content.length() > 3) {
+      add_window(content.substr(3));
       return;
     }
     if (content == ":n" || content == ":new") {
@@ -1197,7 +1205,7 @@ private:
   XInterceptor interceptor;
 };
 
-class Finder {
+class Finder : public Action {
 private:
   bool active = false, backwards = false, before = false;
   int foundIndex = -1;
@@ -1206,6 +1214,14 @@ private:
   Vim *vim = nullptr;
 
 public:
+    ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override {
+    return {};
+  }
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override {
+    return {};
+  }
   void find(char32_t w, bool backwards, bool before, Cursor *cursor, Vim *vim) {
     this->active = true;
     this->cc = w;
@@ -1483,7 +1499,7 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new FindAction(finder, true, true), "T", 'T');
   vim.registerTrieChar(new SemicolonAction(finder), ";", ';');
   vim.registerTrieChar(new CommaAction(finder), ",", ',');
-
+  vim.addRef(finder);
   for (auto &entry : state.provider.vimRemaps)
     vim.remapCharTrie(entry.first, entry.second);
 }

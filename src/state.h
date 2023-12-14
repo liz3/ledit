@@ -58,11 +58,17 @@ public:
   int mode = 0;
   int round = 0;
   int fontSize;
-  Vim *vim;
+  Vim *vim = nullptr;
   State() {}
 
   void invalidateCache() { cacheValid = false; }
 
+  void freeVim() {
+    if(vim){
+      delete vim;
+      vim = nullptr;
+    }
+  }
   CursorEntry *hasEditedBuffer() {
     for (CursorEntry *cur : cursors) {
       if (cur->cursor.edited)

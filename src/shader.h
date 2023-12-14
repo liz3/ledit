@@ -95,6 +95,10 @@ public:
 
   void use() { glUseProgram(pid); }
 
+  void removeShader() {
+    glDeleteProgram(pid);
+  }
+
 private:
   GLuint compileSimple(GLuint type, std::string path) {
     std::string content = path;

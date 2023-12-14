@@ -42,13 +42,14 @@ struct MotionState {
 enum class VimMode { NORMAL, INSERT, VISUAL };
 class Action {
 public:
+  virtual ~Action() = default;
   virtual ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                                Vim *vim) = 0;
   virtual ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                             Vim *vim) = 0;
 };
 struct Interceptor {
-    virtual ActionResult intercept(char32_t in, Vim* vim, Cursor* cursor) = 0;
+  virtual ActionResult intercept(char32_t in, Vim *vim, Cursor *cursor) = 0;
 };
 struct ActionTrie {
 public:
@@ -71,14 +72,20 @@ public:
   Action *action;
 };
 struct LastKeyState {
-    int action=0, scancode=0, mods=0;
-
+  int action = 0, scancode = 0, mods = 0;
 };
 class Vim {
 public:
-    Vim(State* state) : gState(state) {
-
+  Vim(State *state) : gState(state) {}
+  ~Vim() {
+    for (auto entry : tries) {
+      delete entry.second->action;
+      delete entry.second;
     }
+    for (auto *ref : refs) {
+      delete ref;
+    }
+  }
   void resetMotionState() {
     state.count = 0;
     state.isInital = true;
@@ -95,15 +102,13 @@ public:
   }
   void setCursor(Cursor *cursor) {
     reset();
-    if(this->cursor && commandBufferActive) {
-            setIsCommandBufferActive(false);
-        this->cursor->unbind();
+    if (this->cursor && commandBufferActive) {
+      setIsCommandBufferActive(false);
+      this->cursor->unbind();
     }
     this->cursor = cursor;
   }
-  VimMode getMode() {
-    return mode;
-  }
+  VimMode getMode() { return mode; }
   bool processCharacter(char32_t c) {
     if (!cursor)
       return true;
@@ -111,9 +116,9 @@ public:
       cursor->append(c);
       return true;
     }
-    if(interceptor){
-        auto res =interceptor->intercept(c, this, cursor);
-        return res.allowCoords;
+    if (interceptor) {
+      auto res = interceptor->intercept(c, this, cursor);
+      return res.allowCoords;
     }
     if (c >= '0' && c <= '9') {
       if (c != '0' || state.count > 0) {
@@ -146,7 +151,7 @@ public:
     }
     return false;
   }
-
+  void addRef(Action *action) { refs.push_back(action); }
   void registerTrie(Action *action, std::string action_name, int glfwKey) {
     ActionTrie *trie = new ActionTrie(action, action_name, glfwKey);
     keyTries[glfwKey] = trie;
@@ -163,29 +168,31 @@ public:
     tries[action_name] = trie;
   }
 
-  void remapTrie(int glfwKey, std::string action){
-    if(!tries.count(action))
-        return;
+  void remapTrie(int glfwKey, std::string action) {
+    if (!tries.count(action))
+      return;
     keyTries[glfwKey] = tries[action];
   }
-  void remapCharTrie(char32_t key, std::string action){
-    if(!tries.count(action))
-        return;
+  void remapCharTrie(char32_t key, std::string action) {
+    if (!tries.count(action))
+      return;
     charTries[key] = tries[action];
   }
   State &getState() { return *gState; }
   ActionTrie *activeAction() { return activeTrie; }
   bool isCommandBufferActive() { return commandBufferActive; }
-  void setIsCommandBufferActive(bool v) { commandBufferActive =v; }
-  std::string& getLast() { return last;}
-  void setNext(std::string n) {next = n;}
-  Utf8String& cmdBuffer() { return commandBuffer; }
+  void setIsCommandBufferActive(bool v) { commandBufferActive = v; }
+  std::string &getLast() { return last; }
+  void setNext(std::string n) { next = n; }
+  Utf8String &cmdBuffer() { return commandBuffer; }
   void setSpecialCase(bool v) { specialCase = v; }
-  bool shouldRenderCoords() { return !specialCase && (!cursor || cursor->bind == nullptr); }
+  bool shouldRenderCoords() {
+    return !specialCase && (!cursor || cursor->bind == nullptr);
+  }
   size_t getCount() { return state.count; }
-  LastKeyState& getKeyState() { return lastKeyState; }
-  void setInterceptor(Interceptor* v) { interceptor = v;}
-  Interceptor* getInterceptor() { return interceptor; }
+  LastKeyState &getKeyState() { return lastKeyState; }
+  void setInterceptor(Interceptor *v) { interceptor = v; }
+  Interceptor *getInterceptor() { return interceptor; }
 
 private:
   bool exec(ActionTrie *trie) {
@@ -201,7 +208,7 @@ private:
     if (result.type == ResultType::Emit) {
       if (tries.count(result.action_name))
         return exec(tries[result.action_name]);
-    return result.allowCoords;
+      return result.allowCoords;
     }
     if (result.type == ResultType::SetSelf) {
       activeTrie = trie;
@@ -222,9 +229,9 @@ private:
         return exec(tries[v]);
       }
     }
-    if(result.type == ResultType::Cancel){
-        activeTrie = nullptr;
-        next = "";
+    if (result.type == ResultType::Cancel) {
+      activeTrie = nullptr;
+      next = "";
     }
     return result.allowCoords;
   }
@@ -233,12 +240,13 @@ private:
   VimMode mode = VimMode::NORMAL;
   Cursor *cursor = nullptr;
   ActionTrie *activeTrie = nullptr;
-  Interceptor* interceptor = nullptr;
+  Interceptor *interceptor = nullptr;
   std::unordered_map<char32_t, ActionTrie *> charTries;
   std::unordered_map<int, ActionTrie *> keyTries;
   std::unordered_map<std::string, ActionTrie *> tries;
   bool commandBufferActive = false;
   bool specialCase = false;
+  std::vector<Action *> refs;
   std::string last;
   std::string next;
   MotionState state;
