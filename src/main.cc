@@ -194,6 +194,12 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       if (action == GLFW_PRESS && key == GLFW_KEY_M) {
         gState->switchMode();
       }
+      if (action == GLFW_PRESS && key == GLFW_KEY_C) {
+        gState->addCursor(gState->provider.getConfigPath());
+      }
+      if (action == GLFW_PRESS && key == GLFW_KEY_Y) {
+        gState->provider.reloadConfig();
+      }
       if (action == GLFW_PRESS && key == GLFW_KEY_L) {
         gState->showLineNumbers = !gState->showLineNumbers;
       }
@@ -207,7 +213,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
         gState->killCommand();
       }
       if (action == GLFW_PRESS && key == GLFW_KEY_H) {
-        gState->highlightLine = !gState->highlightLine;
+        gState->switchLineHighlightMode();
       }
       if (action == GLFW_PRESS && key == GLFW_KEY_O) {
         gState->open();
@@ -461,7 +467,21 @@ int main(int argc, char **argv) {
     glClearColor(be_color.x, be_color.y, be_color.z, be_color.w);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    if (state.highlightLine) {
+    std::vector<RenderChar> entries;
+    Utf8String::const_iterator c;
+    std::string::const_iterator cc;
+    float xpos = (-(int32_t)WIDTH / 2) + 10;
+    float ypos = -(float)HEIGHT / 2;
+    int start = cursor->skip;
+    float linesAdvance = 0;
+    int maxLines = cursor->skip + cursor->maxLines <= cursor->lines.size()
+                       ? cursor->skip + cursor->maxLines
+                       : cursor->lines.size();
+
+    auto maxLineAdvance = atlas.getAdvance(std::to_string(maxLines));
+
+    if (state.provider.highlightLine == "full" ||
+        (state.showLineNumbers && state.provider.highlightLine == "small")) {
       selection_shader.use();
       glBindVertexArray(state.highlight_vao);
       auto color = state.provider.colors.highlight_color;
@@ -470,17 +490,22 @@ int main(int argc, char **argv) {
       selection_shader.set2f("resolution", (float)WIDTH, (float)HEIGHT);
       glBindBuffer(GL_ARRAY_BUFFER, state.highlight_vbo);
       SelectionEntry entry;
+      float hWidth =
+          (state.showLineNumbers && state.provider.highlightLine == "small")
+              ? maxLineAdvance
+              : (((int32_t)WIDTH / 2) * 2) - 20;
+
       if (state.lineWrapping) {
         auto out = cursor->getPosLineWrapped(
             atlas, -maxRenderWidth, -(int32_t)(HEIGHT / 2) + 4 + toOffset,
             maxRenderWidth, toOffset, cursor->x, cursor->y);
         entry = {vec2f((-(int32_t)WIDTH / 2) + 10, -out.second),
-                 vec2f((((int32_t)WIDTH / 2) * 2) - 20, toOffset)};
+                 vec2f(hWidth, toOffset)};
       } else {
         entry = {vec2f((-(int32_t)WIDTH / 2) + 10,
                        (float)HEIGHT / 2 - 5 - toOffset -
                            ((cursor->y - cursor->skip) * toOffset)),
-                 vec2f((((int32_t)WIDTH / 2) * 2) - 20, toOffset)};
+                 vec2f(hWidth, toOffset)};
       }
 
       glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(SelectionEntry), &entry);
@@ -494,20 +519,9 @@ int main(int argc, char **argv) {
     glBindVertexArray(state.vao);
     glBindTexture(GL_TEXTURE_2D, atlas.texture_id);
     glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
-    std::vector<RenderChar> entries;
-    Utf8String::const_iterator c;
-    std::string::const_iterator cc;
-    float xpos = (-(int32_t)WIDTH / 2) + 10;
-    float ypos = -(float)HEIGHT / 2;
-    int start = cursor->skip;
-    float linesAdvance = 0;
-    int maxLines = cursor->skip + cursor->maxLines <= cursor->lines.size()
-                       ? cursor->skip + cursor->maxLines
-                       : cursor->lines.size();
     if (state.showLineNumbers) {
       if (state.lineWrapping) {
         auto heightRemaining = renderHeight;
-        auto maxLineAdvance = atlas.getAdvance(std::to_string(maxLines));
         for (int i = start; i < maxLines; i++) {
           std::string value = std::to_string(i + 1);
           auto tAdvance = atlas.getAdvance(value);
@@ -724,6 +738,7 @@ int main(int argc, char **argv) {
     glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 6, (GLsizei)entries.size());
     if (state.focused) {
       cursor_shader.use();
+      cursor_shader.set1f("cursor_width", 4);
       cursor_shader.set1f("cursor_height", toOffset);
       cursor_shader.set2f("resolution", (float)WIDTH, (float)HEIGHT);
       cursor_shader.set4f("cursor_color",
@@ -736,7 +751,6 @@ int main(int argc, char **argv) {
                         statusAdvance;
         float cursorY = (float)HEIGHT / 2 - 10;
         cursor_shader.set2f("cursor_pos", cursorX, -cursorY);
-        cursor_shader.set1f("cursor_width", 4);
 
         glBindVertexArray(state.vao);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);

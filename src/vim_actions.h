@@ -135,7 +135,11 @@ public:
       return;
     }
     if (content == ":hl") {
-      state.highlightLine = !state.highlightLine;
+      state.switchLineHighlightMode();
+      return;
+    }
+    if (content == ":rconfig" || content == ":rc") {
+      state.provider.reloadConfig();
       return;
     }
     if (content == ":ln") {
@@ -1134,6 +1138,14 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
+
+    if (cursor->bind) {
+      if (direction == Direction::RIGHT)
+        cursor->moveRight();
+      else if (direction == Direction::LEFT)
+        cursor->moveLeft();
+      return withType(ResultType::Silent);
+    }
     if (vim->activeAction() || mode != VimMode::INSERT) {
       return withType(ResultType::Silent);
     }
@@ -1348,7 +1360,7 @@ public:
 
         cursor->removeBeforeCursor();
       } else if (control && ctrl_pressed && mode != VimMode::INSERT) {
-        cursor->gotoLine(cursor->y + (cursor->maxLines /2)+1);
+        cursor->gotoLine(cursor->y + (cursor->maxLines / 2) + 1);
       }
     }
     return withType(ResultType::Silent);
@@ -1375,15 +1387,42 @@ public:
         glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
         mods & GLFW_MOD_CONTROL;
     if (!vim->activeAction()) {
-          if(control && ctrl_pressed){
-            cursor->gotoLine(cursor->y - (cursor->maxLines /2)+1);
-          }
+      if (control && ctrl_pressed) {
+        cursor->gotoLine(cursor->y - (cursor->maxLines / 2) + 1);
+      }
     }
     return withType(ResultType::Silent);
   }
 
 private:
   bool control = false;
+};
+class CommentAction : public Action {
+
+public:
+  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override {
+
+    return {};
+  }
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override {
+    auto window = vim->getState().window;
+    auto mods = vim->getKeyState().mods;
+    bool ctrl_pressed =
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
+        mods & GLFW_MOD_CONTROL;
+    if (!vim->activeAction()) {
+      if (ctrl_pressed) {
+        vim->getState().tryComment();
+      }
+    }
+    return withType(ResultType::Silent);
+  }
+
+private:
+
 };
 
 void register_vim_commands(Vim &vim, State &state) {
@@ -1398,6 +1437,7 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrie(new FontSizeAction(false), "F_DECREASE", GLFW_KEY_MINUS);
   vim.registerTrie(new TabAction(), "TAB", GLFW_KEY_TAB);
   vim.registerTrie(new CtrlUAction(true), "CTRL+U", GLFW_KEY_U);
+  vim.registerTrie(new CommentAction(), "COMMENT", GLFW_KEY_SLASH);
   vim.registerTrie(new MoveAction(Direction::UP), "M_UP", GLFW_KEY_P);
   vim.registerTrie(new MoveAction(Direction::RIGHT), "M_RIGHT", GLFW_KEY_F);
   vim.registerTrie(new MoveAction(Direction::DOWN), "M_DOWN", GLFW_KEY_N);

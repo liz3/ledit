@@ -52,7 +52,6 @@ public:
   Utf8String dummyBuf;
   std::string lastCmd;
   bool showLineNumbers = true;
-  bool highlightLine = true;
   bool lineWrapping = false;
   bool isCommandRunning = false;
   CursorEntry lastCommandOutCursor;
@@ -278,6 +277,15 @@ public:
     mode = 1;
     status = U"Save to[" + create(provider.getCwdFormatted()) + U"]: ";
   }
+  void switchLineHighlightMode() {
+
+    if (provider.highlightLine == "off")
+      provider.highlightLine = "full";
+    else if (provider.highlightLine == "full")
+      provider.highlightLine = "small";
+    else if (provider.highlightLine == "small")
+      provider.highlightLine = "off";
+  }
   void changeFont() {
     if (mode != 0)
       return;
@@ -465,8 +473,11 @@ public:
         if (mode == 5) {
           if (round != activeIndex) {
             activateCursor(round);
-            status =
-                U"Switched to: " + create(path.length() ? path : "New File");
+            status = U"Switched to: " +
+                     create(path.length() ? path
+                            : cursors[round] == &lastCommandOutCursor
+                                ? ("cmd: " + lastCmd)
+                                : "New File");
           } else {
             status = U"Canceled";
           }
@@ -595,6 +606,15 @@ public:
       std::advance(cursor, next);
       miniBuf = Utf8String(cursor->first);
       round = next;
+    } else if (mode == 5) {
+      round += reverse ? -1 : 1;
+      if (round == cursors.size())
+        round = 0;
+      else if (round < 0)
+        round = cursors.size() - 1;
+      miniBuf = create(cursors[round] == &lastCommandOutCursor
+                           ? ("cmd: " + lastCmd)
+                           : cursors[round]->path);
     }
   }
   void renderCoords() {
@@ -700,7 +720,10 @@ public:
       hasHighlighting = false;
       renderCoords();
     }
-    std::string window_name = (path.length() ? path : (entry == &lastCommandOutCursor) ? "cmd: " + lastCmd :  "New File");
+    std::string window_name =
+        (path.length()                      ? path
+         : (entry == &lastCommandOutCursor) ? "cmd: " + lastCmd
+                                            : "New File");
     glfwSetWindowTitle(window, window_name.c_str());
   }
   void addCursor(std::string path) {
@@ -729,6 +752,9 @@ public:
     this->fontSize = fontSize;
     WIDTH = w;
     HEIGHT = h;
+
+    showLineNumbers = provider.lineNumbers;
+    lineWrapping = provider.lineWrapping;
   }
   void init() {
     glGenVertexArrays(1, &vao);

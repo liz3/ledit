@@ -76,6 +76,9 @@ For the colors there are default values, for the font face either remove it comp
   "auto_reload": false, // if a file changed on disk and the editor asks the OS, automatically reload buffer content
   "save_before_command": false, // save_buffer before running command
   "vim_mode": false, // vim mode, see vim section
+  "line_numbers": true, // display line numbers
+  "line_wrapping": false, // experimental line wrapping
+  "highlight_active_line": "full", // highlight active line, can be full, small(requires line numbers to be enabled) or off
   "colors": {
     "comment_color": [
       127, 127, 127, 127 // Comment color if a active mode is present, in RGBA (0-255)
@@ -220,6 +223,7 @@ There are some commands where this is supported though,
 :ln - toggle line numbers
 :font - switch main font
 :config - open ledits config in a buffer
+:rc - reload config
 :mode - switch language mode
 :mode <extension> - switch to a mode given the extension like js/cpp/sh...
 :e - open new file
@@ -290,6 +294,8 @@ C-x-p - If theres a running command, kill it
 C-x-s - Save to last path, if no path present, ledit will ask for a path.
 C-x-n - Save to new location, note that this will not overwrite the default save path, to overwrite the default path, save then load.
 C-x-o - Load new file, this will replace the current file, non existing files will still load but be marked as New Files.
+C-x-c - Open ledits config path in a buffer
+g-x-y - Reload config
 C-x-k - switch between open files(buffers) in the session,
 Note: pressing this again will rotate through files that where open.
 C-TAB - fast rotate through open files(buffers).

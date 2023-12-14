@@ -54,6 +54,9 @@ public:
   uint64_t commandStartTime = 0;
   bool saveBeforeCommand = false;
   bool allowTransparency = false;
+  bool lineNumbers = true;
+  bool lineWrapping = false;
+  std::string highlightLine = "full";
   std::atomic_bool command_running;
   std::atomic_uint32_t command_pid = 0;
   std::string lastCommand = "";
@@ -108,6 +111,14 @@ public:
     auto str = config.generic_string();
     delete homeDir;
     return str;
+  }
+  void reloadConfig() {
+    std::string p = getConfigPath();
+    if (!fs::exists(p))
+      return;
+    std::string contents = file_to_string(p);
+    json parsed = json::parse(contents);
+    parseConfig(&parsed);
   }
   bool killCommand() {
     if (!command_running)
@@ -289,7 +300,7 @@ public:
   }
   std::string getBranchName(std::string path) {
 #ifdef LEDIT_DEBUG
-    if(true)
+    if (true)
       return "";
 #endif
     std::string asPath = fs::path(path).parent_path().generic_string();
@@ -389,6 +400,13 @@ public:
       return def;
 
     return (int32_t)e;
+  }
+  std::string getStringOrDefault(json o, const std::string entry,
+                                 std::string def) {
+    if (!o.contains(entry))
+      return def;
+    std::string e = o[entry];
+    return e;
   }
   std::string getPathOrDefault(json o, const std::string entry,
                                std::string def) {
@@ -547,6 +565,10 @@ public:
     tabWidth = getNumberOrDefault(*configRoot, "tab_width", tabWidth);
     allowTransparency =
         getBoolOrDefault(*configRoot, "window_transparency", allowTransparency);
+    lineNumbers = getBoolOrDefault(*configRoot, "line_numbers", lineNumbers);
+    lineWrapping = getBoolOrDefault(*configRoot, "line_wrapping", lineNumbers);
+    highlightLine =
+        getStringOrDefault(*configRoot, "highlight_active_line", highlightLine);
   }
   json vecToJson(Vec4f value) {
     json j;
@@ -578,6 +600,9 @@ public:
     config["font_face"] = fontPath;
     config["window_transparency"] = allowTransparency;
     config["use_spaces"] = useSpaces;
+    config["line_wrapping"] = lineWrapping;
+    config["line_numbers"] = lineNumbers;
+    config["highlight_active_line"] = highlightLine;
     config["tab_width"] = tabWidth;
     config["colors"] = cColors;
     if (extraFonts.size()) {
