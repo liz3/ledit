@@ -1139,7 +1139,13 @@ public:
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
 
-    if (cursor->bind) {
+    auto window = vim->getState().window;
+    auto mods = vim->getKeyState().mods;
+    bool ctrl_pressed =
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
+        mods & GLFW_MOD_CONTROL;
+    if (cursor->bind && ctrl_pressed) {
       if (direction == Direction::RIGHT)
         cursor->moveRight();
       else if (direction == Direction::LEFT)
@@ -1150,12 +1156,6 @@ public:
       return withType(ResultType::Silent);
     }
 
-    auto window = vim->getState().window;
-    auto mods = vim->getKeyState().mods;
-    bool ctrl_pressed =
-        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
-        glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
-        mods & GLFW_MOD_CONTROL;
     if (ctrl_pressed) {
       if (direction == Direction::UP)
         cursor->moveUp();
@@ -1422,7 +1422,6 @@ public:
   }
 
 private:
-
 };
 
 void register_vim_commands(Vim &vim, State &state) {
@@ -1450,7 +1449,6 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new AAction(), "a", 'a');
   vim.registerTrieChar(new AAAction(), "A", 'A');
   vim.registerTrieChar(new WAction(), "w", 'w');
-  vim.registerTrieChar(new BAction(), "b", 'b');
   vim.registerTrieChar(new BAction(), "b", 'b');
   vim.registerTrieChar(new OAction(), "o", 'o');
   vim.registerTrieChar(new OOAction(), "O", 'O');
