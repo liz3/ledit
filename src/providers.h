@@ -288,6 +288,10 @@ public:
     return 0;
   }
   std::string getBranchName(std::string path) {
+#ifdef LEDIT_DEBUG
+    if(true)
+      return "";
+#endif
     std::string asPath = fs::path(path).parent_path().generic_string();
     const char *as_cstr = asPath.c_str();
     std::string branch = "";

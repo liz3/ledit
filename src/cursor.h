@@ -194,6 +194,8 @@ public:
         }
       }
       while (sX < mouseX) {
+                if (yy == lines.size())
+          break;
         auto w = atlas->getAdvance(lines[yy][xx]);
         sX += w;
         xx++;
