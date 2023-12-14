@@ -700,7 +700,7 @@ public:
       hasHighlighting = false;
       renderCoords();
     }
-    std::string window_name = (path.length() ? path : "New File");
+    std::string window_name = (path.length() ? path : (entry == &lastCommandOutCursor) ? "cmd: " + lastCmd :  "New File");
     glfwSetWindowTitle(window, window_name.c_str());
   }
   void addCursor(std::string path) {
