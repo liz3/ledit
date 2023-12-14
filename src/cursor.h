@@ -193,15 +193,17 @@ public:
           sX = startX + w;
         }
       }
+      if (yy == lines.size())
+        yy--;
       while (sX < mouseX) {
-                if (yy == lines.size())
-          break;
-         if (xx == lines[yy].length())
+        if (xx == lines[yy].size())
           break;
         auto w = atlas->getAdvance(lines[yy][xx]);
         sX += w;
         xx++;
       }
+      if (xx > lines[yy].size())
+        xx = lines[yy].size();
       x = xx > 0 ? xx - 1 : xx;
       y = yy;
       selection.diffX(x);
