@@ -16,6 +16,7 @@
 #include "utf8String.h"
 #include "utils.h"
 #include "vim.h"
+  void add_window(std::string p);
 void register_vim_commands(Vim &vim, State &state);
 struct CursorEntry {
   Cursor cursor;
@@ -54,6 +55,7 @@ public:
   bool showLineNumbers = true;
   bool lineWrapping = false;
   bool isCommandRunning = false;
+  bool openNewWindow;
   CursorEntry lastCommandOutCursor;
   int mode = 0;
   int round = 0;
@@ -300,9 +302,10 @@ public:
     mode = 15;
     status = U"Set font: ";
   }
-  void open() {
+  void open(bool inNewWindow = false) {
     if (mode != 0)
       return;
+    this->openNewWindow = inNewWindow;
     miniBuf = U"./";
     provider.lastProvidedFolder = "";
     cursor->bindTo(&miniBuf);
@@ -488,6 +491,9 @@ public:
             status = U"Canceled";
           }
         } else {
+          if(openNewWindow) {
+            add_window(miniBuf.getStr());
+          } else {
           bool found = false;
           size_t fIndex = 0;
           auto converted = convert_str(miniBuf);
@@ -502,6 +508,8 @@ public:
             activateCursor(fIndex);
           else if (!found)
             addCursor(converted);
+
+          }
         }
 
       } else if (mode == 15) {

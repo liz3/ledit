@@ -7,7 +7,6 @@
 #include "utf8String.h"
 #include "utils.h"
 #include "vim.h"
-  void add_window(std::string p);
 
 ActionResult withType(ResultType type) {
   ActionResult r;
@@ -169,7 +168,7 @@ public:
       return;
     }
         if (content == ":w") {
-      add_window("");
+      state.open(true);
       return;
     } else if (content.find(":w ") == 0 && content.length() > 3) {
       add_window(content.substr(3));

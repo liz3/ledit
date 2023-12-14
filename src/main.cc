@@ -51,7 +51,6 @@ void window_focus_callback(GLFWwindow *window, int focused) {
   gState->invalidateCache();
   gState->focused = focused;
   if (focused) {
-    g_windows->activateWindow(window);
     gState->checkChanged();
   }
 }
@@ -1022,7 +1021,7 @@ int main(int argc, char **argv) {
         if(result == 0)
           toRemove.push_back(entry.second);
     }
-
+    glfwMakeContextCurrent(nullptr);
     for(auto c : toRemove){
       windowManager.removeWindow(c->window);
       delete c;
