@@ -697,8 +697,10 @@ public:
     if (entry != &lastCommandOutCursor) {
       delete entry;
 
-      if (activeIndex != index)
+      if (activeIndex != index){
+        cursors.erase(cursors.begin() + index);
         return;
+      }
     }
     size_t targetIndex = index == 0 ? 1 : index - 1;
     cursors.erase(cursors.begin() + index);
