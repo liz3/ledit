@@ -56,6 +56,7 @@ public:
   bool allowTransparency = false;
   bool lineNumbers = true;
   bool lineWrapping = false;
+  bool autoOpenCommandOut = false;
   std::string highlightLine = "full";
   std::atomic_bool command_running;
   std::atomic_uint32_t command_pid = 0;
@@ -560,6 +561,8 @@ public:
     useSpaces = getBoolOrDefault(*configRoot, "use_spaces", useSpaces);
     saveBeforeCommand =
         getBoolOrDefault(*configRoot, "save_before_command", saveBeforeCommand);
+      autoOpenCommandOut =
+        getBoolOrDefault(*configRoot, "auto_open_cmd_output", autoOpenCommandOut);
     autoReload = getBoolOrDefault(*configRoot, "auto_reload", autoReload);
     vim_emulation = getBoolOrDefault(*configRoot, "vim_mode", vim_emulation);
     tabWidth = getNumberOrDefault(*configRoot, "tab_width", tabWidth);
@@ -603,6 +606,7 @@ public:
     config["line_wrapping"] = lineWrapping;
     config["line_numbers"] = lineNumbers;
     config["highlight_active_line"] = highlightLine;
+    config["auto_open_cmd_output"] = autoOpenCommandOut;
     config["tab_width"] = tabWidth;
     config["colors"] = cColors;
     if (extraFonts.size()) {
