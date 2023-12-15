@@ -101,7 +101,7 @@ public:
       provider.command_thread.join();
       isCommandRunning = false;
       checkChanged();
-      if(provider.autoOpenCommandOut)
+      if(provider.autoOpenCommandOut && provider.commandHadOutput)
         activateLastCommandBuffer();
       status = U"cmd: [" + Utf8String(lastCmd) + U" | " +
                Utf8String(toFixed(secs, 2)) +
