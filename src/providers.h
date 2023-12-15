@@ -59,7 +59,7 @@ public:
   bool autoOpenCommandOut = false;
   bool commandHadOutput = false;
   std::string highlightLine = "full";
-  std::atomic_bool command_running;
+  std::atomic_bool command_running = false;
   std::atomic_uint32_t command_pid = 0;
   std::string lastCommand = "";
   std::thread command_thread;
