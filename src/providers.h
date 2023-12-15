@@ -506,6 +506,8 @@ public:
       std::string content = entry["escape_character"];
       language.escapeChar = content[0];
     }
+    if(entry.contains("seperator_characters"))
+      language.whitespace = entry["seperator_characters"];
     if (entry.contains("file_extensions") &&
         entry["file_extensions"].is_array()) {
       for (auto &word : entry["file_extensions"])
