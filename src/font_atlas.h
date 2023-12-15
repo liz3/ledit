@@ -389,11 +389,11 @@ public:
   }
   float getAdvance(Utf8String line) {
     float v = 0;
-    Utf8String::const_iterator c;
-    for (c = line.begin(); c != line.end(); c++) {
-      if (*c >= 128 || *c < 32)
-        lazyLoad(*c);
-      v += entries[*c].advance * scale;
+    auto vec = line.getCodePoints();
+    for (auto c : vec) {
+      if (c >= 128 || c < 32)
+        lazyLoad(c);
+      v += entries[c].advance * scale;
     }
     return v;
   }
@@ -407,19 +407,20 @@ public:
     return v;
   }
 
-  std::vector<float> *getAllAdvance(Utf8String line, int y) {
+  std::vector<float> *getAllAdvance(Utf8String& line, int y) {
     if (linesCache.count(y)) {
       if (contentCache[y] == line) {
         return &linesCache[y];
       }
     }
     std::vector<float> values;
+    auto vec = line.getCodePoints();
     Utf8String::const_iterator c;
-    for (c = line.begin(); c != line.end(); c++) {
-      if (*c >= 128 || *c < 32)
-        lazyLoad(*c);
+    for (const auto c : vec) {
+      if (c >= 128 || c < 32)
+        lazyLoad(c);
 
-      values.push_back(entries[*c].advance * scale);
+      values.push_back(entries[c].advance * scale);
     }
     linesCache[y] = values;
     contentCache[y] = line;
