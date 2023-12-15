@@ -57,6 +57,7 @@ public:
   bool lineNumbers = true;
   bool lineWrapping = false;
   bool autoOpenCommandOut = false;
+  bool commandHadOutput = false;
   std::string highlightLine = "full";
   std::atomic_bool command_running;
   std::atomic_uint32_t command_pid = 0;
@@ -215,6 +216,7 @@ public:
       }
 
       CloseHandle(piProcInfo.hProcess);
+      commandHadOutput = result.size() > 0;
       result += "\n -- " + std::to_string(exitCode) +
                 (failedRetrieve ? " (retrieve failed)" : "") + " ";
       {
@@ -272,7 +274,7 @@ public:
         }
         close(pipefd[0]);
         waitpid(pid, &exitCode, 0);
-
+        commandHadOutput = result.size() > 0;
         commandExitCode = exitCode;
         result += "\n -- " + std::to_string(exitCode) + " ";
         {
