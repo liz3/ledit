@@ -58,6 +58,7 @@ public:
   bool lineWrapping = false;
   bool autoOpenCommandOut = false;
   bool commandHadOutput = false;
+  std::string theme = "default";
   std::string highlightLine = "full";
   std::atomic_bool command_running = false;
   std::atomic_uint32_t command_pid = 0;
@@ -74,6 +75,7 @@ public:
           std::string contents = file_to_string(configPath);
           json parsed = json::parse(contents);
           parseConfig(&parsed);
+          loadTheme(theme);
         } else {
           json j;
           parseConfig(&j);
@@ -121,6 +123,57 @@ public:
     std::string contents = file_to_string(p);
     json parsed = json::parse(contents);
     parseConfig(&parsed);
+    loadTheme(theme);
+  }
+  bool loadTheme(std::string name) {
+    if (!name.size() || name == "default") {
+      return false;
+    }
+     fs::path *homeDir = getHomeFolder();
+    if (!homeDir) 
+        return false;
+    
+    fs::path configDir = *homeDir / ".ledit";
+    std::string fullName =
+        name.find(".json") == std::string::npos ? name + ".json" : name;
+    fs::path p = configDir / "themes" / fullName;
+    delete homeDir;
+    if (fs::exists(p)) {
+      std::string contents = file_to_string(p.generic_string());
+      json configColors = json::parse(contents);
+
+      colors.string_color =
+          getVecOrDefault(configColors, "string_color", colors.string_color);
+      colors.default_color =
+          getVecOrDefault(configColors, "default_color", colors.default_color);
+      colors.keyword_color =
+          getVecOrDefault(configColors, "keyword_color", colors.keyword_color);
+      colors.special_color =
+          getVecOrDefault(configColors, "special_color", colors.special_color);
+      colors.comment_color =
+          getVecOrDefault(configColors, "comment_color", colors.comment_color);
+      colors.background_color = getVecOrDefault(
+          configColors, "background_color", colors.background_color);
+      colors.highlight_color = getVecOrDefault(configColors, "highlight_color",
+                                               colors.highlight_color);
+      colors.selection_color = getVecOrDefault(configColors, "selection_color",
+                                               colors.selection_color);
+      colors.number_color =
+          getVecOrDefault(configColors, "number_color", colors.number_color);
+      colors.status_color =
+          getVecOrDefault(configColors, "status_color", colors.status_color);
+      colors.line_number_color = getVecOrDefault(
+          configColors, "line_number_color", colors.line_number_color);
+      colors.minibuffer_color = getVecOrDefault(
+          configColors, "minibuffer_color", colors.minibuffer_color);
+      colors.cursor_color_standard = getVecOrDefault(
+          configColors, "cursor_color", colors.cursor_color_standard);
+      colors.cursor_color_vim = getVecOrDefault(
+          configColors, "vim_cursor_color", colors.cursor_color_vim);
+      theme = name;
+      return true;
+    }
+    return false;
   }
   bool killCommand() {
     if (!command_running)
@@ -376,7 +429,24 @@ public:
     if (!o.contains(entry))
       return def;
     json e = o[entry];
-    if (!e.is_array() || e.size() != 4)
+    if ((!e.is_array() && !e.is_string()))
+      return def;
+    if (e.is_string()) {
+      std::string content = e;
+      if (content[0] == '#') {
+        if (content.size() != 7 && content.size() != 9)
+          return def;
+        int r = std::stoi(content.substr(1, 2), 0, 16);
+        int g = std::stoi(content.substr(3, 2), 0, 16);
+        int b = std::stoi(content.substr(5, 2), 0, 16);
+        int a =
+            content.size() == 9 ? std::stoi(content.substr(7, 2), 0, 16) : 255;
+        return vec4f(((float)r / (float)255), ((float)g / (float)255),
+                     ((float)b / (float)255), ((float)a / (float)255));
+      }
+      return def;
+    }
+    if (e.size() != 4)
       return def;
     for (auto &element : e) {
       int val = element;
@@ -506,7 +576,7 @@ public:
       std::string content = entry["escape_character"];
       language.escapeChar = content[0];
     }
-    if(entry.contains("seperator_characters"))
+    if (entry.contains("seperator_characters"))
       language.whitespace = entry["seperator_characters"];
     if (entry.contains("file_extensions") &&
         entry["file_extensions"].is_array()) {
@@ -518,37 +588,7 @@ public:
     }
   }
   void parseConfig(json *configRoot) {
-    if (configRoot->contains("colors")) {
-      json configColors = (*configRoot)["colors"];
-      colors.string_color =
-          getVecOrDefault(configColors, "string_color", colors.string_color);
-      colors.default_color =
-          getVecOrDefault(configColors, "default_color", colors.default_color);
-      colors.keyword_color =
-          getVecOrDefault(configColors, "keyword_color", colors.keyword_color);
-      colors.special_color =
-          getVecOrDefault(configColors, "special_color", colors.special_color);
-      colors.comment_color =
-          getVecOrDefault(configColors, "comment_color", colors.comment_color);
-      colors.background_color = getVecOrDefault(
-          configColors, "background_color", colors.background_color);
-      colors.highlight_color = getVecOrDefault(configColors, "highlight_color",
-                                               colors.highlight_color);
-      colors.selection_color = getVecOrDefault(configColors, "selection_color",
-                                               colors.selection_color);
-      colors.number_color =
-          getVecOrDefault(configColors, "number_color", colors.number_color);
-      colors.status_color =
-          getVecOrDefault(configColors, "status_color", colors.status_color);
-      colors.line_number_color = getVecOrDefault(
-          configColors, "line_number_color", colors.line_number_color);
-      colors.minibuffer_color = getVecOrDefault(
-          configColors, "minibuffer_color", colors.minibuffer_color);
-      colors.cursor_color_standard = getVecOrDefault(
-          configColors, "cursor_color", colors.cursor_color_standard);
-      colors.cursor_color_vim = getVecOrDefault(
-          configColors, "vim_cursor_color", colors.cursor_color_vim);
-    }
+
     if (configRoot->contains("commands")) {
       for (const auto &entry : (*configRoot)["commands"].items()) {
         commands[entry.key()] = entry.value();
@@ -562,11 +602,12 @@ public:
         extraFonts.push_back(str);
       }
     }
+    theme = getStringOrDefault(*configRoot, "theme", theme);
     useSpaces = getBoolOrDefault(*configRoot, "use_spaces", useSpaces);
     saveBeforeCommand =
         getBoolOrDefault(*configRoot, "save_before_command", saveBeforeCommand);
-      autoOpenCommandOut =
-        getBoolOrDefault(*configRoot, "auto_open_cmd_output", autoOpenCommandOut);
+    autoOpenCommandOut = getBoolOrDefault(*configRoot, "auto_open_cmd_output",
+                                          autoOpenCommandOut);
     autoReload = getBoolOrDefault(*configRoot, "auto_reload", autoReload);
     vim_emulation = getBoolOrDefault(*configRoot, "vim_mode", vim_emulation);
     tabWidth = getNumberOrDefault(*configRoot, "tab_width", tabWidth);
@@ -589,21 +630,8 @@ public:
     if (!configPath.length())
       return;
     json config;
-    json cColors;
-    cColors["string_color"] = vecToJson(colors.string_color);
-    cColors["cursor_color"] = vecToJson(colors.cursor_color_standard);
-    cColors["vim_cursor_color"] = vecToJson(colors.cursor_color_vim);
-    cColors["default_color"] = vecToJson(colors.default_color);
-    cColors["keyword_color"] = vecToJson(colors.keyword_color);
-    cColors["special_color"] = vecToJson(colors.special_color);
-    cColors["comment_color"] = vecToJson(colors.comment_color);
-    cColors["background_color"] = vecToJson(colors.background_color);
-    cColors["highlight_color"] = vecToJson(colors.highlight_color);
-    cColors["selection_color"] = vecToJson(colors.selection_color);
-    cColors["number_color"] = vecToJson(colors.number_color);
-    cColors["status_color"] = vecToJson(colors.status_color);
-    cColors["line_number_color"] = vecToJson(colors.line_number_color);
-    cColors["minibuffer_color"] = vecToJson(colors.minibuffer_color);
+    if(theme != "default")
+      config["theme"] = theme;
     config["font_face"] = fontPath;
     config["window_transparency"] = allowTransparency;
     config["use_spaces"] = useSpaces;
@@ -612,7 +640,6 @@ public:
     config["highlight_active_line"] = highlightLine;
     config["auto_open_cmd_output"] = autoOpenCommandOut;
     config["tab_width"] = tabWidth;
-    config["colors"] = cColors;
     if (extraFonts.size()) {
       json extra_fonts;
       for (auto &f : extraFonts) {
