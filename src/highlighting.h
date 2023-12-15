@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <vector>
 #include "utf8String.h"
+
+const std::string DEFAULT_WHITESPACE_CHARS = " \t\n[]{}();:.,*-+/";
 struct EditorColors {
   Vec4f string_color = vec4f(0.2, 0.6, 0.4, 1.0);
   Vec4f default_color = vec4fs(0.95);
@@ -33,6 +35,7 @@ struct Language {
   std::string stringCharacters;
   char escapeChar;
   std::vector<std::string> fileExtensions;
+  std::string whitespace = DEFAULT_WHITESPACE_CHARS;
 };
 struct LanguageExpanded {
   Utf8String modeName;
@@ -41,6 +44,7 @@ struct LanguageExpanded {
   Utf8String singleLineComment;
   std::pair<Utf8String, Utf8String> multiLineComment;
   Utf8String stringCharacters;
+  std::unordered_map<char32_t, bool> whitespace;
   char32_t escapeChar;
 };
 struct HighlighterState {
@@ -61,13 +65,9 @@ public:
   Utf8String languageName;
 
   LanguageExpanded language;
-  const char32_t whitespace[19] = U" \t\n[]{}();:.,*-+/";
   bool isNonChar(char32_t c) {
-    for(size_t i = 0; i < 19; i++) {
-      if(c == whitespace[i])
-        return true;
-    }
-    return false;
+
+    return language.whitespace.count(c);
   }
  bool isNumber(char32_t c) {
   return c >= '0' && c <= '9';
@@ -109,6 +109,12 @@ public:
     }
     language.stringCharacters = create(lang.stringCharacters);
     language.escapeChar = (char32_t) lang.escapeChar;
+
+    Utf8String whitespaceChars(lang.whitespace);
+    language.whitespace.clear();
+    for(auto c : whitespaceChars){
+        language.whitespace[c] = true;
+    }
 
     languageName = create(name);
     wasCached = false;

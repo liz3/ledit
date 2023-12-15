@@ -144,6 +144,7 @@ A file in languages supports the properties shown in the following CMake example
 ```json
   {
     "mode_name": "CMake",
+    "seperator_characters": " \t\n[]{}();:.,*-+/",
     "key_words": [
       "if",
       "else",
