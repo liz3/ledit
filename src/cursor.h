@@ -651,10 +651,11 @@ public:
       cursorY += lineHeight;
       cursorX = xBase;
       heightRemaining -= lineHeight;
+      count++;
       if (heightRemaining <= 0)
         break;
-      count++;
     }
+
 
     return count;
   }
