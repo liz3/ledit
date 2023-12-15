@@ -167,11 +167,11 @@ public:
       state.addCursor(content.substr(3));
       return;
     }
-        if (content == ":w") {
+        if (content == ":win") {
       state.open(true);
       return;
-    } else if (content.find(":w ") == 0 && content.length() > 3) {
-      add_window(content.substr(3));
+    } else if (content.find(":win ") == 0 && content.length() > 3) {
+      add_window(content.substr(5));
       return;
     }
     if (content == ":n" || content == ":new") {
