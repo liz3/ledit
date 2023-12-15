@@ -305,6 +305,14 @@ public:
     mode = 4;
     status = U"Open [" + create(provider.getCwdFormatted()) + U"]: ";
   }
+  void setTheme() {
+        if (mode != 0)
+      return;
+    miniBuf = Utf8String(provider.theme);
+    cursor->bindTo(&miniBuf);
+    mode = 42;
+    status = U"Theme: ";
+  }
   void command() {
     if (mode != 0)
       return;
@@ -553,6 +561,9 @@ public:
         status = U"Reloaded";
       } else if (mode == 40) {
         runCommand(miniBuf.getStr());
+      } else if (mode == 42) {
+        if(provider.loadTheme(miniBuf.getStr()))
+          status = U"Theme: " + miniBuf;
       }
     } else {
       status = U"Aborted";

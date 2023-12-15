@@ -167,6 +167,15 @@ public:
       state.addCursor(content.substr(3));
       return;
     }
+
+        if (content == ":theme") {
+      state.setTheme();
+      return;
+    } else if (content.find(":theme ") == 0 && content.length() > 3) {
+      if(state.provider.loadTheme(content.substr(7)))
+        state.status = U"Theme: " + Utf8String(content.substr(7));
+      return;
+    }
     if (content == ":n" || content == ":new") {
       state.addCursor("");
       return;

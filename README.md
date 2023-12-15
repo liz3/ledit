@@ -80,7 +80,22 @@ For the colors there are default values, for the font face either remove it comp
   "line_numbers": true, // display line numbers
   "line_wrapping": false, // experimental line wrapping
   "highlight_active_line": "full", // highlight active line, can be full, small(requires line numbers to be enabled) or off
-  "colors": {
+  "theme": "default", // see themes section
+  // optional load additional font files
+  "extra_fonts": [
+  ],
+  "window_transparency": true, // if the window is allowed to be transparent
+  "font_face": "/Users/liz3/Library/Fonts/FiraCode-Regular.ttf", // TTF font face path
+  "commands": {
+      // see the command section
+  }
+}
+```
+### Themes
+Themes are defined in `~/.ledit/themes/<name>.json`, for example `~/.ledit/themes/nord.json`.
+A file contains the following values:
+```jsonc
+   {
     "comment_color": [
       127, 127, 127, 127 // Comment color if a active mode is present, in RGBA (0-255)
     ],
@@ -124,16 +139,8 @@ For the colors there are default values, for the font face either remove it comp
      0, 0, 160, 255   // Color used for the vim cursor(NORMAL/VISUAL mode) RGBA (0-255)
     ]
   },
-  // optional load additional font files
-  "extra_fonts": [
-  ],
-  "window_transparency": true, // if the window is allowed to be transparent
-  "font_face": "/Users/liz3/Library/Fonts/FiraCode-Regular.ttf", // TTF font face path
-  "commands": {
-      // see the command section
-  }
-}
 ```
+
 ## Highlighting for extra languages
 **Note: There are a few examples in [language-syntaxes](/language-syntaxes), further since this folder takes priority, it is possible to overwrite existing build in modes too by specifying the extensions, ledit will first use the folder and only if theres no match use its built in langauge support.**
 
@@ -228,6 +235,8 @@ There are some commands where this is supported though,
 :rc - reload config
 :mode - switch language mode
 :mode <extension> - switch to a mode given the extension like js/cpp/sh...
+:theme - switch theme
+:theme <name> - switch to a theme given its name
 :e - open new file
 :e <path> - directly open new path
 :n - create new empty buffer
@@ -298,6 +307,7 @@ C-x-n - Save to new location, note that this will not overwrite the default save
 C-x-o - Load new file, this will replace the current file, non existing files will still load but be marked as New Files.
 C-x-c - Open ledits config path in a buffer
 g-x-y - Reload config
+C-x-t - Set theme.
 C-x-k - switch between open files(buffers) in the session,
 Note: pressing this again will rotate through files that where open.
 C-TAB - fast rotate through open files(buffers).

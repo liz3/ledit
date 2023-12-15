@@ -206,6 +206,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       if (action == GLFW_PRESS && key == GLFW_KEY_R) {
         gState->toggleLineWrapping();
       }
+      if (action == GLFW_PRESS && key == GLFW_KEY_T) {
+        gState->setTheme();
+      }
       if (action == GLFW_PRESS && key == GLFW_KEY_SEMICOLON) {
         gState->activateLastCommandBuffer();
       }
