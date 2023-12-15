@@ -141,7 +141,8 @@ public:
     if (fs::exists(p)) {
       std::string contents = file_to_string(p.generic_string());
       json configColors = json::parse(contents);
-
+      EditorColors def;
+      colors = def;
       colors.string_color =
           getVecOrDefault(configColors, "string_color", colors.string_color);
       colors.default_color =
