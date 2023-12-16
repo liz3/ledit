@@ -875,7 +875,7 @@ public:
 
     if (!vim->activeAction() && mode == VimMode::NORMAL ||
         mode == VimMode::VISUAL) {
-      if (cursor->x == cursor->getCurrentLineLength() - 1)
+      if (cursor->x <= cursor->getCurrentLineLength() - 1)
         cursor->moveRight();
       vim->getState().tryPaste();
       if (mode == VimMode::VISUAL) {
