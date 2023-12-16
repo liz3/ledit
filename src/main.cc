@@ -31,6 +31,7 @@
 WindowManager* g_windows = nullptr;
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   auto* gState = g_windows->windows[window]->state;
+          glfwMakeContextCurrent(window);
   glViewport(0, 0, width, height);
   if (gState != nullptr) {
     gState->invalidateCache();
@@ -280,9 +281,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       gState->tryCopy();
 
     } else if (key == GLFW_KEY_EQUAL && isPress) {
-      gState->increaseFontSize(0.05);
+      gState->increaseFontSize(1);
     } else if (key == GLFW_KEY_MINUS && isPress) {
-      gState->increaseFontSize(-0.05);
+      gState->increaseFontSize(-1);
     } else if ((key == GLFW_KEY_V || key == GLFW_KEY_Y) && isPress) {
       gState->tryPaste();
     } else {
@@ -504,7 +505,7 @@ int window_func(Window* instance) {
             xpos += advance;
             linesAdvance += advance;
           }
-          xpos = -(int32_t)WIDTH / 2 + 10;
+          xpos = -(float)WIDTH / 2 + 10;
           ypos += toOffset;
         }
       }
@@ -927,7 +928,7 @@ int window_func(Window* instance) {
 };
 Window *create_window(std::string path, bool isFirst = false) {
   Window *instance = new Window();
-  instance->state = new State(1280, 720, 30);
+  instance->state = new State(1280, 720, 25);
   const std::string window_name = (path.length() ? path : "New File");
   State &state = *instance->state;
   GLFWwindow *window = glfwCreateWindow(state.WIDTH, state.HEIGHT,

@@ -173,12 +173,13 @@ public:
     cursor->bindTo(&dummyBuf);
     mode = 25;
   }
-  void increaseFontSize(float value) {
+  void increaseFontSize(int value) {
     if (mode != 0)
       return;
 
     atlas->changeScale(value);
-    status = U"resize: [" + numberToString(atlas->fs * atlas->scale) + U"]";
+    fontSize = atlas->virtual_fs;
+    status = U"resize: [" + numberToString(atlas->virtual_fs) + U"]";
   }
   void toggleSelection() {
     if (mode != 0)

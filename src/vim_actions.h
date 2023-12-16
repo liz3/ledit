@@ -1133,9 +1133,9 @@ public:
         mods & GLFW_MOD_CONTROL;
     if (ctrl_pressed) {
       if (increase) {
-        vim->getState().increaseFontSize(0.05);
+        vim->getState().increaseFontSize(1);
       } else {
-        vim->getState().increaseFontSize(-0.05);
+        vim->getState().increaseFontSize(-1);
       }
     }
     return {};
