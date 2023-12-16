@@ -35,15 +35,9 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   glViewport(0, 0, width, height);
   if (gState != nullptr) {
     gState->invalidateCache();
-#ifdef _WIN32
-    float xscale, yscale;
-    glfwGetWindowContentScale(window, &xscale, &yscale);
-    gState->WIDTH = (float)width * xscale;
-    gState->HEIGHT = (float)height * yscale;
-#else
+
     gState->WIDTH = (float)width;
     gState->HEIGHT = (float)height;
-#endif
   }
 }
 void window_focus_callback(GLFWwindow *window, int focused) {

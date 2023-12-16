@@ -61,7 +61,7 @@ public:
     r.hasColor = entry->hasColor ? 1 : 0;
     return r;
   }
-  float getColonWidth() { return fs * scale; }
+  float getColonWidth() { return virtual_fs * scale; }
   void ensureTab() {
     if (entries.count(U'\t'))
       return;
@@ -199,25 +199,26 @@ public:
   }
   void renderFont(uint32_t fontSize, FontFace *faceEntry) {
     if (wasGenerated) {
+           glBindTexture(GL_TEXTURE_2D, 0);
       glDeleteTextures(1, &texture_id);
       linesCache.clear();
             entries.clear();
             contentCache.clear();
 
     }
-    auto &face = faceEntry->face;
+    auto face = faceEntry->face;
     fs = fontSize;
     atlas_width = 0;
     atlas_height = 0;
     smallest_top = 1e9;
-    // TODO should this be here?
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     for (int i = 32; i < 128; i++) {
       if (FT_Load_Char(face, i,
                        FT_LOAD_RENDER | FT_LOAD_TARGET_(FT_RENDER_MODE_SDF))) {
         std::cout << "Failed to load char: " << (char)i << "\n";
         return;
       }
+
+
       auto bm = face->glyph->bitmap;
       atlas_width += bm.width;
       atlas_height = bm.rows > atlas_height ? bm.rows : atlas_height;
