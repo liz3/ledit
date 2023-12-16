@@ -730,7 +730,7 @@ int window_func(Window* instance) {
               cursor_shader.set1f("cursor_width", 4);
 
             } else {
-              cursor_shader.set1f("cursor_width", atlas.getAdvance(' '));
+              cursor_shader.set1f("cursor_width", atlas.getAdvance(cursor->getCurrentLineLength() == 0 ? ' ' : cursor->getCurrentChar()));
               cursor_shader.set4f("cursor_color",
                                   state.provider.colors.cursor_color_vim);
             }
