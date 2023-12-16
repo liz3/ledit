@@ -316,7 +316,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
     if (isPress && key == GLFW_KEY_DOWN)
       cursor->moveDown();
     if (isPress && key == GLFW_KEY_ENTER) {
-      if (gState->mode != 0) {
+      if (gState->mode != 0 || gState->cursor->isFolder) {
         gState->inform(true, shift_pressed);
         return;
       } else

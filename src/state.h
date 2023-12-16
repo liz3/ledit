@@ -7,6 +7,7 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include "GLFW/glfw3.h"
 #include "shader.h"
 #include "cursor.h"
 #include "highlighting.h"
@@ -16,7 +17,7 @@
 #include "utf8String.h"
 #include "utils.h"
 #include "vim.h"
-  void add_window(std::string p);
+void add_window(std::string p);
 void register_vim_commands(Vim &vim, State &state);
 struct CursorEntry {
   Cursor cursor;
@@ -66,7 +67,7 @@ public:
   void invalidateCache() { cacheValid = false; }
 
   void freeVim() {
-    if(vim){
+    if (vim) {
       delete vim;
       vim = nullptr;
     }
@@ -109,7 +110,7 @@ public:
       provider.command_thread.join();
       isCommandRunning = false;
       checkChanged();
-      if(provider.autoOpenCommandOut && provider.commandHadOutput)
+      if (provider.autoOpenCommandOut && provider.commandHadOutput)
         activateLastCommandBuffer();
       status = U"cmd: [" + Utf8String(lastCmd) + U" | " +
                Utf8String(toFixed(secs, 2)) +
@@ -315,7 +316,7 @@ public:
     status = U"Open [" + create(provider.getCwdFormatted()) + U"]: ";
   }
   void setTheme() {
-        if (mode != 0)
+    if (mode != 0)
       return;
     miniBuf = Utf8String(provider.theme);
     cursor->bindTo(&miniBuf);
@@ -447,6 +448,17 @@ public:
     }
   }
   void inform(bool success, bool shift_pressed) {
+
+    if (mode == 0 && cursor->isFolder && success) {
+      auto *entry = cursor->getActiveDirEntry();
+      if (entry) {
+          if(shift_pressed)
+            add_window(entry->full.generic_string());
+          else
+            addCursorWithExisting(entry->full.generic_string());
+      }
+      return;
+    }
     if (success) {
       if (mode == 1) { // save to
         bool result = cursor->saveTo(convert_str(miniBuf));
@@ -501,24 +513,23 @@ public:
             status = U"Canceled";
           }
         } else {
-          if(openNewWindow) {
+          if (openNewWindow) {
             add_window(miniBuf.getStr());
           } else {
-          bool found = false;
-          size_t fIndex = 0;
-          auto converted = convert_str(miniBuf);
-          for (size_t i = 0; i < cursors.size(); i++) {
-            if (cursors[i]->path == converted) {
-              found = true;
-              fIndex = i;
-              break;
+            bool found = false;
+            size_t fIndex = 0;
+            auto converted = convert_str(miniBuf);
+            for (size_t i = 0; i < cursors.size(); i++) {
+              if (cursors[i]->path == converted) {
+                found = true;
+                fIndex = i;
+                break;
+              }
             }
-          }
-          if (found && activeIndex != fIndex)
-            activateCursor(fIndex);
-          else if (!found)
-            addCursor(converted);
-
+            if (found && activeIndex != fIndex)
+              activateCursor(fIndex);
+            else if (!found)
+              addCursor(converted);
           }
         }
 
@@ -576,7 +587,7 @@ public:
       } else if (mode == 40) {
         runCommand(miniBuf.getStr());
       } else if (mode == 42) {
-        if(provider.loadTheme(miniBuf.getStr()))
+        if (provider.loadTheme(miniBuf.getStr()))
           status = U"Theme: " + miniBuf;
       }
     } else {
@@ -661,7 +672,7 @@ public:
     status = (vim ? Utf8String(vim->getModeName()) + U" " : U"") +
              numberToString(cursor->y + 1) + U":" + numberToString(x) + branch +
              U" [" + fileName + U": " +
-             (hasHighlighting ? highlighter.languageName : U"Text") + U"]";
+             (hasHighlighting ? highlighter.languageName : cursor->isFolder ? U"Dir" : U"Text") + U"]";
     if (cursor->selection.active)
       status +=
           U" Selected: [" + numberToString(cursor->getSelectionSize()) + U"]";
@@ -711,12 +722,12 @@ public:
     if (entry != &lastCommandOutCursor) {
       delete entry;
 
-      if (activeIndex != index){
+      if (activeIndex != index) {
         cursors.erase(cursors.begin() + index);
         return;
       }
     }
-    size_t targetIndex = index == 0 ? 1 : index - 1;
+    size_t targetIndex = index == 0 ? 0 : index - 1;
     cursors.erase(cursors.begin() + index);
     activateCursor(targetIndex);
   }
@@ -756,8 +767,6 @@ public:
     glfwSetWindowTitle(window, window_name.c_str());
   }
   void addCursor(std::string path) {
-    if (path.length() && std::filesystem::is_directory(path))
-      path = "";
 
     if (path.length())
       for (size_t i = 0; i < cursors.size(); i++) {
@@ -775,6 +784,15 @@ public:
     CursorEntry *entry = new CursorEntry{newCursor, path};
     cursors.push_back(entry);
     activateCursor(cursors.size() - 1);
+  }
+  void addCursorWithExisting(std::string path) {
+    auto entry = cursors[activeIndex];
+    if (!fs::exists(path))
+      entry->cursor.reset();
+    else
+      entry->cursor.openFile(entry->path, path);
+    entry->path = path;
+    activateCursor(activeIndex);
   }
   State(float w, float h, int fontSize) {
 

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <vector>
 #include <sstream>
 #include <fstream>
@@ -26,6 +27,10 @@ struct HistoryEntry {
   Utf8String content;
   std::vector<Utf8String> extra;
 };
+struct DirEntry {
+  fs::path base, entry, full;
+  bool isDir = false;
+};
 struct CommentEntry {
   int firstOffset;
   int yStart;
@@ -36,9 +41,11 @@ public:
   bool edited = false;
   bool streamMode = false;
   bool useXFallback = false;
+  bool isFolder = false;
   std::string branch;
   std::vector<Utf8String> lines;
   std::map<std::string, PosEntry> saveLocs;
+  std::unordered_map<size_t, DirEntry> dirEntries;
   std::deque<HistoryEntry> history;
   std::filesystem::file_time_type last_write_time;
   Selection selection;
@@ -239,6 +246,8 @@ public:
     skip = 0;
     prepare.clear();
     history.clear();
+    isFolder = false;
+    dirEntries.clear();
     lines = {U""};
   }
   void deleteSelection() {
@@ -1045,7 +1054,36 @@ public:
     return final;
   }
   Cursor() { lines.push_back(U""); }
+  void loadFolder(std::string path) {
+      reset();
+      isFolder = true;
+      std::vector<DirEntry> entries;
+      fs::path base = fs::canonical(path);
+      for (auto const &dir_entry : fs::directory_iterator{path}) {
+        fs::path full = base / dir_entry;
+        entries.push_back({base, dir_entry, full, dir_entry.is_directory()});
+    }
+    std::sort(entries.begin(), entries.end(), [](auto& a, auto& b) {
+        std::string left = a.entry.generic_string();
+        std::string right = b.entry.generic_string();
+        return std::lexicographical_compare(left.begin(), left.end(), right.begin(), right.end());
+    });
+    entries.insert(entries.begin(), {base, "..", fs::canonical(base).parent_path(), true});
+    lines[0] = U"Dir: " + Utf8String(base.generic_string());
+    size_t yy = 1;
+    for(auto entry : entries) {
+        lines.push_back(U"> " + Utf8String(entry.entry.filename().generic_string()));
+        dirEntries[yy++] = entry;
 
+    }
+  }
+  DirEntry* getActiveDirEntry(){
+    if(!isFolder || y == 0)
+        return nullptr;
+    if(dirEntries.count(y))
+        return &dirEntries[y];
+      return nullptr;
+  }
   Cursor(std::string path) {
     if (path == "-") {
       std::string line;
@@ -1053,6 +1091,12 @@ public:
         lines.push_back(create(line));
       }
       return;
+    }
+    if(fs::is_directory(path)){
+      loadFolder(path);
+      return;
+    } else {
+      isFolder = false;
     }
     std::stringstream ss;
     std::ifstream stream(path);
@@ -1125,6 +1169,12 @@ public:
     return result;
   }
   bool reloadFile(std::string path) {
+    if(fs::is_directory(path)) {
+      loadFolder(path);
+      return true;
+    } else {
+         isFolder = false;
+    }
     std::ifstream stream(path);
     if (!stream.is_open())
       return false;
@@ -1151,7 +1201,7 @@ public:
     return true;
   }
   bool openFile(std::string oldPath, std::string path) {
-    std::ifstream stream(path);
+  
     if (oldPath.length()) {
       PosEntry entry;
       entry.x = xSave;
@@ -1159,7 +1209,13 @@ public:
       entry.skip = skip;
       saveLocs[oldPath] = entry;
     }
-
+    if(fs::is_directory(path)){
+      loadFolder(path);
+      return true;
+    } else {
+        isFolder = false;
+    }
+  std::ifstream stream(path);
     if (!stream.is_open()) {
       return false;
     }

@@ -77,7 +77,7 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
-    if (vim->getState().mode != 0) {
+    if (vim->getState().mode != 0 || (!vim->isCommandBufferActive() && cursor->isFolder)) {
       bool shift_pressed =
           glfwGetKey(vim->getState().window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
       vim->getState().inform(true, shift_pressed);
