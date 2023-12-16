@@ -183,8 +183,8 @@ public:
     scale = (float)virtual_fs / (float)fs;
 
     if ((diff == -1 && scale < 0.6 && fs > 20) ||
-        (scale > 2.5 && diff == 1 && fs < 30)) {
-      auto newSize = virtual_fs < 20 ? 20 : virtual_fs > 30 ? 30 : virtual_fs;
+        (scale > 2.5 && diff == 1 && fs < 35)) {
+      auto newSize = virtual_fs < 20 ? 20 : virtual_fs > 35 ? 35 : virtual_fs;
       for (auto &face : faces) {
         if (face->hasColor)
           FT_Select_Size(face->face, fontSelectSize(newSize, face->face));

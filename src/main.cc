@@ -922,7 +922,7 @@ int window_func(Window* instance) {
 };
 Window *create_window(std::string path, bool isFirst = false) {
   Window *instance = new Window();
-  instance->state = new State(1280, 720, 25);
+  instance->state = new State(1280, 720, 28);
   const std::string window_name = (path.length() ? path : "New File");
   State &state = *instance->state;
   GLFWwindow *window = glfwCreateWindow(state.WIDTH, state.HEIGHT,
