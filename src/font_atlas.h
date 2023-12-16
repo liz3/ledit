@@ -42,7 +42,7 @@ public:
     RenderChar r;
     float x2 = x + entry->left * scale;
     float y2 = y + atlas_height;
-    y2 -= ((entry->top) * scale);
+    y2 -= ((entry->top + smallest_top * scale) * scale);
     if (entry->hasColor) {
       float height = entry->height * (fs / entry->height);
       y2 += ((entry->top) - ((height) - (fs)*0.15)) * scale;
