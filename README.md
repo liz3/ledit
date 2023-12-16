@@ -81,6 +81,7 @@ For the colors there are default values, for the font face either remove it comp
   "line_wrapping": false, // experimental line wrapping
   "highlight_active_line": "full", // highlight active line, can be full, small(requires line numbers to be enabled) or off
   "theme": "default", // see themes section
+  "font_size": 25, // font size
   // optional load additional font files
   "extra_fonts": [
   ],

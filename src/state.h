@@ -797,7 +797,7 @@ public:
   }
   State(float w, float h, int fontSize) {
 
-    this->fontSize = fontSize;
+    this->fontSize = provider.fontSize;
     WIDTH = w;
     HEIGHT = h;
 

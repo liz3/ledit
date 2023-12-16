@@ -47,6 +47,7 @@ public:
   std::string configPath;
   std::string lastCommandOutput;
   int commandExitCode = 0;
+  int fontSize = 25;
   int32_t tabWidth = 2;
   bool useSpaces = true;
   bool autoReload = false;
@@ -604,6 +605,7 @@ public:
       }
     }
     theme = getStringOrDefault(*configRoot, "theme", theme);
+    fontSize = getNumberOrDefault(*configRoot, "font_size", fontSize);
     useSpaces = getBoolOrDefault(*configRoot, "use_spaces", useSpaces);
     saveBeforeCommand =
         getBoolOrDefault(*configRoot, "save_before_command", saveBeforeCommand);
@@ -636,6 +638,7 @@ public:
     config["font_face"] = fontPath;
     config["window_transparency"] = allowTransparency;
     config["use_spaces"] = useSpaces;
+    config["font_size"] = fontSize;
     config["line_wrapping"] = lineWrapping;
     config["line_numbers"] = lineNumbers;
     config["highlight_active_line"] = highlightLine;

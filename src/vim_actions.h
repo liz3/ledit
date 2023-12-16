@@ -1137,6 +1137,9 @@ public:
       } else {
         vim->getState().increaseFontSize(-1);
       }
+      auto out = withType(ResultType::Silent);
+      out.allowCoords = false;
+      return out;
     }
     return {};
   }
