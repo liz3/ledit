@@ -950,7 +950,13 @@ public:
     case 53: {
       y = entry.y;
       x = entry.x;
-      lines.erase(lines.begin() + y + 1, lines.begin() + 1 + y + entry.length);
+      lines.erase(lines.begin() +1 + y, lines.begin() + y + 1 + entry.length);
+      break;
+    }
+    case 54: {
+      y = entry.y;
+      x = entry.x;
+      lines.erase(lines.begin() + y, lines.begin() + y + entry.length);
       break;
     }
     default:
@@ -1323,8 +1329,9 @@ public:
           !contentLines[contentLines.size() - 1].length())
         contentLines.erase(contentLines.begin() + (contentLines.size() - 1),
                            contentLines.begin() + (contentLines.size()));
-      historyPush(53, contentLines.size(), U"");
       auto off = getCurrentLineLength() ? 1 : 0;
+      historyPush(off == 1 ? 53 : 54, contentLines.size(), U"");
+
       for (auto &l : contentLines) {
         lines.insert(lines.begin() + y + off, l);
         y++;

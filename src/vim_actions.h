@@ -714,8 +714,17 @@ public:
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
 
-    if (!vim->activeAction() && mode == VimMode::NORMAL)
-      cursor->undo();
+    if (!vim->activeAction() && mode == VimMode::NORMAL){
+
+      if(cursor->undo())
+        vim->getState().status = U"Undo";
+      else
+        vim->getState().status = U"Undo failed";
+      auto out = withType(ResultType::Silent);
+      out.allowCoords = false;
+      return out;
+    }
+    
     return {};
   }
 };
@@ -1451,6 +1460,41 @@ public:
 private:
 };
 
+class SimpleCopy : public Action {
+
+public:
+  public:
+    SimpleCopy(bool copy_) : copy(copy_) {
+
+    }
+  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override {
+
+    return {};
+  }
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override {
+    auto window = vim->getState().window;
+    auto mods = vim->getKeyState().mods;
+    bool ctrl_pressed =
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
+        mods & GLFW_MOD_CONTROL;
+    if (!vim->activeAction() && mode == VimMode::INSERT && ctrl_pressed) {
+      if(copy) {
+        vim->getState().tryCopy();
+      } else {
+        vim->getState().tryPaste();
+      }
+    }
+    auto out =  withType(ResultType::Silent);
+    out.allowCoords = false;
+    return out;
+  }
+private:
+  bool copy = false;
+};
+
 void register_vim_commands(Vim &vim, State &state) {
   Finder *finder = new Finder();
   auto *d = new DAction();
@@ -1463,6 +1507,8 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrie(new FontSizeAction(false), "F_DECREASE", GLFW_KEY_MINUS);
   vim.registerTrie(new TabAction(), "TAB", GLFW_KEY_TAB);
   vim.registerTrie(new CtrlUAction(true), "CTRL+U", GLFW_KEY_U);
+  vim.registerTrie(new SimpleCopy(true), "CTRL+C", GLFW_KEY_C);
+  vim.registerTrie(new SimpleCopy(false), "CTRL+V", GLFW_KEY_V);
   vim.registerTrie(new CommentAction(), "COMMENT", GLFW_KEY_SLASH);
   vim.registerTrie(new MoveAction(Direction::UP), "M_UP", GLFW_KEY_P);
   vim.registerTrie(new MoveAction(Direction::RIGHT), "M_RIGHT", GLFW_KEY_F);
