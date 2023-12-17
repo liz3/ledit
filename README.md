@@ -42,7 +42,7 @@ then run in a CMD in the folder:
 git submodule update --init
 mkdir Release
 cd Release
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 cmake --build . --config Release
 ```
 

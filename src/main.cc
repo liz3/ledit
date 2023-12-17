@@ -1006,10 +1006,64 @@ void add_window(std::string p) {
   g_windows->addAndActivate(first);
 
 }
-int main(int argc, char **argv) {
-#ifdef _WIN32
-  ShowWindow(GetConsoleWindow(), SW_HIDE);
+#ifdef LEDIT_WIN_MAIN
+std::string winStrToStr(LPWSTR lpwstr) {
+    std::wstring ws(lpwstr);
+    int bufferSize = WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string utf8String(bufferSize, 0);
+
+    WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, &utf8String[0], bufferSize, nullptr, nullptr);
+
+    if (!utf8String.empty() && utf8String.back() == '\0') {
+        utf8String.pop_back();
+    }
+
+    return utf8String;
+}
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
+  LPWSTR *szArglist;
+   int nArgs;
+   int i;
+
+   szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
+   std::string initialPath = nArgs >= 2 ? winStrToStr(szArglist[1]) : "";
+  glfwInit();
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifdef __APPLE__
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
+
+  WindowManager windowManager;
+  g_windows = &windowManager;
+  Window* first = create_window(initialPath, true);
+  if(!first)
+    return 1;
+  windowManager.addAndActivate(first);
+  Window* lastActive = nullptr;
+  while(true) {
+    std::vector<Window*> toRemove;
+    for(auto entry : windowManager.windows) {
+        glfwMakeContextCurrent(entry.second->window);
+        auto result = window_func(entry.second);
+        if(result == 0)
+          toRemove.push_back(entry.second);
+    }
+    glfwMakeContextCurrent(nullptr);
+    for(auto c : toRemove){
+      windowManager.removeWindow(c->window);
+      delete c;
+    }
+    if(!windowManager.windows.size())
+      break;
+    glfwWaitEvents();
+  }
+   glfwTerminate();
+  return 0;
+}
+#else
+int main(int argc, char **argv) {
     std::string initialPath = argc >= 2 ? std::string(argv[1]) : "";
 
   glfwInit();
@@ -1047,3 +1101,4 @@ int main(int argc, char **argv) {
    glfwTerminate();
   return 0;
 }
+#endif
