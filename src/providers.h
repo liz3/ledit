@@ -380,7 +380,7 @@ public:
     bSuccess = CreateProcess(
         NULL,
         const_cast<char *>(command.c_str()), 
-        NULL, NULL, TRUE, 0, NULL, folder.length() ? (folder.c_str()) : NULL, &siStartInfo, &piProcInfo);
+        NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, folder.length() ? (folder.c_str()) : NULL, &siStartInfo, &piProcInfo);
     if (!bSuccess) {
       return std::pair(-1, "");
     }
@@ -454,6 +454,8 @@ public:
     if(out.first != 0)
       return "";
     auto branch = out.second;
+    if(branch.find("not a git repository") != std::string::npos)
+      return "";
     std::string finalBranch = branch.substr(branch.find("* ") + 2);
     return finalBranch.substr(0, finalBranch.find("\n"));
   }

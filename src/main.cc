@@ -29,6 +29,9 @@
 #include "languages.h"
 #include "vim_actions.h"
 #include "windows.h"
+#ifdef LEDIT_WIN_MAIN
+#include "win32_icon_utils.h"
+#endif
 WindowManager* g_windows = nullptr;
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   auto* gState = g_windows->windows[window]->state;
@@ -946,6 +949,20 @@ Window *create_window(std::string path, bool isFirst = false) {
     delete instance;
     return nullptr;
   }
+  #ifdef LEDIT_WIN_MAIN
+       HICON hIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
+       if (hIcon) {
+
+        IconData iconData = ExtractIconData(hIcon);
+      GLFWimage image;
+      image.width = iconData.width;
+      image.height = iconData.height;
+      image.pixels = (unsigned char *)iconData.pixels.data();
+ 
+      glfwSetWindowIcon(window, 1, &image);
+        DestroyIcon(hIcon);
+      }
+  #endif
   instance->window = window;
   if (state.provider.vim_emulation)
     state.registerVim();
@@ -1007,19 +1024,6 @@ void add_window(std::string p) {
 
 }
 #ifdef LEDIT_WIN_MAIN
-std::string winStrToStr(LPWSTR lpwstr) {
-    std::wstring ws(lpwstr);
-    int bufferSize = WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    std::string utf8String(bufferSize, 0);
-
-    WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, &utf8String[0], bufferSize, nullptr, nullptr);
-
-    if (!utf8String.empty() && utf8String.back() == '\0') {
-        utf8String.pop_back();
-    }
-
-    return utf8String;
-}
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
   LPWSTR *szArglist;
    int nArgs;
@@ -1031,9 +1035,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-#ifdef __APPLE__
-  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
 
   WindowManager windowManager;
   g_windows = &windowManager;
