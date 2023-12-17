@@ -953,7 +953,7 @@ Window *create_window(std::string path, bool isFirst = false) {
     return nullptr;
   }
 #ifdef LEDIT_WIN_MAIN
-  HICON hIcon =
+     hIcon =
       (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1),
                        IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
   if (hIcon) {

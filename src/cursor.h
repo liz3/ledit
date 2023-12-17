@@ -665,7 +665,6 @@ public:
         break;
     }
 
-
     return count;
   }
   Utf8String deleteLines(int64_t start, int64_t am, bool del = true) {
@@ -950,7 +949,7 @@ public:
     case 53: {
       y = entry.y;
       x = entry.x;
-      lines.erase(lines.begin() +1 + y, lines.begin() + y + 1 + entry.length);
+      lines.erase(lines.begin() + 1 + y, lines.begin() + y + 1 + entry.length);
       break;
     }
     case 54: {
@@ -1061,34 +1060,36 @@ public:
   }
   Cursor() { lines.push_back(U""); }
   void loadFolder(std::string path) {
-      reset();
-      isFolder = true;
-      std::vector<DirEntry> entries;
-      fs::path base = fs::canonical(path);
-      for (auto const &dir_entry : fs::directory_iterator{path}) {
-        fs::path full = base / dir_entry;
-        entries.push_back({base, dir_entry, full, dir_entry.is_directory()});
+    reset();
+    isFolder = true;
+    std::vector<DirEntry> entries;
+    fs::path base = fs::canonical(path);
+    for (auto const &dir_entry : fs::directory_iterator{path}) {
+      fs::path full = base / dir_entry;
+      entries.push_back({base, dir_entry, full, dir_entry.is_directory()});
     }
-    std::sort(entries.begin(), entries.end(), [](auto& a, auto& b) {
-        std::string left = a.entry.generic_string();
-        std::string right = b.entry.generic_string();
-        return std::lexicographical_compare(left.begin(), left.end(), right.begin(), right.end());
+    std::sort(entries.begin(), entries.end(), [](auto &a, auto &b) {
+      std::string left = a.entry.generic_string();
+      std::string right = b.entry.generic_string();
+      return std::lexicographical_compare(left.begin(), left.end(),
+                                          right.begin(), right.end());
     });
-    entries.insert(entries.begin(), {base, "..", fs::canonical(base).parent_path(), true});
+    entries.insert(entries.begin(),
+                   {base, "..", fs::canonical(base).parent_path(), true});
     lines[0] = U"Dir: " + Utf8String(base.generic_string());
     size_t yy = 1;
-    for(auto entry : entries) {
-        lines.push_back(U"> " + Utf8String(entry.entry.filename().generic_string()));
-        dirEntries[yy++] = entry;
-
+    for (auto entry : entries) {
+      lines.push_back(U"> " +
+                      Utf8String(entry.entry.filename().generic_string()));
+      dirEntries[yy++] = entry;
     }
   }
-  DirEntry* getActiveDirEntry(){
-    if(!isFolder || y == 0)
-        return nullptr;
-    if(dirEntries.count(y))
-        return &dirEntries[y];
+  DirEntry *getActiveDirEntry() {
+    if (!isFolder || y == 0)
       return nullptr;
+    if (dirEntries.count(y))
+      return &dirEntries[y];
+    return nullptr;
   }
   Cursor(std::string path) {
     if (path == "-") {
@@ -1098,7 +1099,7 @@ public:
       }
       return;
     }
-    if(fs::is_directory(path)){
+    if (fs::is_directory(path)) {
       loadFolder(path);
       return;
     } else {
@@ -1175,11 +1176,11 @@ public:
     return result;
   }
   bool reloadFile(std::string path) {
-    if(fs::is_directory(path)) {
+    if (fs::is_directory(path)) {
       loadFolder(path);
       return true;
     } else {
-         isFolder = false;
+      isFolder = false;
     }
     std::ifstream stream(path);
     if (!stream.is_open())
@@ -1207,7 +1208,7 @@ public:
     return true;
   }
   bool openFile(std::string oldPath, std::string path) {
-  
+
     if (oldPath.length()) {
       PosEntry entry;
       entry.x = xSave;
@@ -1215,13 +1216,13 @@ public:
       entry.skip = skip;
       saveLocs[oldPath] = entry;
     }
-    if(fs::is_directory(path)){
+    if (fs::is_directory(path)) {
       loadFolder(path);
       return true;
     } else {
-        isFolder = false;
+      isFolder = false;
     }
-  std::ifstream stream(path);
+    std::ifstream stream(path);
     if (!stream.is_open()) {
       return false;
     }
@@ -1493,7 +1494,7 @@ public:
   }
   char32_t getCurrentChar() {
     Utf8String &ref = lines[y];
-    return ref[x];
+    return ref[x == getCurrentLineLength() ? x - 1 : x];
   }
   void moveRight() {
     Utf8String *current = bind ? bind : &lines[y];
