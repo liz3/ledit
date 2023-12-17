@@ -456,6 +456,8 @@ public:
     auto branch = out.second;
     if (branch.find("not a git repository") != std::string::npos)
       return "";
+    if(branch.find("* ") == std::string::npos)
+      return "";
     std::string finalBranch = branch.substr(branch.find("* ") + 2);
     return finalBranch.substr(0, finalBranch.find("\n"));
   }
