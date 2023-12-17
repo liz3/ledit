@@ -227,10 +227,9 @@ public:
       siStartInfo.hStdError = hStdoutWrite;
       siStartInfo.hStdOutput = hStdoutWrite;
       siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
-      bSuccess = CreateProcess(
-          NULL,
-          const_cast<char *>(command.c_str()),
-          NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo);
+      bSuccess =
+          CreateProcess(NULL, const_cast<char *>(command.c_str()), NULL, NULL,
+                        TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo);
       if (!bSuccess) {
         CloseHandle(hStdoutWrite);
         CloseHandle(hStdoutRead);
@@ -356,7 +355,8 @@ public:
 
     return 0;
   }
-  std::pair<int, std::string> runDirect(std::string command, std::string folder = "") {
+  std::pair<int, std::string> runDirect(std::string command,
+                                        std::string folder = "") {
 #ifdef _WIN32
     HANDLE hStdoutRead, hStdoutWrite;
     SECURITY_ATTRIBUTES saAttr;
@@ -377,10 +377,10 @@ public:
     siStartInfo.hStdOutput = hStdoutWrite;
     siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
-    bSuccess = CreateProcess(
-        NULL,
-        const_cast<char *>(command.c_str()), 
-        NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, folder.length() ? (folder.c_str()) : NULL, &siStartInfo, &piProcInfo);
+    bSuccess = CreateProcess(NULL, const_cast<char *>(command.c_str()), NULL,
+                             NULL, TRUE, CREATE_NO_WINDOW, NULL,
+                             folder.length() ? (folder.c_str()) : NULL,
+                             &siStartInfo, &piProcInfo);
     if (!bSuccess) {
       return std::pair(-1, "");
     }
@@ -426,7 +426,7 @@ public:
       dup2(pipefd[1], STDOUT_FILENO);
       dup2(pipefd[1], STDERR_FILENO);
       close(pipefd[1]);
-      if(folder.size())
+      if (folder.size())
         chdir(folder.c_str());
       execlp("/bin/sh", "sh", "-c", command.c_str(), NULL);
       exit(EXIT_FAILURE);
@@ -451,10 +451,10 @@ public:
   }
   std::string getBranchName(std::string path) {
     auto out = runDirect("git branch", path);
-    if(out.first != 0)
+    if (out.first != 0)
       return "";
     auto branch = out.second;
-    if(branch.find("not a git repository") != std::string::npos)
+    if (branch.find("not a git repository") != std::string::npos)
       return "";
     std::string finalBranch = branch.substr(branch.find("* ") + 2);
     return finalBranch.substr(0, finalBranch.find("\n"));
