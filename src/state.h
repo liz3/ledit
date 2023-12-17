@@ -448,12 +448,14 @@ public:
       hasHighlighting = false;
     }
   }
-  void inform(bool success, bool shift_pressed) {
+  void inform(bool success, bool shift_pressed, bool ctrl_pressed = false) {
 
     if (mode == 0 && cursor->isFolder && success) {
       auto *entry = cursor->getActiveDirEntry();
       if (entry) {
-          if(shift_pressed)
+          if(ctrl_pressed && !shift_pressed)
+            addCursor(entry->full.generic_string());
+          else if(ctrl_pressed && shift_pressed)
             add_window(entry->full.generic_string());
           else
             addCursorWithExisting(entry->full.generic_string());

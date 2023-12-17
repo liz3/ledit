@@ -77,10 +77,19 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
-    if (vim->getState().mode != 0 || (!vim->isCommandBufferActive() && cursor->isFolder)) {
+    if (vim->getState().mode != 0 ||
+        (!vim->isCommandBufferActive() && cursor->isFolder)) {
+      auto window = vim->getState().window;
+      auto mods = vim->getKeyState().mods;
+
+      bool ctrl_pressed =
+          glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+          glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
+          mods & GLFW_MOD_CONTROL;
       bool shift_pressed =
           glfwGetKey(vim->getState().window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
-      vim->getState().inform(true, shift_pressed);
+
+      vim->getState().inform(true, shift_pressed, ctrl_pressed);
       auto out = withType(ResultType::Silent);
       out.allowCoords = false;
       return out;
@@ -714,9 +723,9 @@ public:
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
 
-    if (!vim->activeAction() && mode == VimMode::NORMAL){
+    if (!vim->activeAction() && mode == VimMode::NORMAL) {
 
-      if(cursor->undo())
+      if (cursor->undo())
         vim->getState().status = U"Undo";
       else
         vim->getState().status = U"Undo failed";
@@ -724,7 +733,7 @@ public:
       out.allowCoords = false;
       return out;
     }
-    
+
     return {};
   }
 };
@@ -1463,10 +1472,8 @@ private:
 class SimpleCopy : public Action {
 
 public:
-  public:
-    SimpleCopy(bool copy_) : copy(copy_) {
-
-    }
+public:
+  SimpleCopy(bool copy_) : copy(copy_) {}
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
@@ -1481,16 +1488,17 @@ public:
         glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
         mods & GLFW_MOD_CONTROL;
     if (!vim->activeAction() && mode == VimMode::INSERT && ctrl_pressed) {
-      if(copy) {
+      if (copy) {
         vim->getState().tryCopy();
       } else {
         vim->getState().tryPaste();
       }
     }
-    auto out =  withType(ResultType::Silent);
+    auto out = withType(ResultType::Silent);
     out.allowCoords = false;
     return out;
   }
+
 private:
   bool copy = false;
 };

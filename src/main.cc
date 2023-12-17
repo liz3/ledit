@@ -1,4 +1,5 @@
 #include "utf8String.h"
+#include <filesystem>
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 120000) // Before macOS 12 Monterey
 #define kIOMainPortDefault kIOMasterPortDefault
 #endif
@@ -50,6 +51,20 @@ void window_focus_callback(GLFWwindow *window, int focused) {
   }
 }
 
+void drop_callback(GLFWwindow* window, int count, const char** paths)
+{
+  auto* gState = g_windows->windows[window]->state;
+
+    for (size_t i = 0;  i < count;  i++) {
+      const char* cstr = paths[i];
+      std::string s(cstr);
+      if(fs::is_directory(s)){
+        add_window(s);
+      } else {
+        gState->addCursor(s);
+      }
+    }
+}
 void mouse_button_callback(GLFWwindow *window, int button, int action,
                            int mods) {
     auto* gState = g_windows->windows[window]->state;
@@ -312,7 +327,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       cursor->moveDown();
     if (isPress && key == GLFW_KEY_ENTER) {
       if (gState->mode != 0 || gState->cursor->isFolder) {
-        gState->inform(true, shift_pressed);
+        gState->inform(true, shift_pressed, ctrl_pressed);
         return;
       } else
         cursor->append('\n');
@@ -944,6 +959,7 @@ Window *create_window(std::string path, bool isFirst = false) {
   glfwSetCharCallback(window, character_callback);
   glfwSetMouseButtonCallback(window, mouse_button_callback);
   glfwSetWindowFocusCallback(window, window_focus_callback);
+  glfwSetDropCallback(window, drop_callback);
   GLFWcursor *mouseCursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
   glfwSetCursor(window, mouseCursor);
   if(isFirst){
