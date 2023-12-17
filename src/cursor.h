@@ -1489,11 +1489,11 @@ public:
     selection.diffX(x);
   }
   const int64_t getCurrentLineLength() {
-    const Utf8String &ref = lines[y];
+    const Utf8String &ref = bind ? *bind : lines[y];
     return ref.length();
   }
   char32_t getCurrentChar() {
-    Utf8String &ref = lines[y];
+    Utf8String &ref = bind ? *bind :  lines[y];
     return ref[x == getCurrentLineLength() ? x - 1 : x];
   }
   void moveRight() {
