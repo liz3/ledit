@@ -1400,6 +1400,10 @@ public:
         glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
         glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
         mods & GLFW_MOD_CONTROL;
+    if (cursor->bind && control && ctrl_pressed) {
+      cursor->removeBeforeCursor();
+      return withType(ResultType::Silent);
+    }
     if (!vim->activeAction()) {
       if ((mode == VimMode::NORMAL && !control) ||
           (mode == VimMode::INSERT && control && ctrl_pressed)) {
