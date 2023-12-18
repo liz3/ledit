@@ -716,10 +716,17 @@ public:
       return "";
     return folderEntries[offset];
   }
-  std::string getFileToOpen(std::string path, bool reverse) {
+  std::string getFileToOpen(std::string inp, bool reverse) {
+    std::string path = inp;
+    fs::path p(path);
+    std::string partial;
+    if(p.has_filename()){
+        path = p.parent_path().generic_string();
+        partial = p.filename().generic_string();
+    }
     if (!fs::exists(path) || !fs::is_directory(path))
       return "";
-    if (lastProvidedFolder == path) {
+    if (lastProvidedFolder == inp) {
       offset += reverse ? -1 : 1;
 
       if (offset == folderEntries.size())
@@ -730,10 +737,17 @@ public:
     }
     folderEntries.clear();
     for (auto const &dir_entry : fs::directory_iterator{path}) {
+      if(partial.size()) {
+        if(!dir_entry.path().has_filename())
+          continue;
+        std::string n = dir_entry.path().filename().generic_string();
+        if(n.find(partial) == std::string::npos)
+          continue;
+      }
       folderEntries.push_back(dir_entry.path().string());
     }
     offset = 0;
-    lastProvidedFolder = path;
+    lastProvidedFolder = inp;
     return folderEntries[offset];
   }
 
