@@ -37,10 +37,21 @@
     "CONSTRAINT",
     "WITH",
     "DEFAULT",
-    "AS"
+    "AS",
+    "ALTER",
+    "FUNCTION",
+    "REPLACE",
+    "FROM"
   ],
   "keywords_case_sensitive": false,
-  "special_words": ["now", "text", "serial", "bigserial", "varchar", "gen_random_uuid"],
+  "special_words": [
+    "now",
+    "text",
+    "serial",
+    "bigserial",
+    "varchar",
+    "gen_random_uuid"
+  ],
   "single_line_comment": "--",
   "multi_line_comment": ["/*", "*/"],
   "escape_character": "\\",
