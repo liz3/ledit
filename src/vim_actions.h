@@ -1115,8 +1115,9 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
+
     if (vim->activeAction()) {
-      return withType(ResultType::ExecuteSet);
+      return withType(ResultType::Silent);
     } else if (mode != VimMode::INSERT) {
       vim->getState().search();
       ActionResult r;
