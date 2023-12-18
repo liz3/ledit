@@ -609,6 +609,10 @@ public:
       return;
     Language language;
     language.modeName = entry["mode_name"];
+    if(entry.contains("keywords_case_sensitive"))
+      language.keywords_case_sensitive = entry["keywords_case_sensitive"];
+    if(entry.contains("special_case_sensitive"))
+      language.special_case_sensitive = entry["special_case_sensitive"];
     if (entry.contains("key_words") && entry["key_words"].is_array()) {
       for (auto &word : entry["key_words"])
         language.keyWords.push_back(word);
