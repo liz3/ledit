@@ -59,6 +59,7 @@ public:
   bool lineWrapping = false;
   bool autoOpenCommandOut = false;
   bool commandHadOutput = false;
+  bool relativeLineNumbers = false;
   std::string theme = "default";
   std::string highlightLine = "full";
   std::atomic_bool command_running = false;
@@ -674,6 +675,7 @@ public:
     allowTransparency =
         getBoolOrDefault(*configRoot, "window_transparency", allowTransparency);
     lineNumbers = getBoolOrDefault(*configRoot, "line_numbers", lineNumbers);
+    relativeLineNumbers = getBoolOrDefault(*configRoot, "relative_line_numbers", relativeLineNumbers);
     lineWrapping = getBoolOrDefault(*configRoot, "line_wrapping", lineWrapping);
     highlightLine =
         getStringOrDefault(*configRoot, "highlight_active_line", highlightLine);
@@ -700,6 +702,7 @@ public:
     config["line_numbers"] = lineNumbers;
     config["highlight_active_line"] = highlightLine;
     config["auto_open_cmd_output"] = autoOpenCommandOut;
+    config["relative_line_numbers"] = relativeLineNumbers;
     config["tab_width"] = tabWidth;
     if (extraFonts.size()) {
       json extra_fonts;

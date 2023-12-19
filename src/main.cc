@@ -1,5 +1,3 @@
-#include "utf8String.h"
-#include <filesystem>
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 120000) // Before macOS 12 Monterey
 #define kIOMainPortDefault kIOMasterPortDefault
 #endif
@@ -404,9 +402,11 @@ int window_func(Window *instance) {
     const auto renderHeight = HEIGHT - state.atlas->atlas_height - 6;
     Cursor *cursor = state.cursor;
     if (state.vim && cursor->bind == nullptr && cursor->x > 0 &&
-        cursor->x >= cursor->getCurrentLineLength() && 
+        cursor->x >= cursor->getCurrentLineLength() &&
         state.vim->getMode() == VimMode::NORMAL)
-      cursor->x = cursor->getCurrentLineLength() == 0 ? 0 : cursor->getCurrentLineLength() - 1;
+      cursor->x = cursor->getCurrentLineLength() == 0
+                      ? 0
+                      : cursor->getCurrentLineLength() - 1;
     float toOffset = atlas.atlas_height;
     bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7 ||
                         state.mode == 32;
@@ -479,42 +479,79 @@ int window_func(Window *instance) {
     glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
     if (state.showLineNumbers) {
       if (state.lineWrapping) {
+        int biggestLine = maxLines;
+        bool relative = state.provider.relativeLineNumbers;
+        if (relative) {
+          biggestLine = 0;
+          auto endLines = maxLines - (cursor->y - cursor->skip);
+          for (int i = (cursor->y - cursor->skip) * -1; i < endLines; i++) {
+            int v = i == 0 ? cursor->y + 1 : (i < 0 ? i * -1 : i);
+            if (v > biggestLine)
+              biggestLine = v;
+          }
+        }
+        auto maxLineAdvance = atlas.getAdvance(std::to_string(biggestLine));
+        linesAdvance = maxLineAdvance;
+        auto endLines = maxLines;
+        if (relative)
+          endLines = (cursor->maxLines - (cursor->y - cursor->skip));
         auto heightRemaining = renderHeight;
-        for (int i = start; i < maxLines; i++) {
-          std::string value = std::to_string(i + 1);
+        int off = relative ? (cursor->y - cursor->skip) : 0;
+        int s = start;
+        for (int i = relative ? ((cursor->y - cursor->skip) * -1) : start;
+             i < endLines; i++) {
+
+          std::string value =
+              relative ? std::to_string(i == 0 ? cursor->y + 1
+                                               : (i < 0 ? i * -1 : i))
+                       : std::to_string(i + 1);
           auto tAdvance = atlas.getAdvance(value);
           xpos += maxLineAdvance - tAdvance;
-          linesAdvance = 0;
           auto out = cursor->getPosLineWrapped(atlas, -maxRenderWidth,
                                                -(int32_t)(HEIGHT / 2),
-                                               maxRenderWidth, toOffset, 0, i);
+                                               maxRenderWidth, toOffset, 0, s);
           for (cc = value.begin(); cc != value.end(); cc++) {
             entries.push_back(
                 atlas.render(*cc, xpos, out.second,
                              state.provider.colors.line_number_color));
             auto advance = atlas.getAdvance(*cc);
             xpos += advance;
-            linesAdvance += advance;
           }
           xpos = -(int32_t)WIDTH / 2 + 10;
-
+          s++;
           if (heightRemaining <= 0)
             break;
         }
       } else {
-        int biggestLine = std::to_string(maxLines).length();
-        auto maxLineAdvance = atlas.getAdvance(std::to_string(maxLines));
-        for (int i = start; i < maxLines; i++) {
-          std::string value = std::to_string(i + 1);
+        int biggestLine = maxLines;
+        bool relative = state.provider.relativeLineNumbers;
+        if (relative) {
+          biggestLine = 0;
+          auto endLines = maxLines - (cursor->y - cursor->skip);
+          for (int i = (cursor->y - cursor->skip) * -1; i < endLines; i++) {
+            int v = i == 0 ? cursor->y + 1 : (i < 0 ? i * -1 : i);
+            if (v > biggestLine)
+              biggestLine = v;
+          }
+        }
+        auto maxLineAdvance = atlas.getAdvance(std::to_string(biggestLine));
+        linesAdvance = maxLineAdvance;
+        auto endLines = maxLines;
+        if (relative)
+          endLines = (cursor->maxLines - (cursor->y - cursor->skip));
+        for (int i = relative ? ((cursor->y - cursor->skip) * -1) : start;
+             i < endLines; i++) {
+          std::string value =
+              relative ? std::to_string(i == 0 ? cursor->y + 1
+                                               : (i < 0 ? i * -1 : i))
+                       : std::to_string(i + 1);
           auto tAdvance = atlas.getAdvance(value);
           xpos += maxLineAdvance - tAdvance;
-          linesAdvance = 0;
           for (cc = value.begin(); cc != value.end(); cc++) {
             entries.push_back(atlas.render(
                 *cc, xpos, ypos, state.provider.colors.line_number_color));
             auto advance = atlas.getAdvance(*cc);
             xpos += advance;
-            linesAdvance += advance;
           }
           xpos = -(float)WIDTH / 2 + 10;
           ypos += toOffset;
@@ -953,9 +990,8 @@ Window *create_window(std::string path, bool isFirst = false) {
     return nullptr;
   }
 #ifdef LEDIT_WIN_MAIN
-     hIcon =
-      (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1),
-                       IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
+  hIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1),
+                           IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
   if (hIcon) {
 
     IconData iconData = ExtractIconData(hIcon);

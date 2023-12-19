@@ -76,6 +76,7 @@ For the colors there are default values, for the font face either remove it comp
   "auto_reload": false, // if a file changed on disk and the editor asks the OS, automatically reload buffer content
   "save_before_command": false, // save_buffer before running command
   "vim_mode": false, // vim mode, see vim section
+  "relative_line_number": false, // relative line numbers
   "auto_open_cmd_output": false, // automatically trigger command output
   "line_numbers": true, // display line numbers
   "line_wrapping": false, // experimental line wrapping
