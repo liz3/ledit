@@ -404,9 +404,9 @@ int window_func(Window *instance) {
     const auto renderHeight = HEIGHT - state.atlas->atlas_height - 6;
     Cursor *cursor = state.cursor;
     if (state.vim && cursor->bind == nullptr && cursor->x > 0 &&
-        cursor->x >= cursor->getCurrentLineLength() &&
+        cursor->x >= cursor->getCurrentLineLength() && 
         state.vim->getMode() == VimMode::NORMAL)
-      cursor->x = cursor->getCurrentLineLength() - 1;
+      cursor->x = cursor->getCurrentLineLength() == 0 ? 0 : cursor->getCurrentLineLength() - 1;
     float toOffset = atlas.atlas_height;
     bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7 ||
                         state.mode == 32;

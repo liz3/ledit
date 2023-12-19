@@ -1492,7 +1492,7 @@ public:
         glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
         glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
         mods & GLFW_MOD_CONTROL;
-    if (!vim->activeAction() && mode == VimMode::INSERT && ctrl_pressed) {
+    if (!vim->activeAction() && (mode == VimMode::INSERT || cursor->bind) && ctrl_pressed) {
       if (copy) {
         vim->getState().tryCopy();
       } else {
