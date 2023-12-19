@@ -762,7 +762,7 @@ public:
     if (!onlyCopy) {
       target->erase(x - offset, offset);
 
-      historyPush(3, w.length(), w);
+      historyPush(33, w.length(), w);
     }
     x = x - offset;
     return w;
@@ -887,6 +887,14 @@ public:
       }
       y = entry.y;
       x = entry.x;
+      break;
+    }
+        case 33: {
+      x = entry.x-entry.length;
+      y = entry.y;
+      center(y);
+      (&lines[y])->insert(x, entry.content);
+      x += entry.length;
       break;
     }
     case 40: {
