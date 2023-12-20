@@ -787,6 +787,7 @@ public:
 
 class DollarAction : public Action {
 public:
+  DollarAction(bool ctrl_) : ctrl(ctrl_) {}
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
@@ -794,8 +795,16 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
+    auto window = vim->getState().window;
+    auto mods = vim->getKeyState().mods;
 
-    if (!vim->activeAction()) {
+    bool ctrl_pressed =
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
+        mods & GLFW_MOD_CONTROL;
+    if (!vim->activeAction() &&
+        (!ctrl ||
+         (ctrl && ctrl_pressed && (mode == VimMode::INSERT || cursor->bind)))) {
       cursor->jumpEnd();
     } else {
       state.action = "$";
@@ -803,10 +812,14 @@ public:
     }
     return withType(ResultType::Silent);
   }
+
+private:
+  bool ctrl = false;
 };
 
 class ZeroAction : public Action {
 public:
+  ZeroAction(bool ctrl_) : ctrl(ctrl_) {}
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
@@ -814,12 +827,23 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
+    auto window = vim->getState().window;
+    auto mods = vim->getKeyState().mods;
 
-    if (!vim->activeAction()) {
+    bool ctrl_pressed =
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
+        mods & GLFW_MOD_CONTROL;
+    if (!vim->activeAction() &&
+        (!ctrl ||
+         (ctrl && ctrl_pressed && (mode == VimMode::INSERT || cursor->bind)))) {
       cursor->jumpStart();
     }
     return withType(ResultType::Silent);
   }
+
+private:
+  bool ctrl = false;
 };
 class ColonAction : public Action {
 public:
@@ -1492,7 +1516,8 @@ public:
         glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
         glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
         mods & GLFW_MOD_CONTROL;
-    if (!vim->activeAction() && (mode == VimMode::INSERT || cursor->bind) && ctrl_pressed) {
+    if (!vim->activeAction() && (mode == VimMode::INSERT || cursor->bind) &&
+        ctrl_pressed) {
       if (copy) {
         vim->getState().tryCopy();
       } else {
@@ -1523,6 +1548,8 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrie(new SimpleCopy(true), "CTRL+C", GLFW_KEY_C);
   vim.registerTrie(new SimpleCopy(false), "CTRL+V", GLFW_KEY_V);
   vim.registerTrie(new CommentAction(), "COMMENT", GLFW_KEY_SLASH);
+  vim.registerTrie(new DollarAction(true), "CTRL+E", GLFW_KEY_E);
+  vim.registerTrie(new ZeroAction(true), "CTRL+A", GLFW_KEY_A);
   vim.registerTrie(new MoveAction(Direction::UP), "M_UP", GLFW_KEY_P);
   vim.registerTrie(new MoveAction(Direction::RIGHT), "M_RIGHT", GLFW_KEY_F);
   vim.registerTrie(new MoveAction(Direction::DOWN), "M_DOWN", GLFW_KEY_N);
@@ -1543,8 +1570,8 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new XAction(false), "x", 'x');
   vim.registerTrieChar(new VAction(), "v", 'v');
   vim.registerTrieChar(new CAction(), "c", 'c');
-  vim.registerTrieChar(new DollarAction(), "$", '$');
-  vim.registerTrieChar(new ZeroAction(), "0", '0');
+  vim.registerTrieChar(new DollarAction(false), "$", '$');
+  vim.registerTrieChar(new ZeroAction(false), "0", '0');
   vim.registerTrieChar(new ColonAction(), ":", ':');
   vim.registerTrieChar(new YAction(d), "y", 'y');
   vim.registerTrieChar(new PAction(), "p", 'p');

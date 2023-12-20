@@ -755,13 +755,13 @@ public:
     if (x == 0)
       return U"";
     Utf8String *target = bind ? bind : &lines[y];
-    int offset = findAnyOfLast(target->substr(0, x), wordSeperator);
+    auto sub = target->substr(0, x);
+    int offset = findAnyOfLast(sub, wordSeperator);
     if (offset == -1)
-      offset = target->length();
+      offset = sub.length();
     Utf8String w = target->substr(x - offset, offset);
     if (!onlyCopy) {
       target->erase(x - offset, offset);
-
       historyPush(33, w.length(), w);
     }
     x = x - offset;
@@ -1431,13 +1431,14 @@ public:
       selection.stop();
       return 0;
     }
+
+    Utf8String *target = bind ? bind : &lines[y];
     if (copyOnly) {
       if (x == 0)
         return 0;
       x--;
       return lines[y][x];
     }
-    Utf8String *target = bind ? bind : &lines[y];
     if (x == 0) {
       if (y == 0 || bind)
         return 0;
