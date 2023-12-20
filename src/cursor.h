@@ -1073,7 +1073,7 @@ public:
     std::vector<DirEntry> entries;
     fs::path base = fs::canonical(path);
     for (auto const &dir_entry : fs::directory_iterator{path}) {
-      fs::path full = base / dir_entry;
+      fs::path full = dir_entry.path();
       entries.push_back({base, dir_entry, full, dir_entry.is_directory()});
     }
     std::sort(entries.begin(), entries.end(), [](auto &a, auto &b) {
