@@ -23,7 +23,7 @@ out vec4 glyph_bg_color;
 out float hasColor;
 uniform vec2 resolution;
 vec2 camera_project(vec2 point) {
-return 2* (point) * (1 / resolution);
+return 2.0 * point * (1 / resolution);
 }
 
 void main() {

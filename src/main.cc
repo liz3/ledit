@@ -1,4 +1,3 @@
-#include "utf8String.h"
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 120000) // Before macOS 12 Monterey
 #define kIOMainPortDefault kIOMasterPortDefault
 #endif
@@ -27,25 +26,25 @@
 #include "highlighting.h"
 #include "languages.h"
 #include "vim_actions.h"
-State *gState = nullptr;
+#include "windows.h"
+#ifdef LEDIT_WIN_MAIN
+#include "win32_icon_utils.h"
+#endif
+WindowManager *g_windows = nullptr;
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+  auto *gState = g_windows->windows[window]->state;
+  glfwMakeContextCurrent(window);
   glViewport(0, 0, width, height);
   if (gState != nullptr) {
     gState->invalidateCache();
-#ifdef _WIN32
-    float xscale, yscale;
-    glfwGetWindowContentScale(window, &xscale, &yscale);
-    gState->WIDTH = (float)width * xscale;
-    gState->HEIGHT = (float)height * yscale;
-#else
+
     gState->WIDTH = (float)width;
     gState->HEIGHT = (float)height;
-#endif
   }
 }
 void window_focus_callback(GLFWwindow *window, int focused) {
-  if (!gState)
-    return;
+  auto *gState = g_windows->windows[window]->state;
+
   gState->invalidateCache();
   gState->focused = focused;
   if (focused) {
@@ -53,8 +52,23 @@ void window_focus_callback(GLFWwindow *window, int focused) {
   }
 }
 
+void drop_callback(GLFWwindow *window, int count, const char **paths) {
+  auto *gState = g_windows->windows[window]->state;
+
+  for (size_t i = 0; i < count; i++) {
+    const char *cstr = paths[i];
+    std::string s(cstr);
+    if (fs::is_directory(s)) {
+      add_window(s);
+    } else {
+      gState->addCursor(s);
+    }
+  }
+}
 void mouse_button_callback(GLFWwindow *window, int button, int action,
                            int mods) {
+  auto *gState = g_windows->windows[window]->state;
+
   if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
     gState->invalidateCache();
     double xpos, ypos;
@@ -71,8 +85,8 @@ void mouse_button_callback(GLFWwindow *window, int button, int action,
 }
 
 void character_callback(GLFWwindow *window, unsigned int codepoint) {
-  if (gState == nullptr)
-    return;
+  auto *gState = g_windows->windows[window]->state;
+
   gState->invalidateCache();
   gState->exitFlag = false;
   if (gState->exitLoop) {
@@ -115,6 +129,8 @@ void character_callback(GLFWwindow *window, unsigned int codepoint) {
 }
 void key_callback(GLFWwindow *window, int key, int scancode, int action,
                   int mods) {
+  auto *gState = g_windows->windows[window]->state;
+
   if (gState == nullptr)
     return;
   gState->invalidateCache();
@@ -219,7 +235,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
         gState->switchLineHighlightMode();
       }
       if (action == GLFW_PRESS && key == GLFW_KEY_O) {
-        gState->open();
+        gState->open(shift_pressed);
       }
       if (action == GLFW_PRESS && key == GLFW_KEY_0) {
         gState->changeFont();
@@ -274,9 +290,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       gState->tryCopy();
 
     } else if (key == GLFW_KEY_EQUAL && isPress) {
-      gState->increaseFontSize(0.05);
+      gState->increaseFontSize(1);
     } else if (key == GLFW_KEY_MINUS && isPress) {
-      gState->increaseFontSize(-0.05);
+      gState->increaseFontSize(-1);
     } else if ((key == GLFW_KEY_V || key == GLFW_KEY_Y) && isPress) {
       gState->tryPaste();
     } else {
@@ -296,8 +312,15 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
         cursor->moveUp();
       else if (key == GLFW_KEY_N && isPress)
         cursor->moveDown();
-      else if (key == GLFW_KEY_5 && isPress)
-        cursor->jumpMatching();
+      else if (key == GLFW_KEY_5 && isPress) {
+        auto &state = *gState;
+        if (state.hasHighlighting)
+          cursor->jumpMatching(state.highlighter.language.stringCharacters,
+                               state.highlighter.language.escapeChar);
+        else {
+          cursor->jumpMatching(U"\"", '\\');
+        }
+      }
       gState->renderCoords();
     }
   } else {
@@ -310,8 +333,8 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
     if (isPress && key == GLFW_KEY_DOWN)
       cursor->moveDown();
     if (isPress && key == GLFW_KEY_ENTER) {
-      if (gState->mode != 0) {
-        gState->inform(true, shift_pressed);
+      if (gState->mode != 0 || gState->cursor->isFolder) {
+        gState->inform(true, shift_pressed, ctrl_pressed);
         return;
       } else
         cursor->append('\n');
@@ -339,83 +362,21 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       gState->renderCoords();
   }
 }
-int main(int argc, char **argv) {
-#ifdef _WIN32
-  ShowWindow(GetConsoleWindow(), SW_HIDE);
-#endif
-  std::string initialPath = argc >= 2 ? std::string(argv[1]) : "";
-  State state(1280, 720, 30);
-  gState = &state;
-  glfwInit();
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-  if (state.provider.allowTransparency)
-    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, 1);
-#ifdef __APPLE__
-  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
-  const std::string window_name =
-      (initialPath.length() ? initialPath : "New File");
-  GLFWwindow *window = glfwCreateWindow(state.WIDTH, state.HEIGHT,
-                                        window_name.c_str(), nullptr, nullptr);
-  if (window == NULL) {
-    const char *description;
-    int code = glfwGetError(&description);
-    std::cout << "Failed to create GLFW window: " << description << std::endl;
-    glfwTerminate();
-    return -1;
-  }
-  if (state.provider.vim_emulation)
-    state.registerVim();
-  state.window = window;
-  state.addCursor(initialPath);
 
-  glfwMakeContextCurrent(window);
-  glfwSwapInterval(1);
-  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-  glfwSetKeyCallback(window, key_callback);
-  glfwSetCharCallback(window, character_callback);
-  glfwSetMouseButtonCallback(window, mouse_button_callback);
-  glfwSetWindowFocusCallback(window, window_focus_callback);
-  GLFWcursor *mouseCursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
-  glfwSetCursor(window, mouseCursor);
+int window_func(Window *instance) {
+  float &WIDTH = instance->midState.WIDTH;
+  float &HEIGHT = instance->midState.HEIGHT;
+  auto &state = *instance->state;
+  auto *gState = instance->state;
+  Shader &selection_shader = *instance->shaders["selection"];
+  Shader &text_shader = *instance->shaders["text"];
+  Shader &cursor_shader = *instance->shaders["cursor"];
+  FontAtlas &atlas = *instance->fontAtlas;
 
-  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-    std::cout << "Failed to initialize GLAD" << std::endl;
-    return -1;
-  }
-
-  // OpenGL state
-  // ------------
-  glEnable(GL_CULL_FACE);
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  state.init();
-
-  Shader text_shader(text_shader_vert, text_shader_frag, {});
-  text_shader.use();
-  Shader cursor_shader(cursor_shader_vert, cursor_shader_frag,
-                       {camera_shader_vert});
-  Shader selection_shader(selection_shader_vert, selection_shader_frag, {});
-  FontAtlas atlas(state.provider.fontPath, state.fontSize);
-  for (auto &path : state.provider.extraFonts) {
-    atlas.readFont(path, state.fontSize);
-  }
-  atlas.tabWidth = state.provider.tabWidth;
-  state.atlas = &atlas;
-  if (atlas.errors.size()) {
-    state.status += U" " + atlas.errors[0];
-  }
-  float xscale, yscale;
-  glfwGetWindowContentScale(window, &xscale, &yscale);
-  state.WIDTH *= xscale;
-  state.HEIGHT *= yscale;
-  int fontSize;
-  float WIDTH = 0;
-  float HEIGHT = 0;
-  auto maxRenderWidth = 0;
-  while (true) {
+  int &maxRenderWidth = instance->midState.maxRenderWidth;
+  int &fontSize = instance->midState.fontSize;
+  auto *window = instance->window;
+  do {
     if (glfwWindowShouldClose(window)) {
       if (state.exitFlag)
         break;
@@ -434,8 +395,7 @@ int main(int argc, char **argv) {
     if (state.checkCommandRun())
       state.invalidateCache();
     if (state.cacheValid) {
-      glfwWaitEvents();
-      continue;
+      return 1;
     }
     bool changed = false;
     if (HEIGHT != state.HEIGHT || WIDTH != state.WIDTH ||
@@ -451,7 +411,9 @@ int main(int argc, char **argv) {
     if (state.vim && cursor->bind == nullptr && cursor->x > 0 &&
         cursor->x >= cursor->getCurrentLineLength() &&
         state.vim->getMode() == VimMode::NORMAL)
-      cursor->x = cursor->getCurrentLineLength() - 1;
+      cursor->x = cursor->getCurrentLineLength() == 0
+                      ? 0
+                      : cursor->getCurrentLineLength() - 1;
     float toOffset = atlas.atlas_height;
     bool isSearchMode = state.mode == 2 || state.mode == 6 || state.mode == 7 ||
                         state.mode == 32;
@@ -524,44 +486,85 @@ int main(int argc, char **argv) {
     glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
     if (state.showLineNumbers) {
       if (state.lineWrapping) {
+        int biggestLine = maxLines;
+        bool relative = state.provider.relativeLineNumbers;
+        if (relative) {
+          biggestLine = 0;
+          auto endLines = maxLines - (cursor->y - cursor->skip);
+          for (int i = (cursor->y - cursor->skip) * -1; i < endLines; i++) {
+            int v = i == 0 ? cursor->y + 1 : (i < 0 ? i * -1 : i);
+            if (v > biggestLine)
+              biggestLine = v;
+          }
+        }
+        auto maxLineAdvance = atlas.getAdvance(std::to_string(biggestLine));
+        linesAdvance = maxLineAdvance;
+        auto endLines = maxLines;
+        if (relative)
+          endLines = (cursor->maxLines - (cursor->y - cursor->skip));
         auto heightRemaining = renderHeight;
-        for (int i = start; i < maxLines; i++) {
-          std::string value = std::to_string(i + 1);
+        int off = relative ? (cursor->y - cursor->skip) : 0;
+        int s = start;
+        for (int i = relative ? ((cursor->y - cursor->skip) * -1) : start;
+             i < endLines; i++) {
+
+          std::string value =
+              s >= cursor->lines.size() ? "~"
+              : relative                ? std::to_string(i == 0 ? cursor->y + 1
+                                                                : (i < 0 ? i * -1 : i))
+                                        : std::to_string(i + 1);
           auto tAdvance = atlas.getAdvance(value);
           xpos += maxLineAdvance - tAdvance;
-          linesAdvance = 0;
           auto out = cursor->getPosLineWrapped(atlas, -maxRenderWidth,
                                                -(int32_t)(HEIGHT / 2),
-                                               maxRenderWidth, toOffset, 0, i);
+                                               maxRenderWidth, toOffset, 0, s);
           for (cc = value.begin(); cc != value.end(); cc++) {
             entries.push_back(
                 atlas.render(*cc, xpos, out.second,
                              state.provider.colors.line_number_color));
             auto advance = atlas.getAdvance(*cc);
             xpos += advance;
-            linesAdvance += advance;
           }
           xpos = -(int32_t)WIDTH / 2 + 10;
-
+          s++;
           if (heightRemaining <= 0)
             break;
         }
       } else {
-        int biggestLine = std::to_string(maxLines).length();
-        auto maxLineAdvance = atlas.getAdvance(std::to_string(maxLines));
-        for (int i = start; i < maxLines; i++) {
-          std::string value = std::to_string(i + 1);
+        int biggestLine = maxLines;
+        bool relative = state.provider.relativeLineNumbers;
+        if (relative) {
+          biggestLine = 0;
+          auto endLines = (cursor->maxLines - (cursor->y - cursor->skip));
+          for (int i = (cursor->y - cursor->skip) * -1; i < endLines; i++) {
+            int v = i == 0 ? cursor->y + 1 : (i < 0 ? i * -1 : i);
+            if (v > biggestLine)
+              biggestLine = v;
+          }
+        }
+        auto maxLineAdvance = atlas.getAdvance(std::to_string(biggestLine));
+        linesAdvance = maxLineAdvance;
+        auto endLines = maxLines;
+        if (relative)
+          endLines = (cursor->maxLines - (cursor->y - cursor->skip));
+        int s = start;
+        for (int i = relative ? ((cursor->y - cursor->skip) * -1) : start;
+             i < endLines; i++) {
+          std::string value =
+              s >= cursor->lines.size() ? "~"
+              : relative                ? std::to_string(i == 0 ? cursor->y + 1
+                                                                : (i < 0 ? i * -1 : i))
+                                        : std::to_string(i + 1);
           auto tAdvance = atlas.getAdvance(value);
           xpos += maxLineAdvance - tAdvance;
-          linesAdvance = 0;
           for (cc = value.begin(); cc != value.end(); cc++) {
             entries.push_back(atlas.render(
                 *cc, xpos, ypos, state.provider.colors.line_number_color));
             auto advance = atlas.getAdvance(*cc);
             xpos += advance;
-            linesAdvance += advance;
           }
-          xpos = -(int32_t)WIDTH / 2 + 10;
+          s++;
+          xpos = -(float)WIDTH / 2 + 10;
           ypos += toOffset;
         }
       }
@@ -792,7 +795,11 @@ int main(int argc, char **argv) {
               cursor_shader.set1f("cursor_width", 4);
 
             } else {
-              cursor_shader.set1f("cursor_width", atlas.getAdvance(' '));
+              cursor_shader.set1f(
+                  "cursor_width",
+                  atlas.getAdvance(cursor->getCurrentLineLength() == 0
+                                       ? ' '
+                                       : cursor->getCurrentChar()));
               cursor_shader.set4f("cursor_color",
                                   state.provider.colors.cursor_color_vim);
             }
@@ -978,8 +985,174 @@ int main(int argc, char **argv) {
 
     glfwSwapBuffers(window);
     state.cacheValid = true;
+    return 1;
+  } while (0);
+  return 0;
+};
+Window *create_window(std::string path, bool isFirst = false) {
+  Window *instance = new Window();
+  instance->state = new State(1280, 720, 28);
+  const std::string window_name = (path.length() ? path : "New File");
+  State &state = *instance->state;
+  GLFWwindow *window = glfwCreateWindow(state.WIDTH, state.HEIGHT,
+                                        window_name.c_str(), nullptr, nullptr);
+  if (!window) {
+    delete instance;
+    return nullptr;
+  }
+#ifdef LEDIT_WIN_MAIN
+  hIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1),
+                           IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
+  if (hIcon) {
+
+    IconData iconData = ExtractIconData(hIcon);
+    GLFWimage image;
+    image.width = iconData.width;
+    image.height = iconData.height;
+    image.pixels = (unsigned char *)iconData.pixels.data();
+
+    glfwSetWindowIcon(window, 1, &image);
+    DestroyIcon(hIcon);
+  }
+#endif
+  instance->window = window;
+  if (state.provider.vim_emulation)
+    state.registerVim();
+  state.window = window;
+  state.addCursor(path);
+
+  glfwMakeContextCurrent(window);
+  glfwSwapInterval(1);
+  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+  glfwSetKeyCallback(window, key_callback);
+  glfwSetCharCallback(window, character_callback);
+  glfwSetMouseButtonCallback(window, mouse_button_callback);
+  glfwSetWindowFocusCallback(window, window_focus_callback);
+  glfwSetDropCallback(window, drop_callback);
+  GLFWcursor *mouseCursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+  glfwSetCursor(window, mouseCursor);
+  if (isFirst) {
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+      std::cout << "Failed to initialize GLAD" << std::endl;
+      delete instance;
+      return nullptr;
+    }
+  }
+  glEnable(GL_CULL_FACE);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  state.init();
+  Shader *text_shader = new Shader(text_shader_vert, text_shader_frag, {});
+  text_shader->use();
+  instance->shaders["text"] = text_shader;
+  Shader *cursor_shader =
+      new Shader(cursor_shader_vert, cursor_shader_frag, {camera_shader_vert});
+  instance->shaders["cursor"] = cursor_shader;
+  Shader *selection_shader =
+      new Shader(selection_shader_vert, selection_shader_frag, {});
+  instance->shaders["selection"] = selection_shader;
+
+  instance->fontAtlas = new FontAtlas(state.provider.fontPath, state.fontSize);
+  auto &atlas = *instance->fontAtlas;
+  for (auto &path : state.provider.extraFonts) {
+    atlas.readFont(path, state.fontSize);
+  }
+  atlas.tabWidth = state.provider.tabWidth;
+  state.atlas = &atlas;
+  if (atlas.errors.size()) {
+    state.status += U" " + atlas.errors[0];
+  }
+  float xscale, yscale;
+  glfwGetWindowContentScale(window, &xscale, &yscale);
+  state.WIDTH *= xscale;
+  state.HEIGHT *= yscale;
+
+  return instance;
+}
+void add_window(std::string p) {
+  Window *first = create_window(p);
+  if (!first)
+    return;
+  g_windows->addAndActivate(first);
+}
+#ifdef LEDIT_WIN_MAIN
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+                    PWSTR pCmdLine, int nCmdShow) {
+  LPWSTR *szArglist;
+  int nArgs;
+  int i;
+
+  szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
+  std::string initialPath = nArgs >= 2 ? winStrToStr(szArglist[1]) : "";
+  glfwInit();
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+  WindowManager windowManager;
+  g_windows = &windowManager;
+  Window *first = create_window(initialPath, true);
+  if (!first)
+    return 1;
+  windowManager.addAndActivate(first);
+  Window *lastActive = nullptr;
+  while (true) {
+    std::vector<Window *> toRemove;
+    for (auto entry : windowManager.windows) {
+      glfwMakeContextCurrent(entry.second->window);
+      auto result = window_func(entry.second);
+      if (result == 0)
+        toRemove.push_back(entry.second);
+    }
+    glfwMakeContextCurrent(nullptr);
+    for (auto c : toRemove) {
+      windowManager.removeWindow(c->window);
+      delete c;
+    }
+    if (!windowManager.windows.size())
+      break;
     glfwWaitEvents();
   }
   glfwTerminate();
   return 0;
-};
+}
+#else
+int main(int argc, char **argv) {
+  std::string initialPath = argc >= 2 ? std::string(argv[1]) : "";
+
+  glfwInit();
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifdef __APPLE__
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
+  WindowManager windowManager;
+  g_windows = &windowManager;
+  Window *first = create_window(initialPath, true);
+  if (!first)
+    return 1;
+  windowManager.addAndActivate(first);
+  Window *lastActive = nullptr;
+  while (true) {
+    std::vector<Window *> toRemove;
+    for (auto entry : windowManager.windows) {
+      glfwMakeContextCurrent(entry.second->window);
+      auto result = window_func(entry.second);
+      if (result == 0)
+        toRemove.push_back(entry.second);
+    }
+    glfwMakeContextCurrent(nullptr);
+    for (auto c : toRemove) {
+      windowManager.removeWindow(c->window);
+      delete c;
+    }
+    if (!windowManager.windows.size())
+      break;
+    glfwWaitEvents();
+  }
+  glfwTerminate();
+  return 0;
+}
+#endif

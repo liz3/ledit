@@ -47,6 +47,7 @@ public:
   std::string configPath;
   std::string lastCommandOutput;
   int commandExitCode = 0;
+  int fontSize = 25;
   int32_t tabWidth = 2;
   bool useSpaces = true;
   bool autoReload = false;
@@ -58,6 +59,7 @@ public:
   bool lineWrapping = false;
   bool autoOpenCommandOut = false;
   bool commandHadOutput = false;
+  bool relativeLineNumbers = false;
   std::string theme = "default";
   std::string highlightLine = "full";
   std::atomic_bool command_running = false;
@@ -129,10 +131,10 @@ public:
     if (!name.size() || name == "default") {
       return false;
     }
-     fs::path *homeDir = getHomeFolder();
-    if (!homeDir) 
-        return false;
-    
+    fs::path *homeDir = getHomeFolder();
+    if (!homeDir)
+      return false;
+
     fs::path configDir = *homeDir / ".ledit";
     std::string fullName =
         name.find(".json") == std::string::npos ? name + ".json" : name;
@@ -226,10 +228,9 @@ public:
       siStartInfo.hStdError = hStdoutWrite;
       siStartInfo.hStdOutput = hStdoutWrite;
       siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
-      bSuccess = CreateProcess(
-          NULL,
-          const_cast<char *>(command.c_str()), // command line
-          NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo);
+      bSuccess =
+          CreateProcess(NULL, const_cast<char *>(command.c_str()), NULL, NULL,
+                        TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo);
       if (!bSuccess) {
         CloseHandle(hStdoutWrite);
         CloseHandle(hStdoutRead);
@@ -355,55 +356,109 @@ public:
 
     return 0;
   }
-  std::string getBranchName(std::string path) {
-#ifdef LEDIT_DEBUG
-    if (true)
-      return "";
-#endif
-    std::string asPath = fs::path(path).parent_path().generic_string();
-    const char *as_cstr = asPath.c_str();
-    std::string branch = "";
+  std::pair<int, std::string> runDirect(std::string command,
+                                        std::string folder = "") {
 #ifdef _WIN32
-    std::string command = "cd " + asPath + " && git branch";
-    FILE *pipe = _popen(command.c_str(), "r");
-    if (pipe == NULL)
-      return branch;
-    char buffer[1024];
-    while (fgets(buffer, sizeof buffer, pipe) != NULL) {
-      branch += buffer;
+    HANDLE hStdoutRead, hStdoutWrite;
+    SECURITY_ATTRIBUTES saAttr;
+    saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+    saAttr.bInheritHandle = TRUE;
+    saAttr.lpSecurityDescriptor = NULL;
+    if (!CreatePipe(&hStdoutRead, &hStdoutWrite, &saAttr, 0)) {
+      return std::pair(-1, "");
     }
-    _pclose(pipe);
+    SetHandleInformation(hStdoutRead, HANDLE_FLAG_INHERIT, 0);
+    PROCESS_INFORMATION piProcInfo;
+    STARTUPINFO siStartInfo;
+    BOOL bSuccess = FALSE;
+    ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+    ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
+    siStartInfo.cb = sizeof(STARTUPINFO);
+    siStartInfo.hStdError = hStdoutWrite;
+    siStartInfo.hStdOutput = hStdoutWrite;
+    siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+    bSuccess = CreateProcess(NULL, const_cast<char *>(command.c_str()), NULL,
+                             NULL, TRUE, CREATE_NO_WINDOW, NULL,
+                             folder.length() ? (folder.c_str()) : NULL,
+                             &siStartInfo, &piProcInfo);
+    if (!bSuccess) {
+      return std::pair(-1, "");
+    }
+    command_pid = piProcInfo.dwProcessId;
+    CloseHandle(hStdoutWrite);
+    CloseHandle(piProcInfo.hThread);
+
+    DWORD dwRead;
+    CHAR chBuf[4096];
+    std::string result;
+
+    for (;;) {
+      bSuccess = ReadFile(hStdoutRead, chBuf, 4096, &dwRead, NULL);
+      if (!bSuccess || dwRead == 0)
+        break;
+      std::string str(chBuf, dwRead);
+      result += str;
+    }
+
+    CloseHandle(hStdoutRead);
+
+    WaitForSingleObject(piProcInfo.hProcess, INFINITE);
+
+    DWORD exitCode = 0;
+    bool failedRetrieve = false;
+    if (!GetExitCodeProcess(piProcInfo.hProcess, &exitCode)) {
+      failedRetrieve = true;
+    }
+
+    CloseHandle(piProcInfo.hProcess);
+    return std::pair(0, result);
 #else
-    int fd[2], pid;
-    pipe(fd);
-    pid = fork();
-    if (pid == 0) {
-      close(1);
-      dup(fd[1]);
-      close(0);
-      close(2);
-      close(fd[0]);
-      close(fd[1]);
-      const char *args[] = {"git", "branch", nullptr};
-      chdir(as_cstr);
-      execvp("git", static_cast<char *const *>((void *)args));
-      exit(errno);
-    } else {
-      close(fd[1]);
-      while (true) {
-        char buffer[1024];
-        int received = read(fd[0], buffer, 1024);
-        if (received == 0)
-          break;
-        branch += std::string(buffer, received);
-      }
-      close(fd[0]);
-      kill(pid, SIGTERM);
-      wait(&pid);
+    int pipefd[2];
+    if (pipe(pipefd) == -1) {
+      return std::pair(-1, "");
     }
+    pid_t pid = fork();
+    if (pid == -1) {
+      return std::pair(-1, "");
+    }
+    if (pid == 0) {
+      close(pipefd[0]);
+      dup2(pipefd[1], STDOUT_FILENO);
+      dup2(pipefd[1], STDERR_FILENO);
+      close(pipefd[1]);
+      if (folder.size())
+        chdir(folder.c_str());
+      execlp("/bin/sh", "sh", "-c", command.c_str(), NULL);
+      exit(EXIT_FAILURE);
+    } else {
+      close(pipefd[1]);
+      int exitCode;
+      std::string result;
+      char buffer[1024];
+      ssize_t count;
+      while ((count = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
+        buffer[count] = '\0';
+        result += buffer;
+      }
+      close(pipefd[0]);
+      waitpid(pid, &exitCode, 0);
+      return std::pair(exitCode, result);
+    }
+
 #endif
-    if (!branch.length())
-      return branch;
+
+    return std::pair(-1, "");
+  }
+  std::string getBranchName(std::string path) {
+    auto out = runDirect("git branch", path);
+    if (out.first != 0)
+      return "";
+    auto branch = out.second;
+    if (branch.find("not a git repository") != std::string::npos)
+      return "";
+    if(branch.find("* ") == std::string::npos)
+      return "";
     std::string finalBranch = branch.substr(branch.find("* ") + 2);
     return finalBranch.substr(0, finalBranch.find("\n"));
   }
@@ -555,6 +610,10 @@ public:
       return;
     Language language;
     language.modeName = entry["mode_name"];
+    if(entry.contains("keywords_case_sensitive"))
+      language.keywords_case_sensitive = entry["keywords_case_sensitive"];
+    if(entry.contains("special_case_sensitive"))
+      language.special_case_sensitive = entry["special_case_sensitive"];
     if (entry.contains("key_words") && entry["key_words"].is_array()) {
       for (auto &word : entry["key_words"])
         language.keyWords.push_back(word);
@@ -603,6 +662,7 @@ public:
         extraFonts.push_back(str);
       }
     }
+    fontSize = getNumberOrDefault(*configRoot, "font_size", fontSize);
     theme = getStringOrDefault(*configRoot, "theme", theme);
     useSpaces = getBoolOrDefault(*configRoot, "use_spaces", useSpaces);
     saveBeforeCommand =
@@ -615,6 +675,7 @@ public:
     allowTransparency =
         getBoolOrDefault(*configRoot, "window_transparency", allowTransparency);
     lineNumbers = getBoolOrDefault(*configRoot, "line_numbers", lineNumbers);
+    relativeLineNumbers = getBoolOrDefault(*configRoot, "relative_line_numbers", relativeLineNumbers);
     lineWrapping = getBoolOrDefault(*configRoot, "line_wrapping", lineWrapping);
     highlightLine =
         getStringOrDefault(*configRoot, "highlight_active_line", highlightLine);
@@ -631,15 +692,17 @@ public:
     if (!configPath.length())
       return;
     json config;
-    if(theme != "default")
+    if (theme != "default")
       config["theme"] = theme;
     config["font_face"] = fontPath;
     config["window_transparency"] = allowTransparency;
     config["use_spaces"] = useSpaces;
+    config["font_size"] = fontSize;
     config["line_wrapping"] = lineWrapping;
     config["line_numbers"] = lineNumbers;
     config["highlight_active_line"] = highlightLine;
     config["auto_open_cmd_output"] = autoOpenCommandOut;
+    config["relative_line_numbers"] = relativeLineNumbers;
     config["tab_width"] = tabWidth;
     if (extraFonts.size()) {
       json extra_fonts;
@@ -656,10 +719,17 @@ public:
       return "";
     return folderEntries[offset];
   }
-  std::string getFileToOpen(std::string path, bool reverse) {
+  std::string getFileToOpen(std::string inp, bool reverse) {
+    std::string path = inp;
+    fs::path p(path);
+    std::string partial;
+    if(p.has_filename()){
+        path = p.parent_path().generic_string();
+        partial = p.filename().generic_string();
+    }
     if (!fs::exists(path) || !fs::is_directory(path))
       return "";
-    if (lastProvidedFolder == path) {
+    if (lastProvidedFolder == inp) {
       offset += reverse ? -1 : 1;
 
       if (offset == folderEntries.size())
@@ -670,10 +740,17 @@ public:
     }
     folderEntries.clear();
     for (auto const &dir_entry : fs::directory_iterator{path}) {
+      if(partial.size()) {
+        if(!dir_entry.path().has_filename())
+          continue;
+        std::string n = dir_entry.path().filename().generic_string();
+        if(n.find(partial) == std::string::npos)
+          continue;
+      }
       folderEntries.push_back(dir_entry.path().string());
     }
     offset = 0;
-    lastProvidedFolder = path;
+    lastProvidedFolder = inp;
     return folderEntries[offset];
   }
 

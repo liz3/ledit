@@ -27,10 +27,10 @@ public:
   std::vector<Utf8String> errors;
   FT_UInt atlas_width, atlas_height, atlas_height_absolute, smallest_top,
       atlas_height_original;
-  uint32_t fs;
+  uint32_t fs, virtual_fs;
   FT_Library ft;
   bool wasGenerated = false;
-  int xOffset = 0;
+  float xOffset = 0;
   uint8_t tabWidth = 2;
   float scale = 1;
   std::vector<FontFace *> faces;
@@ -38,12 +38,11 @@ public:
                     Vec4f color = vec4fs(1)) {
     if (c >= 128 || c < 32)
       lazyLoad(c);
-
     auto *entry = &entries[c];
     RenderChar r;
     float x2 = x + entry->left * scale;
-    float y2 = y +atlas_height;
-    y2 -= (entry->top + smallest_top * scale);
+    float y2 = y + atlas_height;
+    y2 -= ((entry->top + smallest_top * scale) * scale);
     if (entry->hasColor) {
       float height = entry->height * (fs / entry->height);
       y2 += ((entry->top) - ((height) - (fs)*0.15)) * scale;
@@ -57,16 +56,14 @@ public:
       r.size = vec2f(entry->width * scale, (-entry->height) * scale);
     r.uv_pos = vec2f(entry->offset, 0.0f);
     r.uv_size = vec2f(entry->width / (float)atlas_width,
-                      entry->height / atlas_height_absolute);
+                      entry->height / (float)atlas_height_absolute);
     r.fg_color = color;
     r.hasColor = entry->hasColor ? 1 : 0;
     return r;
   }
-  float getColonWidth() {
-    return fs * scale;
-  }
+  float getColonWidth() { return virtual_fs * scale; }
   void ensureTab() {
-    if(entries.count(U'\t'))
+    if (entries.count(U'\t'))
       return;
     CharacterEntry entry;
     entry.advance = entries[U' '].advance * tabWidth;
@@ -76,10 +73,10 @@ public:
     entries[U'\t'] = entry;
   }
   float getAdvance(char32_t c) {
-    if(c >= 128 || c<32)
+    if (c >= 128 || c < 32)
       lazyLoad(c);
-   return entries[c].advance * scale; 
- }
+    return entries[c].advance * scale;
+  }
   FontAtlas(std::string path, uint32_t fontSize) {
     errors.clear();
     if (FT_Init_FreeType(&ft)) {
@@ -87,6 +84,11 @@ public:
                 << std::endl;
       return;
     }
+    virtual_fs = fontSize;
+    if (fontSize % 5 != 0)
+      fontSize -= (fontSize % 5);
+    if (fontSize < 15)
+      fontSize = 15;
     readFont(path, fontSize, true);
   }
   size_t fontSelectSize(uint32_t size, FT_Face face) {
@@ -172,21 +174,17 @@ public:
     }
     fs = size;
   }
-  void changeScale(float diff) {
+  void changeScale(int diff) {
 
-    if (scale + diff > 1.8 || scale + diff < 0.6) {
-      if ((fs == 18 && scale + diff < 0.6) ||
-          (fs == 160 && scale + diff > 1.8)) {
-        return;
-      }
+    if ((virtual_fs <= 15 && diff == -1) || (virtual_fs >= 100 && diff == 1))
+      return;
 
-      entries.clear();
-      auto newSize = scale + diff > 1.8 ? fs * 1.8 : fs * 0.8;
-      scale = 1;
-      if (newSize < 18)
-        newSize = 18;
-      else if (newSize > 160)
-        newSize = 160;
+    virtual_fs += diff;
+    scale = (float)virtual_fs / (float)fs;
+
+    if ((diff == -1 && scale < 0.6 && fs > 20) ||
+        (scale > 2.5 && diff == 1 && fs < 35)) {
+      auto newSize = virtual_fs < 20 ? 20 : virtual_fs > 35 ? 35 : virtual_fs;
       for (auto &face : faces) {
         if (face->hasColor)
           FT_Select_Size(face->face, fontSelectSize(newSize, face->face));
@@ -194,29 +192,33 @@ public:
           FT_Set_Pixel_Sizes(face->face, 0, newSize);
       }
       renderFont(newSize, faces[0]);
-    } else {
-      scale += diff;
-      atlas_height = atlas_height_original * scale;
+      scale = (float)virtual_fs / (float)fs;
     }
+
+    atlas_height = atlas_height_original * scale;
   }
   void renderFont(uint32_t fontSize, FontFace *faceEntry) {
     if (wasGenerated) {
+           glBindTexture(GL_TEXTURE_2D, 0);
       glDeleteTextures(1, &texture_id);
       linesCache.clear();
+            entries.clear();
+            contentCache.clear();
+
     }
-    auto &face = faceEntry->face;
+    auto face = faceEntry->face;
     fs = fontSize;
     atlas_width = 0;
     atlas_height = 0;
     smallest_top = 1e9;
-    // TODO should this be here?
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     for (int i = 32; i < 128; i++) {
       if (FT_Load_Char(face, i,
                        FT_LOAD_RENDER | FT_LOAD_TARGET_(FT_RENDER_MODE_SDF))) {
         std::cout << "Failed to load char: " << (char)i << "\n";
         return;
       }
+
+
       auto bm = face->glyph->bitmap;
       atlas_width += bm.width;
       atlas_height = bm.rows > atlas_height ? bm.rows : atlas_height;
@@ -246,7 +248,6 @@ public:
                            : smallest_top;
       entries.insert(std::pair<char32_t, CharacterEntry>(entry.c, entry));
     }
-    atlas_width *= 2;
     atlas_height_absolute = atlas_height;
     atlas_height_original = atlas_height;
     atlas_height *= scale;
@@ -284,7 +285,7 @@ public:
   void lazyLoad(char32_t c) {
     if (entries.count(c))
       return;
-    if(c == U'\t'){
+    if (c == U'\t') {
       ensureTab();
       return;
     }
@@ -407,7 +408,7 @@ public:
     return v;
   }
 
-  std::vector<float> *getAllAdvance(Utf8String& line, int y) {
+  std::vector<float> *getAllAdvance(Utf8String &line, int y) {
     if (linesCache.count(y)) {
       if (contentCache[y] == line) {
         return &linesCache[y];

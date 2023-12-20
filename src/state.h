@@ -7,6 +7,7 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include "GLFW/glfw3.h"
 #include "shader.h"
 #include "cursor.h"
 #include "highlighting.h"
@@ -16,6 +17,7 @@
 #include "utf8String.h"
 #include "utils.h"
 #include "vim.h"
+void add_window(std::string p);
 void register_vim_commands(Vim &vim, State &state);
 struct CursorEntry {
   Cursor cursor;
@@ -54,15 +56,22 @@ public:
   bool showLineNumbers = true;
   bool lineWrapping = false;
   bool isCommandRunning = false;
+  bool openNewWindow;
   CursorEntry lastCommandOutCursor;
   int mode = 0;
   int round = 0;
   int fontSize;
-  Vim *vim;
+  Vim *vim = nullptr;
   State() {}
 
   void invalidateCache() { cacheValid = false; }
 
+  void freeVim() {
+    if (vim) {
+      delete vim;
+      vim = nullptr;
+    }
+  }
   CursorEntry *hasEditedBuffer() {
     for (CursorEntry *cur : cursors) {
       if (cur->cursor.edited)
@@ -101,7 +110,7 @@ public:
       provider.command_thread.join();
       isCommandRunning = false;
       checkChanged();
-      if(provider.autoOpenCommandOut && provider.commandHadOutput)
+      if (provider.autoOpenCommandOut && provider.commandHadOutput)
         activateLastCommandBuffer();
       status = U"cmd: [" + Utf8String(lastCmd) + U" | " +
                Utf8String(toFixed(secs, 2)) +
@@ -164,12 +173,13 @@ public:
     cursor->bindTo(&dummyBuf);
     mode = 25;
   }
-  void increaseFontSize(float value) {
+  void increaseFontSize(int value) {
     if (mode != 0)
       return;
 
     atlas->changeScale(value);
-    status = U"resize: [" + numberToString(atlas->fs * atlas->scale) + U"]";
+    fontSize = atlas->virtual_fs;
+    status = U"resize: [" + numberToString(atlas->virtual_fs) + U"]";
   }
   void toggleSelection() {
     if (mode != 0)
@@ -296,9 +306,10 @@ public:
     mode = 15;
     status = U"Set font: ";
   }
-  void open() {
+  void open(bool inNewWindow = false) {
     if (mode != 0)
       return;
+    this->openNewWindow = inNewWindow;
     miniBuf = U"./";
     provider.lastProvidedFolder = "";
     cursor->bindTo(&miniBuf);
@@ -306,7 +317,7 @@ public:
     status = U"Open [" + create(provider.getCwdFormatted()) + U"]: ";
   }
   void setTheme() {
-        if (mode != 0)
+    if (mode != 0)
       return;
     miniBuf = Utf8String(provider.theme);
     cursor->bindTo(&miniBuf);
@@ -437,7 +448,20 @@ public:
       hasHighlighting = false;
     }
   }
-  void inform(bool success, bool shift_pressed) {
+  void inform(bool success, bool shift_pressed, bool ctrl_pressed = false) {
+
+    if (mode == 0 && cursor->isFolder && success) {
+      auto *entry = cursor->getActiveDirEntry();
+      if (entry) {
+          if(ctrl_pressed && !shift_pressed)
+            addCursor(entry->full.generic_string());
+          else if(ctrl_pressed && shift_pressed)
+            add_window(entry->full.generic_string());
+          else
+            addCursorWithExisting(entry->full.generic_string());
+      }
+      return;
+    }
     if (success) {
       if (mode == 1) { // save to
         bool result = cursor->saveTo(convert_str(miniBuf));
@@ -492,20 +516,24 @@ public:
             status = U"Canceled";
           }
         } else {
-          bool found = false;
-          size_t fIndex = 0;
-          auto converted = convert_str(miniBuf);
-          for (size_t i = 0; i < cursors.size(); i++) {
-            if (cursors[i]->path == converted) {
-              found = true;
-              fIndex = i;
-              break;
+          if (openNewWindow) {
+            add_window(miniBuf.getStr());
+          } else {
+            bool found = false;
+            size_t fIndex = 0;
+            auto converted = convert_str(miniBuf);
+            for (size_t i = 0; i < cursors.size(); i++) {
+              if (cursors[i]->path == converted) {
+                found = true;
+                fIndex = i;
+                break;
+              }
             }
+            if (found && activeIndex != fIndex)
+              activateCursor(fIndex);
+            else if (!found)
+              addCursor(converted);
           }
-          if (found && activeIndex != fIndex)
-            activateCursor(fIndex);
-          else if (!found)
-            addCursor(converted);
         }
 
       } else if (mode == 15) {
@@ -562,7 +590,7 @@ public:
       } else if (mode == 40) {
         runCommand(miniBuf.getStr());
       } else if (mode == 42) {
-        if(provider.loadTheme(miniBuf.getStr()))
+        if (provider.loadTheme(miniBuf.getStr()))
           status = U"Theme: " + miniBuf;
       }
     } else {
@@ -647,7 +675,7 @@ public:
     status = (vim ? Utf8String(vim->getModeName()) + U" " : U"") +
              numberToString(cursor->y + 1) + U":" + numberToString(x) + branch +
              U" [" + fileName + U": " +
-             (hasHighlighting ? highlighter.languageName : U"Text") + U"]";
+             (hasHighlighting ? highlighter.languageName : cursor->isFolder ? U"Dir" : U"Text") + U"]";
     if (cursor->selection.active)
       status +=
           U" Selected: [" + numberToString(cursor->getSelectionSize()) + U"]";
@@ -697,12 +725,12 @@ public:
     if (entry != &lastCommandOutCursor) {
       delete entry;
 
-      if (activeIndex != index){
+      if (activeIndex != index) {
         cursors.erase(cursors.begin() + index);
         return;
       }
     }
-    size_t targetIndex = index == 0 ? 1 : index - 1;
+    size_t targetIndex = index == 0 ? 0 : index - 1;
     cursors.erase(cursors.begin() + index);
     activateCursor(targetIndex);
   }
@@ -742,8 +770,6 @@ public:
     glfwSetWindowTitle(window, window_name.c_str());
   }
   void addCursor(std::string path) {
-    if (path.length() && std::filesystem::is_directory(path))
-      path = "";
 
     if (path.length())
       for (size_t i = 0; i < cursors.size(); i++) {
@@ -762,9 +788,18 @@ public:
     cursors.push_back(entry);
     activateCursor(cursors.size() - 1);
   }
+  void addCursorWithExisting(std::string path) {
+    auto entry = cursors[activeIndex];
+    if (!fs::exists(path))
+      entry->cursor.reset();
+    else
+      entry->cursor.openFile(entry->path, path);
+    entry->path = path;
+    activateCursor(activeIndex);
+  }
   State(float w, float h, int fontSize) {
 
-    this->fontSize = fontSize;
+    this->fontSize = provider.fontSize;
     WIDTH = w;
     HEIGHT = h;
 

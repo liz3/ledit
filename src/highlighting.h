@@ -36,6 +36,8 @@ struct Language {
   char escapeChar;
   std::vector<std::string> fileExtensions;
   std::string whitespace = DEFAULT_WHITESPACE_CHARS;
+  bool keywords_case_sensitive = true;
+  bool special_case_sensitive = true;
 };
 struct LanguageExpanded {
   Utf8String modeName;
@@ -46,6 +48,8 @@ struct LanguageExpanded {
   Utf8String stringCharacters;
   std::unordered_map<char32_t, bool> whitespace;
   char32_t escapeChar;
+  bool keywords_case_sensitive = true;
+  bool special_case_sensitive = true;
 };
 struct HighlighterState {
   int start;
@@ -65,18 +69,13 @@ public:
   Utf8String languageName;
 
   LanguageExpanded language;
-  bool isNonChar(char32_t c) {
-
-    return language.whitespace.count(c);
+  bool isNonChar(char32_t c) { return language.whitespace.count(c); }
+  bool isNumber(char32_t c) { return c >= '0' && c <= '9'; }
+  bool isNumberEnd(char32_t c, bool hexa) {
+    if (hexa && ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+      return false;
+    return !isNumber(c) && c != '.' && c != 'x';
   }
- bool isNumber(char32_t c) {
-  return c >= '0' && c <= '9';
- }
- bool isNumberEnd(char32_t c, bool hexa) {
-  if(hexa && ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
-    return false;
-  return !isNumber(c) && c != '.' && c != 'x';
- }
   std::map<int, Vec4f> cached;
   std::map<int, std::pair<int, int>> lineIndex;
   Vec4f lastEntry;
@@ -87,63 +86,83 @@ public:
   SavedState savedState;
   bool wasCached = false;
   bool wasEntire = false;
+ std::string lowerCase(const std::string& str) {
+      std::string out = str;
+
+      std::transform(out.begin(), out.end(), out.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+    return out;
+  }
   void setLanguage(Language lang, std::string name) {
+    language.keywords_case_sensitive = lang.keywords_case_sensitive;
+    language.special_case_sensitive = lang.special_case_sensitive;
     language.modeName = create(lang.modeName);
     language.keyWords.clear();
-    for(auto& entry : lang.keyWords) {
-      language.keyWords[entry] = 1;
+    for (auto &entry : lang.keyWords) {
+      if (!lang.keywords_case_sensitive) {
+            language.keyWords[lowerCase(entry)] =1;
+      } else {
+        language.keyWords[entry] = 1;
+      }
     }
     language.specialWords.clear();
-    for(auto& entry : lang.specialWords) {
-      language.specialWords[entry] = 1;
+    for (auto &entry : lang.specialWords) {
+      if (!lang.special_case_sensitive) {
+        language.specialWords[lowerCase(entry)] = true;
+      } else {
+        language.specialWords[entry] = 1;
+      }
     }
-    if(lang.singleLineComment.length()) {
+    if (lang.singleLineComment.length()) {
       language.singleLineComment = create(lang.singleLineComment);
     } else {
       language.singleLineComment = U"";
     }
-    if(lang.multiLineComment.first.length()) {
-      language.multiLineComment = std::pair(create(lang.multiLineComment.first), create(lang.multiLineComment.second));
+    if (lang.multiLineComment.first.length()) {
+      language.multiLineComment =
+          std::pair(create(lang.multiLineComment.first),
+                    create(lang.multiLineComment.second));
     } else {
       language.multiLineComment = std::pair(U"", U"");
     }
     language.stringCharacters = create(lang.stringCharacters);
-    language.escapeChar = (char32_t) lang.escapeChar;
-
+    language.escapeChar = (char32_t)lang.escapeChar;
     Utf8String whitespaceChars(lang.whitespace);
     language.whitespace.clear();
-    for(auto c : whitespaceChars){
-        language.whitespace[c] = true;
+    for (auto c : whitespaceChars) {
+      language.whitespace[c] = true;
     }
 
     languageName = create(name);
     wasCached = false;
   }
-  std::map<int, Vec4f>* highlight(std::vector<Utf8String>& lines, EditorColors* colors, int skip, int maxLines, int y, size_t history_size) {
+  std::map<int, Vec4f> *highlight(std::vector<Utf8String> &lines,
+                                  EditorColors *colors, int skip, int maxLines,
+                                  int y, size_t history_size) {
     Utf8String str;
-    for(size_t i = 0; i < lines.size(); i++) {
+    for (size_t i = 0; i < lines.size(); i++) {
       str += lines[i];
-      if(i < lines.size() -1)
+      if (i < lines.size() - 1)
         str += U"\n";
     }
     return highlight(str, colors, skip, maxLines, y, history_size);
   }
-  std::map<int, Vec4f>* get() {
-    return &cached;
-  }
-  std::map<int, Vec4f>* highlight(Utf8String& raw, EditorColors* colors, int skip, int maxLines, int yPassed, size_t history_size) {
-    if(wasCached && wasEntire && history_size == last_history_size)
+  std::map<int, Vec4f> *get() { return &cached; }
+  std::map<int, Vec4f> *highlight(Utf8String &raw, EditorColors *colors,
+                                  int skip, int maxLines, int yPassed,
+                                  size_t history_size) {
+    if (wasCached && wasEntire && history_size == last_history_size)
       return &cached;
 
-     std::map<int, Vec4f> entries;
-    if(skip != lastSkip) {
+    std::map<int, Vec4f> entries;
+    if (skip != lastSkip) {
       wasCached = false;
       wasEntire = true;
     } else {
       wasEntire = !wasCached;
     }
 
-    HighlighterState state =  {0, false, false, 0, U"", 0};
+    HighlighterState state = {0, false, false, 0, U"", 0};
     int startIndex = 0;
     int y = 0;
     lineIndex.clear();
@@ -159,27 +178,31 @@ public:
     int last_entry = -1;
     bool wasTriggered = false;
     auto vec = raw.getCodePoints();
-    for(i = 0; i < raw.length(); i++) {
+    for (i = 0; i < raw.length(); i++) {
       char32_t current = vec[i];
-      if(current == '\n') {
+      if (current == '\n') {
         int endIndex = entries.size();
         lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);
         startIndex = endIndex;
-        if(lCount++ > skip + maxLines && wasCached)
+        if (lCount++ > skip + maxLines && wasCached)
           break;
       }
-      if(skip > 0 && wasCached && lCount < skip-1) {
+      if (skip > 0 && wasCached && lCount < skip - 1) {
         continue;
       }
-       if (state.busy && (state.mode == 6 || state.mode == 7) && isNumberEnd(current, state.mode == 7)) {
+      if (state.busy && (state.mode == 6 || state.mode == 7) &&
+          isNumberEnd(current, state.mode == 7)) {
         state.buffer = U"";
         state.busy = false;
         state.mode = 0;
         entries[i] = default_color;
         last_entry = i;
-      } 
-      if(language.stringCharacters.find(current) != std::string::npos && (last != language.escapeChar || (last == language.escapeChar && i >1 && raw[i-2] == language.escapeChar))) {
-        if(state.mode == 0 && !state.busy) {
+      }
+      if (language.stringCharacters.find(current) != std::string::npos &&
+          (last != language.escapeChar ||
+           (last == language.escapeChar && i > 1 &&
+            raw[i - 2] == language.escapeChar))) {
+        if (state.mode == 0 && !state.busy) {
           state.mode = 1;
           state.busy = true;
           state.start = i;
@@ -190,43 +213,49 @@ public:
           state.busy = false;
           state.mode = 0;
           state.start = 0;
-          entries[i+1] = default_color;
-          last_entry = i+1;
+          entries[i + 1] = default_color;
+          last_entry = i + 1;
         }
-      } else if (state.busy && state.mode == 3 && hasEnding(state.buffer, language.multiLineComment.second)) {
+      } else if (state.busy && state.mode == 3 &&
+                 hasEnding(state.buffer, language.multiLineComment.second)) {
         state.mode = 0;
         state.busy = false;
         entries[i] = default_color;
         last_entry = i;
-      } else if ((!state.busy || state.mode == 2) && language.multiLineComment.first.length() && hasEnding(state.buffer, language.multiLineComment.first)) {
-        entries[i- language.multiLineComment.first.length()] = comment_color;
-        last_entry = i- (language.multiLineComment.first.length());
+      } else if ((!state.busy || state.mode == 2) &&
+                 language.multiLineComment.first.length() &&
+                 hasEnding(state.buffer, language.multiLineComment.first)) {
+        entries[i - language.multiLineComment.first.length()] = comment_color;
+        last_entry = i - (language.multiLineComment.first.length());
         state.buffer = U"";
         state.busy = true;
         state.mode = 3;
-      }  else if (state.busy && state.mode == 2 && current == '\n') {
+      } else if (state.busy && state.mode == 2 && current == '\n') {
         state.buffer = U"";
         state.busy = false;
         state.mode = 0;
         entries[i] = default_color;
         last_entry = i;
-      } else if (!state.busy && language.singleLineComment.length() && hasEnding(state.buffer+current, language.singleLineComment)) {
+      } else if (!state.busy && language.singleLineComment.length() &&
+                 hasEnding(state.buffer + current,
+                           language.singleLineComment)) {
 
-        entries[i  - (language.singleLineComment.length()-1)] = comment_color;
-        last_entry = i- (language.singleLineComment.length()-1);
+        entries[i - (language.singleLineComment.length() - 1)] = comment_color;
+        last_entry = i - (language.singleLineComment.length() - 1);
         state.busy = true;
         state.mode = 2;
         state.buffer = U"";
-      }else if(isNonChar(current) && !state.busy && state.buffer.length() && !state.wasReset) {
+      } else if (isNonChar(current) && !state.busy && state.buffer.length() &&
+                 !state.wasReset) {
 
-        if (language.keyWords.count(state.buffer.getStrRef())) {
+        if (language.keyWords.count(language.keywords_case_sensitive ? state.buffer.getStrRef() : lowerCase(state.buffer.getStrRef()))) {
 
           entries[state.start] = keyword_color;
           entries[i] = default_color;
           last_entry = i;
           state.wasReset = true;
           state.buffer = U"";
-        } else if (language.specialWords.count(state.buffer.getStrRef())) {
+        } else if (language.specialWords.count(language.special_case_sensitive ? state.buffer.getStrRef() : lowerCase(state.buffer.getStrRef()))) {
           entries[state.start] = special_color;
           entries[i] = default_color;
           last_entry = i;
@@ -235,13 +264,14 @@ public:
         }
 
       } else if (isNumber(current) && isNonChar(last) && !state.busy) {
-          state.mode = 6;
-          if(current == '0' && i < raw.length()-1 && (vec[i+1] == 'x' || vec[i+1] == 'X'))
-            state.mode = 7;
-          state.busy = true;
-          last_entry = i;
-          entries[i] = number_color;
-      } else if(!state.busy && isNonChar(last) && !isNonChar(current)) {
+        state.mode = 6;
+        if (current == '0' && i < raw.length() - 1 &&
+            (vec[i + 1] == 'x' || vec[i + 1] == 'X'))
+          state.mode = 7;
+        state.busy = true;
+        last_entry = i;
+        entries[i] = number_color;
+      } else if (!state.busy && isNonChar(last) && !isNonChar(current)) {
         state.wasReset = false;
         state.buffer = U"";
         state.start = i;
@@ -249,19 +279,19 @@ public:
 
       state.buffer += current;
       last = current;
-      if(current == '\n') {
+      if (current == '\n') {
         bool cont = false;
-        if(skip > 0) {
-          if(lCount == skip) {
-        if(!wasCached && skip != lastSkip) {
-          savedState = {state, last_entry == -1 ? default_color : entries[last_entry], true};
-          entries[i+1] = savedState.color;
-        } else if(wasCached  && savedState.loaded) {
-          entries[i+1] = savedState.color;
-          state = savedState.state;
-        }
-
-
+        if (skip > 0) {
+          if (lCount == skip) {
+            if (!wasCached && skip != lastSkip) {
+              savedState = {
+                  state, last_entry == -1 ? default_color : entries[last_entry],
+                  true};
+              entries[i + 1] = savedState.color;
+            } else if (wasCached && savedState.loaded) {
+              entries[i + 1] = savedState.color;
+              state = savedState.state;
+            }
           }
         }
       } else if (wasTriggered) {
@@ -270,23 +300,24 @@ public:
     }
 
     //        std::cout << "lol: " << state.buffer << "end\n";
-    if(state.buffer.length()) {
+    if (state.buffer.length()) {
 
-      if (language.keyWords.count(state.buffer.getStrRef())) {
+      if (language.keyWords.count(language.keywords_case_sensitive ? state.buffer.getStrRef() : lowerCase(state.buffer.getStrRef()))) {
         entries[state.start] = keyword_color;
         entries[i] = default_color;
         state.wasReset = true;
-      } else if (language.specialWords.count(state.buffer.getStrRef())) {
+      } else if (language.specialWords.count(language.special_case_sensitive ? state.buffer.getStrRef() : lowerCase(state.buffer.getStrRef()))) {
         entries[state.start] = special_color;
         entries[i] = default_color;
         state.wasReset = true;
-      }  else if (hasEnding(state.buffer, language.singleLineComment)) {
+      } else if (hasEnding(state.buffer, language.singleLineComment)) {
 
-        entries[offset(i) - language.singleLineComment.length()] = comment_color;
+        entries[offset(i) - language.singleLineComment.length()] =
+            comment_color;
         state.busy = true;
         state.mode = 2;
         state.buffer = U"";
-      }else if (hasEnding(state.buffer, language.multiLineComment.first)) {
+      } else if (hasEnding(state.buffer, language.multiLineComment.first)) {
         entries[i] = comment_color;
         state.buffer = U"";
         state.busy = true;
@@ -305,14 +336,13 @@ public:
     lastSkip = skip;
     return &cached;
   }
+
 private:
   bool nextIsValid(Utf8String str, int i) {
-    return i >= str.length()-1 || isNonChar(str[i+1]);
+    return i >= str.length() - 1 || isNonChar(str[i + 1]);
   }
-  int offset(int i) {
-    return i+1;
-  }
-  bool hasEnding (Utf8String const &fullString, Utf8String const &ending) {
+  int offset(int i) { return i + 1; }
+  bool hasEnding(Utf8String const &fullString, Utf8String const &ending) {
     if (fullString.length() >= ending.length()) {
       return fullString.endsWith(ending);
     } else {

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <vector>
 #include <sstream>
 #include <fstream>
@@ -26,6 +27,10 @@ struct HistoryEntry {
   Utf8String content;
   std::vector<Utf8String> extra;
 };
+struct DirEntry {
+  fs::path base, entry, full;
+  bool isDir = false;
+};
 struct CommentEntry {
   int firstOffset;
   int yStart;
@@ -36,9 +41,11 @@ public:
   bool edited = false;
   bool streamMode = false;
   bool useXFallback = false;
+  bool isFolder = false;
   std::string branch;
   std::vector<Utf8String> lines;
   std::map<std::string, PosEntry> saveLocs;
+  std::unordered_map<size_t, DirEntry> dirEntries;
   std::deque<HistoryEntry> history;
   std::filesystem::file_time_type last_write_time;
   Selection selection;
@@ -56,7 +63,6 @@ public:
   int cachedY = 0;
   int cachedX = 0;
   int cachedMaxLines = 0;
-
   float startX = 0;
   float startY = 0;
   std::vector<std::pair<int, Utf8String>> prepare;
@@ -239,6 +245,8 @@ public:
     skip = 0;
     prepare.clear();
     history.clear();
+    isFolder = false;
+    dirEntries.clear();
     lines = {U""};
   }
   void deleteSelection() {
@@ -412,8 +420,9 @@ public:
 
     return -1;
   }
-  void jumpMatching() {
-    auto res = findMatchingWithCoords(x, y);
+  void jumpMatching(const Utf8String &stringCharacters,
+                                             char32_t escapeChar) {
+    auto res = findMatchingWithCoords(x, y, stringCharacters, escapeChar);
     if (res.first == -1 && res.second == -1) {
       return;
     }
@@ -424,7 +433,9 @@ public:
 
     center(res.second + 1);
   }
-  std::pair<int, int> findMatchingWithCoords(int inx, int iny) {
+  std::pair<int, int> findMatchingWithCoords(int inx, int iny,
+                                             const Utf8String &stringCharacters,
+                                             char32_t escapeChar) {
     bool isBinding = bind != nullptr;
     Utf8String &active = isBinding ? *bind : lines[y];
     char32_t current = active[x == lines[y].length() ? x - 1 : x];
@@ -443,22 +454,37 @@ public:
     size_t level = 0;
     auto localX = inx;
     auto localY = iny;
+    bool inString = false;
+    char32_t stringchar;
     if (!isClosing) {
       for (size_t yy = localY; yy < lines.size(); yy++) {
 
         for (size_t xx = localX; xx < lines[yy].length(); xx++) {
           if (xx == x && yy == y)
             continue;
+
           char32_t local = lines[yy][xx];
-          if (local == ref.second) {
+          if (local == ref.second && !inString) {
             if (level == 0) {
 
               return std::pair(xx, yy);
             } else {
               level--;
             }
-          } else if (local == ref.first) {
+          } else if (local == ref.first && !inString) {
             level++;
+          } else {
+            if (stringCharacters.find(local) != std::string::npos) {
+              if (xx == 0 || lines[yy][xx - 1] != escapeChar) {
+                if (!inString) {
+                  inString = true;
+                  stringchar = local;
+                } else {
+                  if (local == stringchar)
+                    inString = false;
+                }
+              }
+            }
           }
         }
         localX = 0;
@@ -475,20 +501,26 @@ public:
           if (xx == x && yy == y)
             continue;
           char32_t local = lines[yy][xx];
-          if (local == ref.first) {
+          if (local == ref.first && !inString) {
             if (level == 0) {
-              // x = xx;
-              // y = yy;
-              // selection.diffX(x);
-              // selection.diffY(y);
-
-              // center(yy + 1);
               return std::pair(xx, yy);
             } else {
               level--;
             }
-          } else if (local == ref.second) {
+          } else if (local == ref.second && !inString) {
             level++;
+          } else {
+            if (stringCharacters.find(local) != std::string::npos) {
+              if (xx == 0 || lines[yy][xx - 1] != escapeChar) {
+                if (!inString) {
+                  inString = true;
+                  stringchar = local;
+                } else {
+                  if (local == stringchar)
+                    inString = false;
+                }
+              }
+            }
           }
         }
       }
@@ -656,7 +688,6 @@ public:
         break;
     }
 
-
     return count;
   }
   Utf8String deleteLines(int64_t start, int64_t am, bool del = true) {
@@ -747,14 +778,14 @@ public:
     if (x == 0)
       return U"";
     Utf8String *target = bind ? bind : &lines[y];
-    int offset = findAnyOfLast(target->substr(0, x), wordSeperator);
+    auto sub = target->substr(0, x);
+    int offset = findAnyOfLast(sub, wordSeperator);
     if (offset == -1)
-      offset = target->length();
+      offset = sub.length();
     Utf8String w = target->substr(x - offset, offset);
     if (!onlyCopy) {
       target->erase(x - offset, offset);
-
-      historyPush(3, w.length(), w);
+      historyPush(33, w.length(), w);
     }
     x = x - offset;
     return w;
@@ -881,6 +912,14 @@ public:
       x = entry.x;
       break;
     }
+    case 33: {
+      x = entry.x - entry.length;
+      y = entry.y;
+      center(y);
+      (&lines[y])->insert(x, entry.content);
+      x += entry.length;
+      break;
+    }
     case 40: {
       CommentEntry *data = static_cast<CommentEntry *>(entry.userData);
       Utf8String commentStr = data->commentStr;
@@ -941,7 +980,13 @@ public:
     case 53: {
       y = entry.y;
       x = entry.x;
-      lines.erase(lines.begin() + y + 1, lines.begin() + 1 + y + entry.length);
+      lines.erase(lines.begin() + 1 + y, lines.begin() + y + 1 + entry.length);
+      break;
+    }
+    case 54: {
+      y = entry.y;
+      x = entry.x;
+      lines.erase(lines.begin() + y, lines.begin() + y + entry.length);
       break;
     }
     default:
@@ -1045,7 +1090,38 @@ public:
     return final;
   }
   Cursor() { lines.push_back(U""); }
-
+  void loadFolder(std::string path) {
+    reset();
+    isFolder = true;
+    std::vector<DirEntry> entries;
+    fs::path base = fs::canonical(path);
+    for (auto const &dir_entry : fs::directory_iterator{path}) {
+      fs::path full = dir_entry.path();
+      entries.push_back({base, dir_entry, full, dir_entry.is_directory()});
+    }
+    std::sort(entries.begin(), entries.end(), [](auto &a, auto &b) {
+      std::string left = a.entry.generic_string();
+      std::string right = b.entry.generic_string();
+      return std::lexicographical_compare(left.begin(), left.end(),
+                                          right.begin(), right.end());
+    });
+    entries.insert(entries.begin(),
+                   {base, "..", fs::canonical(base).parent_path(), true});
+    lines[0] = U"Dir: " + Utf8String(base.generic_string());
+    size_t yy = 1;
+    for (auto entry : entries) {
+      lines.push_back(U"> " +
+                      Utf8String(entry.entry.filename().generic_string()));
+      dirEntries[yy++] = entry;
+    }
+  }
+  DirEntry *getActiveDirEntry() {
+    if (!isFolder || y == 0)
+      return nullptr;
+    if (dirEntries.count(y))
+      return &dirEntries[y];
+    return nullptr;
+  }
   Cursor(std::string path) {
     if (path == "-") {
       std::string line;
@@ -1053,6 +1129,12 @@ public:
         lines.push_back(create(line));
       }
       return;
+    }
+    if (fs::is_directory(path)) {
+      loadFolder(path);
+      return;
+    } else {
+      isFolder = false;
     }
     std::stringstream ss;
     std::ifstream stream(path);
@@ -1125,6 +1207,12 @@ public:
     return result;
   }
   bool reloadFile(std::string path) {
+    if (fs::is_directory(path)) {
+      loadFolder(path);
+      return true;
+    } else {
+      isFolder = false;
+    }
     std::ifstream stream(path);
     if (!stream.is_open())
       return false;
@@ -1151,7 +1239,7 @@ public:
     return true;
   }
   bool openFile(std::string oldPath, std::string path) {
-    std::ifstream stream(path);
+
     if (oldPath.length()) {
       PosEntry entry;
       entry.x = xSave;
@@ -1159,7 +1247,13 @@ public:
       entry.skip = skip;
       saveLocs[oldPath] = entry;
     }
-
+    if (fs::is_directory(path)) {
+      loadFolder(path);
+      return true;
+    } else {
+      isFolder = false;
+    }
+    std::ifstream stream(path);
     if (!stream.is_open()) {
       return false;
     }
@@ -1267,8 +1361,9 @@ public:
           !contentLines[contentLines.size() - 1].length())
         contentLines.erase(contentLines.begin() + (contentLines.size() - 1),
                            contentLines.begin() + (contentLines.size()));
-      historyPush(53, contentLines.size(), U"");
       auto off = getCurrentLineLength() ? 1 : 0;
+      historyPush(off == 1 ? 53 : 54, contentLines.size(), U"");
+
       for (auto &l : contentLines) {
         lines.insert(lines.begin() + y + off, l);
         y++;
@@ -1359,13 +1454,14 @@ public:
       selection.stop();
       return 0;
     }
+
+    Utf8String *target = bind ? bind : &lines[y];
     if (copyOnly) {
       if (x == 0)
         return 0;
       x--;
       return lines[y][x];
     }
-    Utf8String *target = bind ? bind : &lines[y];
     if (x == 0) {
       if (y == 0 || bind)
         return 0;
@@ -1425,12 +1521,12 @@ public:
     selection.diffX(x);
   }
   const int64_t getCurrentLineLength() {
-    const Utf8String &ref = lines[y];
+    const Utf8String &ref = bind ? *bind : lines[y];
     return ref.length();
   }
   char32_t getCurrentChar() {
-    Utf8String &ref = lines[y];
-    return ref[x];
+    Utf8String &ref = bind ? *bind : lines[y];
+    return ref[x == getCurrentLineLength() ? x - 1 : x];
   }
   void moveRight() {
     Utf8String *current = bind ? bind : &lines[y];

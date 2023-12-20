@@ -77,10 +77,19 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
-    if (vim->getState().mode != 0) {
+    if (vim->getState().mode != 0 ||
+        (!vim->isCommandBufferActive() && cursor->isFolder)) {
+      auto window = vim->getState().window;
+      auto mods = vim->getKeyState().mods;
+
+      bool ctrl_pressed =
+          glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+          glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
+          mods & GLFW_MOD_CONTROL;
       bool shift_pressed =
           glfwGetKey(vim->getState().window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
-      vim->getState().inform(true, shift_pressed);
+
+      vim->getState().inform(true, shift_pressed, ctrl_pressed);
       auto out = withType(ResultType::Silent);
       out.allowCoords = false;
       return out;
@@ -167,12 +176,19 @@ public:
       state.addCursor(content.substr(3));
       return;
     }
+    if (content == ":win") {
+      state.open(true);
+      return;
+    } else if (content.find(":win ") == 0 && content.length() > 3) {
+      add_window(content.substr(5));
+      return;
+    }
 
-        if (content == ":theme") {
+    if (content == ":theme") {
       state.setTheme();
       return;
     } else if (content.find(":theme ") == 0 && content.length() > 3) {
-      if(state.provider.loadTheme(content.substr(7)))
+      if (state.provider.loadTheme(content.substr(7)))
         state.status = U"Theme: " + Utf8String(content.substr(7));
       return;
     }
@@ -534,8 +550,16 @@ public:
                                              ? cursor->x + 1
                                              : cursor->x,
                                          cursor->y);
-
-            cursor->jumpMatching();
+            {
+              auto &state = vim->getState();
+              if (state.hasHighlighting)
+                cursor->jumpMatching(
+                    state.highlighter.language.stringCharacters,
+                    state.highlighter.language.escapeChar);
+              else {
+                cursor->jumpMatching(U"\"", '\\');
+              }
+            }
             if (state.replaceMode == ReplaceMode::ALL) {
               cursor->x++;
               cursor->selection.diffX(cursor->x);
@@ -707,8 +731,17 @@ public:
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
 
-    if (!vim->activeAction() && mode == VimMode::NORMAL)
-      cursor->undo();
+    if (!vim->activeAction() && mode == VimMode::NORMAL) {
+
+      if (cursor->undo())
+        vim->getState().status = U"Undo";
+      else
+        vim->getState().status = U"Undo failed";
+      auto out = withType(ResultType::Silent);
+      out.allowCoords = false;
+      return out;
+    }
+
     return {};
   }
 };
@@ -762,6 +795,7 @@ public:
 
 class DollarAction : public Action {
 public:
+  DollarAction(bool ctrl_) : ctrl(ctrl_) {}
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
@@ -769,8 +803,16 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
+    auto window = vim->getState().window;
+    auto mods = vim->getKeyState().mods;
 
-    if (!vim->activeAction()) {
+    bool ctrl_pressed =
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
+        mods & GLFW_MOD_CONTROL;
+    if (!vim->activeAction() &&
+        (!ctrl ||
+         (ctrl && ctrl_pressed && (mode == VimMode::INSERT || cursor->bind)))) {
       cursor->jumpEnd();
     } else {
       state.action = "$";
@@ -778,10 +820,14 @@ public:
     }
     return withType(ResultType::Silent);
   }
+
+private:
+  bool ctrl = false;
 };
 
 class ZeroAction : public Action {
 public:
+  ZeroAction(bool ctrl_) : ctrl(ctrl_) {}
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
@@ -789,12 +835,23 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
+    auto window = vim->getState().window;
+    auto mods = vim->getKeyState().mods;
 
-    if (!vim->activeAction()) {
+    bool ctrl_pressed =
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
+        mods & GLFW_MOD_CONTROL;
+    if (!vim->activeAction() &&
+        (!ctrl ||
+         (ctrl && ctrl_pressed && (mode == VimMode::INSERT || cursor->bind)))) {
       cursor->jumpStart();
     }
     return withType(ResultType::Silent);
   }
+
+private:
+  bool ctrl = false;
 };
 class ColonAction : public Action {
 public:
@@ -868,7 +925,7 @@ public:
 
     if (!vim->activeAction() && mode == VimMode::NORMAL ||
         mode == VimMode::VISUAL) {
-      if (cursor->x == cursor->getCurrentLineLength() - 1)
+      if (cursor->x <= cursor->getCurrentLineLength() - 1)
         cursor->moveRight();
       vim->getState().tryPaste();
       if (mode == VimMode::VISUAL) {
@@ -892,7 +949,13 @@ public:
                     Vim *vim) override {
 
     if (!vim->activeAction()) {
-      cursor->jumpMatching();
+      auto &state = vim->getState();
+      if (state.hasHighlighting)
+        cursor->jumpMatching(state.highlighter.language.stringCharacters,
+                             state.highlighter.language.escapeChar);
+      else {
+        cursor->jumpMatching(U"\"", '\\');
+      }
     }
     return {};
   }
@@ -1090,8 +1153,9 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
+
     if (vim->activeAction()) {
-      return withType(ResultType::ExecuteSet);
+      return withType(ResultType::Silent);
     } else if (mode != VimMode::INSERT) {
       vim->getState().search();
       ActionResult r;
@@ -1126,10 +1190,13 @@ public:
         mods & GLFW_MOD_CONTROL;
     if (ctrl_pressed) {
       if (increase) {
-        vim->getState().increaseFontSize(0.05);
+        vim->getState().increaseFontSize(1);
       } else {
-        vim->getState().increaseFontSize(-0.05);
+        vim->getState().increaseFontSize(-1);
       }
+      auto out = withType(ResultType::Silent);
+      out.allowCoords = false;
+      return out;
     }
     return {};
   }
@@ -1206,7 +1273,7 @@ private:
   XInterceptor interceptor;
 };
 
-class Finder {
+class Finder : public Action {
 private:
   bool active = false, backwards = false, before = false;
   int foundIndex = -1;
@@ -1215,6 +1282,14 @@ private:
   Vim *vim = nullptr;
 
 public:
+  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override {
+    return {};
+  }
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override {
+    return {};
+  }
   void find(char32_t w, bool backwards, bool before, Cursor *cursor, Vim *vim) {
     this->active = true;
     this->cc = w;
@@ -1363,6 +1438,10 @@ public:
         glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
         glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
         mods & GLFW_MOD_CONTROL;
+    if (cursor->bind && control && ctrl_pressed) {
+      cursor->removeBeforeCursor();
+      return withType(ResultType::Silent);
+    }
     if (!vim->activeAction()) {
       if ((mode == VimMode::NORMAL && !control) ||
           (mode == VimMode::INSERT && control && ctrl_pressed)) {
@@ -1433,6 +1512,41 @@ public:
 private:
 };
 
+class SimpleCopy : public Action {
+
+public:
+public:
+  SimpleCopy(bool copy_) : copy(copy_) {}
+  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override {
+
+    return {};
+  }
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override {
+    auto window = vim->getState().window;
+    auto mods = vim->getKeyState().mods;
+    bool ctrl_pressed =
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
+        mods & GLFW_MOD_CONTROL;
+    if (!vim->activeAction() && (mode == VimMode::INSERT || cursor->bind) &&
+        ctrl_pressed) {
+      if (copy) {
+        vim->getState().tryCopy();
+      } else {
+        vim->getState().tryPaste();
+      }
+    }
+    auto out = withType(ResultType::Silent);
+    out.allowCoords = false;
+    return out;
+  }
+
+private:
+  bool copy = false;
+};
+
 void register_vim_commands(Vim &vim, State &state) {
   Finder *finder = new Finder();
   auto *d = new DAction();
@@ -1445,7 +1559,11 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrie(new FontSizeAction(false), "F_DECREASE", GLFW_KEY_MINUS);
   vim.registerTrie(new TabAction(), "TAB", GLFW_KEY_TAB);
   vim.registerTrie(new CtrlUAction(true), "CTRL+U", GLFW_KEY_U);
+  vim.registerTrie(new SimpleCopy(true), "CTRL+C", GLFW_KEY_C);
+  vim.registerTrie(new SimpleCopy(false), "CTRL+V", GLFW_KEY_V);
   vim.registerTrie(new CommentAction(), "COMMENT", GLFW_KEY_SLASH);
+  vim.registerTrie(new DollarAction(true), "CTRL+E", GLFW_KEY_E);
+  vim.registerTrie(new ZeroAction(true), "CTRL+A", GLFW_KEY_A);
   vim.registerTrie(new MoveAction(Direction::UP), "M_UP", GLFW_KEY_P);
   vim.registerTrie(new MoveAction(Direction::RIGHT), "M_RIGHT", GLFW_KEY_F);
   vim.registerTrie(new MoveAction(Direction::DOWN), "M_DOWN", GLFW_KEY_N);
@@ -1466,8 +1584,8 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new XAction(false), "x", 'x');
   vim.registerTrieChar(new VAction(), "v", 'v');
   vim.registerTrieChar(new CAction(), "c", 'c');
-  vim.registerTrieChar(new DollarAction(), "$", '$');
-  vim.registerTrieChar(new ZeroAction(), "0", '0');
+  vim.registerTrieChar(new DollarAction(false), "$", '$');
+  vim.registerTrieChar(new ZeroAction(false), "0", '0');
   vim.registerTrieChar(new ColonAction(), ":", ':');
   vim.registerTrieChar(new YAction(d), "y", 'y');
   vim.registerTrieChar(new PAction(), "p", 'p');
@@ -1490,7 +1608,7 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new FindAction(finder, true, true), "T", 'T');
   vim.registerTrieChar(new SemicolonAction(finder), ";", ';');
   vim.registerTrieChar(new CommaAction(finder), ",", ',');
-
+  vim.addRef(finder);
   for (auto &entry : state.provider.vimRemaps)
     vim.remapCharTrie(entry.first, entry.second);
 }
