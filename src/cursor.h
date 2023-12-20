@@ -63,7 +63,6 @@ public:
   int cachedY = 0;
   int cachedX = 0;
   int cachedMaxLines = 0;
-
   float startX = 0;
   float startY = 0;
   std::vector<std::pair<int, Utf8String>> prepare;
@@ -421,8 +420,9 @@ public:
 
     return -1;
   }
-  void jumpMatching() {
-    auto res = findMatchingWithCoords(x, y);
+  void jumpMatching(const Utf8String &stringCharacters,
+                                             char32_t escapeChar) {
+    auto res = findMatchingWithCoords(x, y, stringCharacters, escapeChar);
     if (res.first == -1 && res.second == -1) {
       return;
     }
@@ -433,7 +433,9 @@ public:
 
     center(res.second + 1);
   }
-  std::pair<int, int> findMatchingWithCoords(int inx, int iny) {
+  std::pair<int, int> findMatchingWithCoords(int inx, int iny,
+                                             const Utf8String &stringCharacters,
+                                             char32_t escapeChar) {
     bool isBinding = bind != nullptr;
     Utf8String &active = isBinding ? *bind : lines[y];
     char32_t current = active[x == lines[y].length() ? x - 1 : x];
@@ -452,22 +454,37 @@ public:
     size_t level = 0;
     auto localX = inx;
     auto localY = iny;
+    bool inString = false;
+    char32_t stringchar;
     if (!isClosing) {
       for (size_t yy = localY; yy < lines.size(); yy++) {
 
         for (size_t xx = localX; xx < lines[yy].length(); xx++) {
           if (xx == x && yy == y)
             continue;
+
           char32_t local = lines[yy][xx];
-          if (local == ref.second) {
+          if (local == ref.second && !inString) {
             if (level == 0) {
 
               return std::pair(xx, yy);
             } else {
               level--;
             }
-          } else if (local == ref.first) {
+          } else if (local == ref.first && !inString) {
             level++;
+          } else {
+            if (stringCharacters.find(local) != std::string::npos) {
+              if (xx == 0 || lines[yy][xx - 1] != escapeChar) {
+                if (!inString) {
+                  inString = true;
+                  stringchar = local;
+                } else {
+                  if (local == stringchar)
+                    inString = false;
+                }
+              }
+            }
           }
         }
         localX = 0;
@@ -484,20 +501,26 @@ public:
           if (xx == x && yy == y)
             continue;
           char32_t local = lines[yy][xx];
-          if (local == ref.first) {
+          if (local == ref.first && !inString) {
             if (level == 0) {
-              // x = xx;
-              // y = yy;
-              // selection.diffX(x);
-              // selection.diffY(y);
-
-              // center(yy + 1);
               return std::pair(xx, yy);
             } else {
               level--;
             }
-          } else if (local == ref.second) {
+          } else if (local == ref.second && !inString) {
             level++;
+          } else {
+            if (stringCharacters.find(local) != std::string::npos) {
+              if (xx == 0 || lines[yy][xx - 1] != escapeChar) {
+                if (!inString) {
+                  inString = true;
+                  stringchar = local;
+                } else {
+                  if (local == stringchar)
+                    inString = false;
+                }
+              }
+            }
           }
         }
       }
@@ -889,8 +912,8 @@ public:
       x = entry.x;
       break;
     }
-        case 33: {
-      x = entry.x-entry.length;
+    case 33: {
+      x = entry.x - entry.length;
       y = entry.y;
       center(y);
       (&lines[y])->insert(x, entry.content);
@@ -1502,7 +1525,7 @@ public:
     return ref.length();
   }
   char32_t getCurrentChar() {
-    Utf8String &ref = bind ? *bind :  lines[y];
+    Utf8String &ref = bind ? *bind : lines[y];
     return ref[x == getCurrentLineLength() ? x - 1 : x];
   }
   void moveRight() {

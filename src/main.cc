@@ -312,8 +312,15 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
         cursor->moveUp();
       else if (key == GLFW_KEY_N && isPress)
         cursor->moveDown();
-      else if (key == GLFW_KEY_5 && isPress)
-        cursor->jumpMatching();
+      else if (key == GLFW_KEY_5 && isPress) {
+        auto &state = *gState;
+        if (state.hasHighlighting)
+          cursor->jumpMatching(state.highlighter.language.stringCharacters,
+                               state.highlighter.language.escapeChar);
+        else {
+          cursor->jumpMatching(U"\"", '\\');
+        }
+      }
       gState->renderCoords();
     }
   } else {

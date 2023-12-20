@@ -550,8 +550,16 @@ public:
                                              ? cursor->x + 1
                                              : cursor->x,
                                          cursor->y);
-
-            cursor->jumpMatching();
+            {
+              auto &state = vim->getState();
+              if (state.hasHighlighting)
+                cursor->jumpMatching(
+                    state.highlighter.language.stringCharacters,
+                    state.highlighter.language.escapeChar);
+              else {
+                cursor->jumpMatching(U"\"", '\\');
+              }
+            }
             if (state.replaceMode == ReplaceMode::ALL) {
               cursor->x++;
               cursor->selection.diffX(cursor->x);
@@ -941,7 +949,13 @@ public:
                     Vim *vim) override {
 
     if (!vim->activeAction()) {
-      cursor->jumpMatching();
+      auto &state = vim->getState();
+      if (state.hasHighlighting)
+        cursor->jumpMatching(state.highlighter.language.stringCharacters,
+                             state.highlighter.language.escapeChar);
+      else {
+        cursor->jumpMatching(U"\"", '\\');
+      }
     }
     return {};
   }
