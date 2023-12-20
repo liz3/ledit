@@ -502,9 +502,10 @@ int window_func(Window *instance) {
              i < endLines; i++) {
 
           std::string value =
-              relative ? std::to_string(i == 0 ? cursor->y + 1
-                                               : (i < 0 ? i * -1 : i))
-                       : std::to_string(i + 1);
+              s >= cursor->lines.size() ? "~"
+              : relative                ? std::to_string(i == 0 ? cursor->y + 1
+                                                                : (i < 0 ? i * -1 : i))
+                                        : std::to_string(i + 1);
           auto tAdvance = atlas.getAdvance(value);
           xpos += maxLineAdvance - tAdvance;
           auto out = cursor->getPosLineWrapped(atlas, -maxRenderWidth,
@@ -539,12 +540,14 @@ int window_func(Window *instance) {
         auto endLines = maxLines;
         if (relative)
           endLines = (cursor->maxLines - (cursor->y - cursor->skip));
+        int s = start;
         for (int i = relative ? ((cursor->y - cursor->skip) * -1) : start;
              i < endLines; i++) {
           std::string value =
-              relative ? std::to_string(i == 0 ? cursor->y + 1
-                                               : (i < 0 ? i * -1 : i))
-                       : std::to_string(i + 1);
+              s >= cursor->lines.size() ? "~"
+              : relative                ? std::to_string(i == 0 ? cursor->y + 1
+                                                                : (i < 0 ? i * -1 : i))
+                                        : std::to_string(i + 1);
           auto tAdvance = atlas.getAdvance(value);
           xpos += maxLineAdvance - tAdvance;
           for (cc = value.begin(); cc != value.end(); cc++) {
@@ -553,6 +556,7 @@ int window_func(Window *instance) {
             auto advance = atlas.getAdvance(*cc);
             xpos += advance;
           }
+          s++;
           xpos = -(float)WIDTH / 2 + 10;
           ypos += toOffset;
         }
