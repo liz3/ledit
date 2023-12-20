@@ -240,6 +240,7 @@ There are some commands where this is supported though,
 :theme - switch theme
 :theme <name> - switch to a theme given its name
 :e - open new file
+:win - Open new window with path or without
 :e <path> - directly open new path
 :n - create new empty buffer
 :bd - delete active buffer
@@ -306,6 +307,7 @@ C-x-: - See output from last command
 C-x-p - If theres a running command, kill it
 C-x-s - Save to last path, if no path present, ledit will ask for a path.
 C-x-n - Save to new location, note that this will not overwrite the default save path, to overwrite the default path, save then load.
+C-x-shift-o - Open new window
 C-x-o - Load new file, this will replace the current file, non existing files will still load but be marked as New Files.
 C-x-c - Open ledits config path in a buffer
 g-x-y - Reload config

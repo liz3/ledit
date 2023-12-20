@@ -235,7 +235,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
         gState->switchLineHighlightMode();
       }
       if (action == GLFW_PRESS && key == GLFW_KEY_O) {
-        gState->open();
+        gState->open(shift_pressed);
       }
       if (action == GLFW_PRESS && key == GLFW_KEY_0) {
         gState->changeFont();
