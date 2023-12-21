@@ -10,7 +10,11 @@ After starting to experiment a bit i decided to call this a small side Project a
 
 **Edit:** When i started this project it was really just a simple simple text editor, but ive added features like commands, the vim mode and so on since i use this editor on a daily basis and needed them. I try to keep it as simple as possible, while respecting what i need of it.
 
-
+## Goals
+* This is a **simple** editor, while it is fairly "feature-rich" i would compare it to unmodified vim. or nano, ledit is simple!
+* Be entirely cross platform, even though its not good to use closed source software, i want this text editor to behave 1:1 on all major operating systems. You should be able to copy the configuration folder across operating systems and the editor must behave exactly the same, this is also why i torture myself testing this on windows to make sure features behaves the same there.
+* Be open, ledit and all its dependencies(freetype2, glfw, libpng, nhlohmann json, zlib) all have copyleft licenses, this does not include the Operating system it runs under.
+* **Solve the problem of text editing**, above all goals ledit is there to solve the problem of editing text based files. and solving it decently well.
 
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot.png?raw=true)
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot2.png?raw=true)
