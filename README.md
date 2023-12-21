@@ -62,13 +62,14 @@ cmake --build . --config Release
 - src/utf8String.h: Utf8 string implementation.
 - src/vim.h: Vim state management.
 - src/vim_actions.h: Implementation of all the vim motions.
+- win_icon_utils.h - The windows operating system has the wonderful habbit of giving seamingly simple problems very complicated solutions, requiring extra files for utilities.
 - third-party: ledit dependencies.
 ```
 There are more but these are self explaining.
 ## Config
 ledit can have a config in your home directory `~/.ledit/config.json`.  
 The following values can be set(without the comments)  
-For the colors there are default values, for the font face either remove it completely or make sure its a valid path.
+For the font face either remove it completely or make sure its a valid path.
 ```jsonc
 {
   "use_spaces": true, // when pressing tab insert spaces equal to the tab_width, this is true by default.
@@ -111,7 +112,7 @@ A file contains the following values:
       51, 51, 204, 255 // Special words color if a active mode is present, in RGBA (0-255)
     ],
     "string_color": [
-      51, 153, 102, 255 // String literak color if a active mode is present, in RGBA (0-255)
+      51, 153, 102, 255 // String literal color if a active mode is present, in RGBA (0-255)
     ],
    "background_color": [
      0, 0, 0, 255   // Editor background color RGBA (0-255)
@@ -123,7 +124,7 @@ A file contains the following values:
      0, 0, 0, 255   // Color of the active line background highlight. RGBA (0-255)
     ],
    "number_color": [
-     0, 0, 160, 255   // Color used for numbers. RGBA (0-255)
+     0, 0, 160, 255   // Color used for numbers, if a mode is active. RGBA (0-255)
     ],
    "line_number_color": [
      0, 0, 160, 255   // Color used for line numbers RGBA (0-255)
@@ -144,7 +145,7 @@ A file contains the following values:
 ```
 
 ## Highlighting for extra languages
-**Note: There are a few examples in [language-syntaxes](/language-syntaxes), further since this folder takes priority, it is possible to overwrite existing build in modes too by specifying the extensions, ledit will first use the folder and only if theres no match use its built in langauge support.**
+**Note: There are a few examples in [language-syntaxes](/language-syntaxes), further since this folder takes priority, it is possible to overwrite existing build in modes too by specifying the extensions, ledit will first use modes in the folder and only if theres no match use its built in language support.**
 
 ledit can load support for highlighting extra languages via the folder `~/.ledit/languages/`.
 A file in languages supports the properties shown in the following CMake example(note that this is not complete)
@@ -154,6 +155,8 @@ A file in languages supports the properties shown in the following CMake example
   {
     "mode_name": "CMake",
     "seperator_characters": " \t\n[]{}();:.,*-+/",
+    "keywords_case_sensitive": true,
+    "special_case_sensitive": true,
     "key_words": [
       "if",
       "else",
@@ -211,16 +214,16 @@ The shell command can contain certain Placeholders which will then be replaced a
 * `$selection_content` - if active the content of the current selection, note that the selection can contain new line characters, if not active this is a empty string `""`.
 
 ### Vim mode
-Ledit does support a limited set of vim motions using the `vim_mode`, this is because ive been using vim motions and wanted my editor to support it.
+Ledit does support a limited set of vim motions using the `vim_mode` setting, this is because ive been using vim motions and wanted my editor to support it.
 Enabling the vim mode drastically changes how the key mapping works, the emacs like keybindings are hardcoded in the main.cc file, since vim motions are a lot more complex then that,
 they are seperated and you can actually edit them.
 
-There are a lot of unspported options but most of the basics do work.
+There are a lot of unsupported options but most of the basics do work.
 
 #### Commands:
 The way the command input works is most cases is that you use something like `:e` and press enter, the editor will then switch into the existing implementation for the emacs mode and prompt again,
 i am aware this isn't entirely convinient but it was a loooot less work to implement and it was already a lot.
-There are some commands where this is supported though,
+There are some commands where direct arguments are supported though,
 
 ```
 :b - switch buffer
@@ -252,19 +255,17 @@ You can create `~/.ledit/vim_keys.json` which has a mapping of character key => 
 That means a config like
 ```json
 {
-
   "x": "d",
   "d": "x"
 }
 ```
-Switches key x to trigger delete and d to trigger x.
+Switches key x to trigger delete and d to trigger x in normal mode.
 
 
 ## Info
-Here are some infos.
 ### Standard input & output
 Ledit can work with stdin/out by passing `-` as file name, **NOTE**: saving will print once then exit!
-### Keybinds for default mode
+### Keybinds for default emacs-like mode
 C stands for CTRL, M for alt/meta.
 ```
 ESC:
