@@ -593,10 +593,11 @@ public:
             return {};
           }
         }
-        if (state.action == "\"") {
+        if (state.action == "\"" || state.action == "'" || state.action == "`") {
+
           auto result =
-              cursor->findGlobal(true, Utf8String("\""), cursor->x, cursor->y);
-          auto resultRight = cursor->findGlobal(false, Utf8String("\""),
+              cursor->findGlobal(true, Utf8String(state.action), cursor->x, cursor->y);
+          auto resultRight = cursor->findGlobal(false, Utf8String(state.action),
                                                 cursor->x + 1, cursor->y);
           if (result.first == -1 || result.second == -1 ||
               resultRight.first == -1 || resultRight.second == -1)
@@ -1600,6 +1601,8 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new ParenAction("("), "(", '(');
   vim.registerTrieChar(new ParenAction(")"), ")", ')');
   vim.registerTrieChar(new QuoteAction("\""), "\"", '\"');
+  vim.registerTrieChar(new QuoteAction("'"), "'", '\'');
+  vim.registerTrieChar(new QuoteAction("`"), "`", '`');
   vim.registerTrieChar(new SlashAction(), "/", '/');
   vim.registerTrieChar(new RAction(), "r", 'r');
   vim.registerTrieChar(new FindAction(finder, false, false), "f", 'f');
