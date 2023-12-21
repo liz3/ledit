@@ -62,7 +62,7 @@ cmake --build . --config Release
 - src/utf8String.h: Utf8 string implementation.
 - src/vim.h: Vim state management.
 - src/vim_actions.h: Implementation of all the vim motions.
-- win_icon_utils.h - The windows operating system has the wonderful habbit of giving seamingly simple problems very complicated solutions, requiring extra files for utilities.
+- win32_icon_utils.h - The windows operating system has the wonderful habbit of giving seamingly simple problems very complicated solutions, requiring extra files for utilities.
 - third-party: ledit dependencies.
 ```
 There are more but these are self explaining.
