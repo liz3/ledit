@@ -420,8 +420,7 @@ public:
 
     return -1;
   }
-  void jumpMatching(const Utf8String &stringCharacters,
-                                             char32_t escapeChar) {
+  void jumpMatching(const Utf8String &stringCharacters, char32_t escapeChar) {
     auto res = findMatchingWithCoords(x, y, stringCharacters, escapeChar);
     if (res.first == -1 && res.second == -1) {
       return;
@@ -691,8 +690,10 @@ public:
     return count;
   }
   Utf8String deleteLines(int64_t start, int64_t am, bool del = true) {
-    if (start < 0)
+    if (start < 0) {
+      am -= start * -1;
       start = 0;
+    }
     Utf8String out;
     if (start + am > lines.size())
       am = lines.size() - start;
@@ -702,13 +703,13 @@ public:
     y = start;
     x = 0;
     if (del) {
-      if (lines.size() == 0)
-        lines.push_back(U"");
       lines.erase(lines.begin() + start, lines.begin() + start + am);
       historyPushWithExtra(50, 0, U"", ll);
+      if (lines.size() == 0)
+        lines.push_back(U"");
     }
 
-    y = y == 0 ? 0 : y - 1;
+    y = y == lines.size() ? y - 1 : y;
     for (int64_t l = 0; l < ll.size(); l++) {
       out += ll[l];
       if (l < ll.size() - 1)
