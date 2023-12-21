@@ -777,8 +777,8 @@ public:
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
     if (vim->activeAction() && vim->activeAction()->action_name == "d") {
-      cursor->deleteLines(cursor->y, 1);
-      cursor->append('\n');
+      auto out = cursor->clearLine();
+      vim->getState().tryCopyInput(out);
       vim->setNext("i");
       return {};
     }

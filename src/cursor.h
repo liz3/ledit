@@ -689,24 +689,54 @@ public:
 
     return count;
   }
+  Utf8String clearLine() {
+    historyPush(45, lines[y].length(), lines[y]);
+    auto l = lines[y];
+    Utf8String base;
+    if (y > 0) {
+      for (auto entry : lines[y - 1]) {
+        if (entry != ' ' && entry != '\t')
+          break;
+        base += entry;
+      }
+    }
+    lines[y] = base;
+    x = base.length();
+    return l;
+  }
   Utf8String deleteLines(int64_t start, int64_t am, bool del = true) {
     if (start < 0) {
       am -= start * -1;
       start = 0;
     }
+    if (y == 0 && lines.size() == 1) {
+      historyPush(45, lines[0].length(), lines[0]);
+      auto l = lines[0];
+      lines[0] = U"";
+      return l;
+    }
     Utf8String out;
     if (start + am > lines.size())
       am = lines.size() - start;
     std::vector<Utf8String> ll;
+    bool all = start == 0 && am == lines.size() && del;
+    if (all) {
+      start++;
+      am--;
+    }
     for (size_t l = start; l < start + am; l++)
       ll.push_back(lines[l]);
     y = start;
     x = 0;
     if (del) {
+
       lines.erase(lines.begin() + start, lines.begin() + start + am);
       historyPushWithExtra(50, 0, U"", ll);
-      if (lines.size() == 0)
-        lines.push_back(U"");
+      if (all) {
+        y = 0;
+        historyPush(46, lines[0].length(), lines[0]);
+        lines[0] = U"";
+      }
     }
 
     y = y == lines.size() ? y - 1 : y;
@@ -964,6 +994,18 @@ public:
       x = entry.x;
       delete data;
       break;
+    }
+    case 45: {
+      y = entry.y;
+      x = entry.x;
+      lines[y] = entry.content;
+      break;
+    }
+    case 46: {
+      y = entry.y;
+      x = entry.x;
+      lines[y] = entry.content;
+      return undo();
     }
     case 50: {
       y = entry.y;
