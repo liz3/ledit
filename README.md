@@ -103,7 +103,10 @@ Themes are defined in `~/.ledit/themes/<name>.json`, for example `~/.ledit/theme
 A file contains the following values:
 ```jsonc
    {
-    "comment_color": [
+    "fold_color": [
+      127, 127, 127, 127 // Color for folds, in RGBA (0-255)
+    ],
+     "comment_color": [
       127, 127, 127, 127 // Comment color if a active mode is present, in RGBA (0-255)
     ],
     "default_color": [
@@ -320,6 +323,7 @@ C-x-t - Set theme.
 C-x-k - switch between open files(buffers) in the session,
 Note: pressing this again will rotate through files that where open.
 C-TAB - fast rotate through open files(buffers).
+C-shift - Fold selectior or unfold existing fold.
 
 C-z - Undo.
 M-w/C-c - Copy

@@ -673,9 +673,10 @@ public:
     if (vim && vim->getMode() != VimMode::INSERT &&
         x == cursor->getCurrentLineLength() + 1 && x > 1)
       x--;
+
     status = (vim ? Utf8String(vim->getModeName()) + U" " : U"") +
-             numberToString(cursor->y + 1) + U":" + numberToString(x) + branch +
-             U" [" + fileName + U": " +
+             numberToString(cursor->y + 1 + cursor->getFoldOffset(cursor->y)) +
+             U":" + numberToString(x) + branch + U" [" + fileName + U": " +
              (hasHighlighting    ? highlighter.languageName
               : cursor->isFolder ? U"Dir"
                                  : U"Text") +

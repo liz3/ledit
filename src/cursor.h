@@ -115,9 +115,20 @@ public:
     for (size_t c = 0; c < count; c++) {
       entry.lines[c] = lines[y + c];
     }
-    foldEntries[y] = entry;
+    std::unordered_map<int, FoldEntry> n;
+    for (auto other : foldEntries) {
+      if (other.first == y)
+        continue;
+      if (other.first > y) {
+        n[other.first - entry.lines.size() +1] = other.second;
+      } else {
+        n[other.first] = other.second;
+      }
+    }
+    n[y] = entry;
+    foldEntries = n;
     lines.erase(lines.begin() + y + 1, lines.begin() + y + 1 + (count - 1));
-    lines[y] = U">> " + Utf8String(std::to_string(count)) + U" Lines --";
+    lines[y] = U">> " + Utf8String(std::to_string(count)) + U" Lines -- " + entry.lines[0];
   }
   void unfold() {
     if (foldEntries.count(y)) {
@@ -126,7 +137,18 @@ public:
       for (size_t i = 1; i < entry.lines.size(); i++) {
         lines.insert(lines.begin() + y + i, entry.lines[i]);
       }
+      std::unordered_map<int, FoldEntry> n;
+      for (auto other : foldEntries) {
+        if (other.first == y)
+          continue;
+        if (other.first > y) {
+          n[other.first + entry.lines.size() - 1] = other.second;
+        } else {
+          n[other.first] = other.second;
+        }
+      }
       foldEntries.erase(y);
+      foldEntries = n;
     }
   }
   Utf8String fold() {
@@ -138,10 +160,21 @@ public:
       for (size_t i = 1; i < entry.lines.size(); i++) {
         lines.insert(lines.begin() + y + i, entry.lines[i]);
       }
-      foldEntries.erase(y);
       historyPush(61, entry.lines.size(), U"");
-
-      return U"Unfolded: " + Utf8String(std::to_string(entry.lines.size()));
+      std::unordered_map<int, FoldEntry> n;
+      for (auto other : foldEntries) {
+        if (other.first == y)
+          continue;
+        if (other.first > y) {
+          n[other.first + entry.lines.size() - 1] = other.second;
+        } else {
+          n[other.first] = other.second;
+        }
+      }
+      auto s = entry.lines.size();
+      foldEntries.erase(y);
+      foldEntries = n;
+      return U"Unfolded: " + Utf8String(std::to_string(s));
 
     } else {
       if (!selection.active)
@@ -162,10 +195,23 @@ public:
       for (size_t c = 0; c < count; c++) {
         entry.lines[c] = lines[y + c];
       }
-      foldEntries[y] = entry;
+      std::unordered_map<int, FoldEntry> n;
+      for (auto other : foldEntries) {
+        if (other.first == y)
+          continue;
+        if (other.first > y) {
+          n[other.first - entry.lines.size()+1] = other.second;
+        } else {
+          n[other.first] = other.second;
+        }
+      }
+      n[y] = entry;
+      foldEntries = n;
       lines.erase(lines.begin() + y + 1, lines.begin() + y + 1 + (count - 1));
-      lines[y] = U">> " + Utf8String(std::to_string(count)) + U" Lines -- " + entry.lines[0];
+      lines[y] = U">> " + Utf8String(std::to_string(count)) + U" Lines -- " +
+                 entry.lines[0];
       historyPush(60, 0, U"");
+      selection.stop();
       return U"Folded: " + Utf8String(std::to_string(entry.lines.size()));
     }
     return U"";
@@ -1362,6 +1408,7 @@ public:
     if (!stream.is_open())
       return false;
     history.clear();
+    foldEntries.clear();
     std::stringstream ss;
     ss << stream.rdbuf();
     std::string c = ss.str();

@@ -14,10 +14,10 @@ struct EditorColors {
   Vec4f string_color = vec4f(0.2, 0.6, 0.4, 1.0);
   Vec4f default_color = vec4fs(0.95);
   Vec4f keyword_color = vec4f(0.6, 0.1, 0.2, 1.0);
-  Vec4f fold_color = vec4f(0.6, 0.1, 0.2, 1.0);
   Vec4f special_color = vec4f(0.2, 0.2, 0.8, 1.0);
   Vec4f number_color = vec4f(0.2, 0.2, 0.6, 1.0);
   Vec4f comment_color = vec4fs(0.5);
+  Vec4f fold_color = vec4fs(0.5);
   Vec4f background_color = vec4f(0, 0, 0, 1.0);
   Vec4f highlight_color = vec4f(0.1, 0.1, 0.1, 1.0);
   Vec4f selection_color = vec4f(0.7, 0.7, 0.7, 0.6);

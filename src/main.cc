@@ -343,6 +343,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       if (gState->mode != 0)
         gState->provideComplete(shift_pressed);
       else {
+        if(shift_pressed) {
+            gState->fold();
+        } else {
         bool useSpaces = gState->provider.useSpaces;
         auto am = gState->provider.tabWidth;
         if (useSpaces)
@@ -350,6 +353,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
         else
           cursor->append('\t');
       }
+    }
     }
     if (isPress && key == GLFW_KEY_BACKSPACE) {
       if (alt_pressed) {
@@ -593,7 +597,7 @@ int window_func(Window *instance) {
       //        std::cout << cxOffset << ":" << lineOffset << "\n";
 
       for (size_t x = 0; x < allLines->size(); x++) {
-        const bool isFold = cursor->foldEntries.count(x);
+        const bool isFold = cursor->foldEntries.count(x+cursor->skip);
         auto content = (*allLines)[x].second;
         auto hasColorIndex = highlighter.lineIndex.count(x + lineOffset);
         if (content.length())
@@ -685,7 +689,7 @@ int window_func(Window *instance) {
       auto heightRemaining = renderHeight;
 
       for (size_t x = 0; x < allLines->size(); x++) {
-        const bool isFold = cursor->foldEntries.count(x);
+        const bool isFold = cursor->foldEntries.count(x+cursor->skip);
         auto content = (*allLines)[x].second;
         for (c = content.begin(); c != content.end(); c++) {
           if (*c != '\t')
