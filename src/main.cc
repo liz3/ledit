@@ -510,9 +510,11 @@ int window_func(Window *instance) {
 
           std::string value =
               s >= cursor->lines.size() ? "~"
-              : relative                ? std::to_string(i == 0 ? cursor->y + 1
-                                                                : (i < 0 ? i * -1 : i))
-                                        : std::to_string(i + 1);
+              : relative
+                  ? std::to_string(i == 0 ? cursor->y + 1 +
+                                                cursor->getFoldOffset(cursor->y)
+                                          : (i < 0 ? i * -1 : i))
+                  : std::to_string(i + cursor->getFoldOffset(i) + 1);
           auto tAdvance = atlas.getAdvance(value);
           xpos += maxLineAdvance - tAdvance;
           auto out = cursor->getPosLineWrapped(atlas, -maxRenderWidth,
@@ -552,9 +554,11 @@ int window_func(Window *instance) {
              i < endLines; i++) {
           std::string value =
               s >= cursor->lines.size() ? "~"
-              : relative                ? std::to_string(i == 0 ? cursor->y + 1
-                                                                : (i < 0 ? i * -1 : i))
-                                        : std::to_string(i + 1);
+              : relative
+                  ? std::to_string(i == 0 ? cursor->y + 1 +
+                                                cursor->getFoldOffset(cursor->y)
+                                          : (i < 0 ? i * -1 : i))
+                  : std::to_string(i + cursor->getFoldOffset(i) + 1);
           auto tAdvance = atlas.getAdvance(value);
           xpos += maxLineAdvance - tAdvance;
           for (cc = value.begin(); cc != value.end(); cc++) {
@@ -578,6 +582,7 @@ int window_func(Window *instance) {
     xpos = -(int32_t)WIDTH / 2 + 20 + linesAdvance;
     cursor->setRenderStart(20 + linesAdvance, 15);
     Vec4f color = state.provider.colors.default_color;
+    Vec4f fold_color = state.provider.colors.fold_color;
     if (state.hasHighlighting) {
       auto highlighter = state.highlighter;
       int lineOffset = cursor->skip;
@@ -588,6 +593,7 @@ int window_func(Window *instance) {
       //        std::cout << cxOffset << ":" << lineOffset << "\n";
 
       for (size_t x = 0; x < allLines->size(); x++) {
+        const bool isFold = cursor->foldEntries.count(x);
         auto content = (*allLines)[x].second;
         auto hasColorIndex = highlighter.lineIndex.count(x + lineOffset);
         if (content.length())
@@ -621,7 +627,8 @@ int window_func(Window *instance) {
           cOffset++;
           charAdvance++;
           if (*c != '\t')
-            entries.push_back(atlas.render(*c, xpos, ypos, color));
+            entries.push_back(
+                atlas.render(*c, xpos, ypos, isFold ? fold_color : color));
           xpos += atlas.getAdvance(*c);
           if (state.lineWrapping) {
             if (xpos > (maxRenderWidth + atlas.getAdvance(*c))) {
@@ -678,10 +685,12 @@ int window_func(Window *instance) {
       auto heightRemaining = renderHeight;
 
       for (size_t x = 0; x < allLines->size(); x++) {
+        const bool isFold = cursor->foldEntries.count(x);
         auto content = (*allLines)[x].second;
         for (c = content.begin(); c != content.end(); c++) {
           if (*c != '\t')
-            entries.push_back(atlas.render(*c, xpos, ypos, color));
+            entries.push_back(
+                atlas.render(*c, xpos, ypos, isFold ? fold_color : color));
           xpos += atlas.getAdvance(*c);
           if (state.lineWrapping) {
             if (xpos > (maxRenderWidth + atlas.getAdvance(*c))) {

@@ -453,12 +453,12 @@ public:
     if (mode == 0 && cursor->isFolder && success) {
       auto *entry = cursor->getActiveDirEntry();
       if (entry) {
-          if(ctrl_pressed && !shift_pressed)
-            addCursor(entry->full.generic_string());
-          else if(ctrl_pressed && shift_pressed)
-            add_window(entry->full.generic_string());
-          else
-            addCursorWithExisting(entry->full.generic_string());
+        if (ctrl_pressed && !shift_pressed)
+          addCursor(entry->full.generic_string());
+        else if (ctrl_pressed && shift_pressed)
+          add_window(entry->full.generic_string());
+        else
+          addCursorWithExisting(entry->full.generic_string());
       }
       return;
     }
@@ -658,6 +658,7 @@ public:
                            : cursors[round]->path);
     }
   }
+  void fold() { status = cursor->fold(); }
   void renderCoords() {
     if (mode != 0)
       return;
@@ -675,7 +676,10 @@ public:
     status = (vim ? Utf8String(vim->getModeName()) + U" " : U"") +
              numberToString(cursor->y + 1) + U":" + numberToString(x) + branch +
              U" [" + fileName + U": " +
-             (hasHighlighting ? highlighter.languageName : cursor->isFolder ? U"Dir" : U"Text") + U"]";
+             (hasHighlighting    ? highlighter.languageName
+              : cursor->isFolder ? U"Dir"
+                                 : U"Text") +
+             U"]";
     if (cursor->selection.active)
       status +=
           U" Selected: [" + numberToString(cursor->getSelectionSize()) + U"]";

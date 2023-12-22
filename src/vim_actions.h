@@ -265,8 +265,10 @@ public:
         glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
         glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
         mods & GLFW_MOD_CONTROL;
+    bool shift_pressed = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
+    State &st = vim->getState();
+
     if (mode == VimMode::INSERT && !ctrl_pressed) {
-      State &st = vim->getState();
       bool useSpaces = st.provider.useSpaces;
       auto am = st.provider.tabWidth;
       if (useSpaces)
@@ -277,6 +279,17 @@ public:
 
       if (ctrl_pressed)
         vim->getState().fastSwitch();
+      else if (shift_pressed) {
+        st.fold();
+        ActionResult r;
+        r.allowCoords = false;
+        return r;
+      }
+    } else if (shift_pressed && mode == VimMode::VISUAL) {
+      st.fold();
+      ActionResult r;
+      r.allowCoords = false;
+      return r;
     }
     return {};
   }
@@ -593,10 +606,11 @@ public:
             return {};
           }
         }
-        if (state.action == "\"" || state.action == "'" || state.action == "`") {
+        if (state.action == "\"" || state.action == "'" ||
+            state.action == "`") {
 
-          auto result =
-              cursor->findGlobal(true, Utf8String(state.action), cursor->x, cursor->y);
+          auto result = cursor->findGlobal(true, Utf8String(state.action),
+                                           cursor->x, cursor->y);
           auto resultRight = cursor->findGlobal(false, Utf8String(state.action),
                                                 cursor->x + 1, cursor->y);
           if (result.first == -1 || result.second == -1 ||

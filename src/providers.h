@@ -155,6 +155,8 @@ public:
           getVecOrDefault(configColors, "special_color", colors.special_color);
       colors.comment_color =
           getVecOrDefault(configColors, "comment_color", colors.comment_color);
+      colors.fold_color =
+          getVecOrDefault(configColors, "fold_color", colors.fold_color);
       colors.background_color = getVecOrDefault(
           configColors, "background_color", colors.background_color);
       colors.highlight_color = getVecOrDefault(configColors, "highlight_color",
@@ -457,7 +459,7 @@ public:
     auto branch = out.second;
     if (branch.find("not a git repository") != std::string::npos)
       return "";
-    if(branch.find("* ") == std::string::npos)
+    if (branch.find("* ") == std::string::npos)
       return "";
     std::string finalBranch = branch.substr(branch.find("* ") + 2);
     return finalBranch.substr(0, finalBranch.find("\n"));
@@ -610,9 +612,9 @@ public:
       return;
     Language language;
     language.modeName = entry["mode_name"];
-    if(entry.contains("keywords_case_sensitive"))
+    if (entry.contains("keywords_case_sensitive"))
       language.keywords_case_sensitive = entry["keywords_case_sensitive"];
-    if(entry.contains("special_case_sensitive"))
+    if (entry.contains("special_case_sensitive"))
       language.special_case_sensitive = entry["special_case_sensitive"];
     if (entry.contains("key_words") && entry["key_words"].is_array()) {
       for (auto &word : entry["key_words"])
@@ -675,7 +677,8 @@ public:
     allowTransparency =
         getBoolOrDefault(*configRoot, "window_transparency", allowTransparency);
     lineNumbers = getBoolOrDefault(*configRoot, "line_numbers", lineNumbers);
-    relativeLineNumbers = getBoolOrDefault(*configRoot, "relative_line_numbers", relativeLineNumbers);
+    relativeLineNumbers = getBoolOrDefault(*configRoot, "relative_line_numbers",
+                                           relativeLineNumbers);
     lineWrapping = getBoolOrDefault(*configRoot, "line_wrapping", lineWrapping);
     highlightLine =
         getStringOrDefault(*configRoot, "highlight_active_line", highlightLine);
@@ -723,9 +726,9 @@ public:
     std::string path = inp;
     fs::path p(path);
     std::string partial;
-    if(p.has_filename()){
-        path = p.parent_path().generic_string();
-        partial = p.filename().generic_string();
+    if (p.has_filename()) {
+      path = p.parent_path().generic_string();
+      partial = p.filename().generic_string();
     }
     if (!fs::exists(path) || !fs::is_directory(path))
       return "";
@@ -740,11 +743,11 @@ public:
     }
     folderEntries.clear();
     for (auto const &dir_entry : fs::directory_iterator{path}) {
-      if(partial.size()) {
-        if(!dir_entry.path().has_filename())
+      if (partial.size()) {
+        if (!dir_entry.path().has_filename())
           continue;
         std::string n = dir_entry.path().filename().generic_string();
-        if(n.find(partial) == std::string::npos)
+        if (n.find(partial) == std::string::npos)
           continue;
       }
       folderEntries.push_back(dir_entry.path().string());

@@ -19,6 +19,9 @@
 struct PosEntry {
   int x, y, skip;
 };
+struct FoldEntry {
+  std::vector<Utf8String> lines;
+};
 struct HistoryEntry {
   int x, y;
   int mode;
@@ -44,6 +47,7 @@ public:
   bool isFolder = false;
   std::string branch;
   std::vector<Utf8String> lines;
+  std::unordered_map<int, FoldEntry> foldEntries;
   std::map<std::string, PosEntry> saveLocs;
   std::unordered_map<size_t, DirEntry> dirEntries;
   std::deque<HistoryEntry> history;
@@ -105,7 +109,78 @@ public:
     if (x > getCurrentLineLength())
       x = getCurrentLineLength();
   }
+  void foldWithCount(size_t count) {
+    FoldEntry entry;
+    entry.lines.resize(count);
+    for (size_t c = 0; c < count; c++) {
+      entry.lines[c] = lines[y + c];
+    }
+    foldEntries[y] = entry;
+    lines.erase(lines.begin() + y + 1, lines.begin() + y + 1 + (count - 1));
+    lines[y] = U">> " + Utf8String(std::to_string(count)) + U" Lines --";
+  }
+  void unfold() {
+    if (foldEntries.count(y)) {
+      auto &entry = foldEntries[y];
+      lines[y] = entry.lines[0];
+      for (size_t i = 1; i < entry.lines.size(); i++) {
+        lines.insert(lines.begin() + y + i, entry.lines[i]);
+      }
+      foldEntries.erase(y);
+    }
+  }
+  Utf8String fold() {
+    if (bind)
+      return U"";
+    if (foldEntries.count(y)) {
+      auto &entry = foldEntries[y];
+      lines[y] = entry.lines[0];
+      for (size_t i = 1; i < entry.lines.size(); i++) {
+        lines.insert(lines.begin() + y + i, entry.lines[i]);
+      }
+      foldEntries.erase(y);
+      historyPush(61, entry.lines.size(), U"");
+
+      return U"Unfolded: " + Utf8String(std::to_string(entry.lines.size()));
+
+    } else {
+      if (!selection.active)
+        return U"Fold: no selection active";
+      auto yStart = selection.getYSmaller();
+      auto yEnd = selection.getYBigger();
+      if (yStart == yEnd)
+        return U"Fold: cannot fold a single line";
+      for (int t = yStart; t < yEnd; t++) {
+        if (foldEntries.count(t))
+          return U"Fold: selection contains already folded region";
+      }
+      y = yStart;
+      x = 0;
+      auto count = yEnd - yStart;
+      FoldEntry entry;
+      entry.lines.resize(count);
+      for (size_t c = 0; c < count; c++) {
+        entry.lines[c] = lines[y + c];
+      }
+      foldEntries[y] = entry;
+      lines.erase(lines.begin() + y + 1, lines.begin() + y + 1 + (count - 1));
+      lines[y] = U">> " + Utf8String(std::to_string(count)) + U" Lines -- " + entry.lines[0];
+      historyPush(60, 0, U"");
+      return U"Folded: " + Utf8String(std::to_string(entry.lines.size()));
+    }
+    return U"";
+  }
+  size_t getFoldOffset(int off) {
+    size_t c = 0;
+    for (auto &entry : foldEntries) {
+      if (entry.first < off)
+        c += entry.second.lines.size() - 1;
+    }
+    return c;
+  }
   void comment(Utf8String commentStr) {
+    if (bind || foldEntries.count(y))
+      return;
     if (!selection.active) {
       Utf8String firstLine = lines[y];
       int firstOffset = 0;
@@ -245,11 +320,14 @@ public:
     skip = 0;
     prepare.clear();
     history.clear();
+    foldEntries.clear();
     isFolder = false;
     dirEntries.clear();
     lines = {U""};
   }
   void deleteSelection() {
+    if (foldEntries.count(y))
+      return;
     if (selection.yStart == selection.yEnd) {
       auto line = lines[y];
       historyPush(16, line.length(), line);
@@ -360,6 +438,8 @@ public:
     bool found = false;
     for (int x = i; x < lines.size(); x++) {
       auto line = lines[x];
+      if (foldEntries.count(x))
+        continue;
       auto where = line.find(what, xSave);
       if (where != std::string::npos) {
         auto xNow = this->x;
@@ -655,7 +735,7 @@ public:
   }
 
   void setCurrent(char32_t character) {
-    if (bind)
+    if (bind || foldEntries.count(y))
       return;
     Utf8String temp;
     temp += lines[y][x];
@@ -690,6 +770,8 @@ public:
     return count;
   }
   Utf8String clearLine() {
+    if (bind || foldEntries.count(y))
+      return U"";
     historyPush(45, lines[y].length(), lines[y]);
     auto l = lines[y];
     Utf8String base;
@@ -705,6 +787,8 @@ public:
     return l;
   }
   Utf8String deleteLines(int64_t start, int64_t am, bool del = true) {
+    if (bind || foldEntries.count(y))
+      return U"";
     if (start < 0) {
       am -= start * -1;
       start = 0;
@@ -748,6 +832,8 @@ public:
     return out;
   }
   Utf8String deleteWord() {
+    if (foldEntries.count(y))
+      return U"";
     Utf8String *target = bind ? bind : &lines[y];
     int offset = findAnyOf(target->substr(x), wordSeperator);
     if (offset == -1)
@@ -758,6 +844,8 @@ public:
     return w;
   }
   Utf8String deleteWordVim(bool withSpace, bool del = true) {
+    if (!bind && foldEntries.count(y))
+      return U"";
     Utf8String &target = bind ? *bind : lines[y];
     auto start = x;
     auto end = x;
@@ -807,6 +895,8 @@ public:
   }
   Utf8String deleteWordBackwards(bool onlyCopy = false) {
     if (x == 0)
+      return U"";
+    if (!bind && foldEntries.count(y))
       return U"";
     Utf8String *target = bind ? bind : &lines[y];
     auto sub = target->substr(0, x);
@@ -1030,6 +1120,18 @@ public:
       y = entry.y;
       x = entry.x;
       lines.erase(lines.begin() + y, lines.begin() + y + entry.length);
+      break;
+    }
+    case 60: {
+      y = entry.y;
+      x = entry.x;
+      unfold();
+      break;
+    }
+    case 61: {
+      y = entry.y;
+      x = entry.x;
+      foldWithCount(entry.length);
       break;
     }
     default:
@@ -1317,6 +1419,7 @@ public:
     }
     xSave = x;
     history.clear();
+    foldEntries.clear();
     std::stringstream ss;
     ss << stream.rdbuf();
     std::string c = ss.str();
@@ -1339,6 +1442,8 @@ public:
     return true;
   }
   void append(char32_t c) {
+    if (!bind && foldEntries.count(y))
+      return;
     if (selection.active) {
       deleteSelection();
       selection.stop();
@@ -1391,6 +1496,8 @@ public:
       append(content);
       return;
     }
+    if (foldEntries.count(y))
+      return;
     if (selection.active) {
       deleteSelection();
       selection.stop();
@@ -1451,6 +1558,8 @@ public:
     center(y);
   }
   void append(Utf8String content) {
+    if (!bind && foldEntries.count(y))
+      return;
     auto *target = bind ? bind : &lines[y];
     target->insert(x, content);
     historyPush(2, content.length(), content);
@@ -1466,6 +1575,8 @@ public:
     return lines[y].substr(0, x);
   }
   char32_t removeBeforeCursor() {
+    if (!bind && foldEntries.count(y))
+      return 0;
     if (selection.active)
       return 0;
     Utf8String *target = bind ? bind : &lines[y];
@@ -1497,7 +1608,8 @@ public:
       selection.stop();
       return 0;
     }
-
+    if (!bind && foldEntries.count(y))
+      return 0;
     Utf8String *target = bind ? bind : &lines[y];
     if (copyOnly) {
       if (x == 0)
@@ -1602,7 +1714,18 @@ public:
     if (path == "-") {
       auto &stream = std::cout;
       for (size_t i = 0; i < lines.size(); i++) {
-        stream << convert_str(lines[i]);
+        if (foldEntries.count(i)) {
+          auto &entry = foldEntries[i];
+          for (size_t t = 0; t < entry.lines.size(); t++) {
+            stream << convert_str(entry.lines[t]);
+
+            if (t < entry.lines.size() - 1)
+              stream << "\n";
+          }
+
+        } else {
+          stream << convert_str(lines[i]);
+        }
         if (i < lines.size() - 1)
           stream << "\n";
       }
@@ -1614,7 +1737,18 @@ public:
       return false;
     }
     for (size_t i = 0; i < lines.size(); i++) {
-      stream << convert_str(lines[i]);
+      if (foldEntries.count(i)) {
+        auto &entry = foldEntries[i];
+        for (size_t t = 0; t < entry.lines.size(); t++) {
+          stream << convert_str(entry.lines[t]);
+
+          if (t < entry.lines.size() - 1)
+            stream << "\n";
+        }
+
+      } else {
+        stream << convert_str(lines[i]);
+      }
       if (i < lines.size() - 1)
         stream << "\n";
     }
