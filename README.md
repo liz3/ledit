@@ -100,6 +100,7 @@ For the font face either remove it completely or make sure its a valid path.
 ```
 ### Themes
 Themes are defined in `~/.ledit/themes/<name>.json`, for example `~/.ledit/themes/nord.json`.
+Colors can be a json-array of 0-255 values or a rgba hex string like `#aabbccff`.
 A file contains the following values:
 ```jsonc
    {
