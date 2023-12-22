@@ -21,6 +21,7 @@ struct PosEntry {
 };
 struct FoldEntry {
   std::vector<Utf8String> lines;
+  uint32_t idx;
 };
 struct HistoryEntry {
   int x, y;
@@ -69,6 +70,7 @@ public:
   int cachedMaxLines = 0;
   float startX = 0;
   float startY = 0;
+  size_t idx_c = 1;
   std::vector<std::pair<int, Utf8String>> prepare;
   Utf8String *bind = nullptr;
   void setBounds(float height, float lineHeight) {
@@ -120,15 +122,19 @@ public:
       if (other.first == y)
         continue;
       if (other.first > y) {
-        n[other.first - entry.lines.size() +1] = other.second;
+        n[other.first - entry.lines.size() + 1] = other.second;
       } else {
         n[other.first] = other.second;
       }
     }
+    lines[y] = U">> " + Utf8String(std::to_string(count)) + U" Lines -- " +
+               entry.lines[0];
+    lines[y].setIdx(idx_c);
+    entry.idx = idx_c;
+    idx_c++;
     n[y] = entry;
     foldEntries = n;
     lines.erase(lines.begin() + y + 1, lines.begin() + y + 1 + (count - 1));
-    lines[y] = U">> " + Utf8String(std::to_string(count)) + U" Lines -- " + entry.lines[0];
   }
   void unfold() {
     if (foldEntries.count(y)) {
@@ -200,16 +206,20 @@ public:
         if (other.first == y)
           continue;
         if (other.first > y) {
-          n[other.first - entry.lines.size()+1] = other.second;
+          n[other.first - entry.lines.size() + 1] = other.second;
         } else {
           n[other.first] = other.second;
         }
       }
+
+      lines[y] = U">> " + Utf8String(std::to_string(count)) + U" Lines -- " +
+                 entry.lines[0];
+      lines[y].setIdx(idx_c);
+      entry.idx = idx_c;
+      idx_c++;
       n[y] = entry;
       foldEntries = n;
       lines.erase(lines.begin() + y + 1, lines.begin() + y + 1 + (count - 1));
-      lines[y] = U">> " + Utf8String(std::to_string(count)) + U" Lines -- " +
-                 entry.lines[0];
       historyPush(60, 0, U"");
       selection.stop();
       return U"Folded: " + Utf8String(std::to_string(entry.lines.size()));
@@ -1833,6 +1843,23 @@ public:
     */
     if (onlyCalculate)
       return nullptr;
+    {
+      std::unordered_map<int, FoldEntry> n;
+      for (auto other : foldEntries) {
+        if (other.first >= lines.size() ||
+            lines[other.first].getIdx() != other.second.idx) {
+          for (size_t i = 0; i < lines.size(); i++) {
+            if (lines[i].getIdx() == other.second.idx) {
+              n[i] = other.second;
+              break;
+            }
+          }
+        } else {
+          n[other.first] = other.second;
+        }
+      }
+      foldEntries = n;
+    }
     this->maxWidth = maxWidth;
     int maxSupport = 0;
     for (size_t i = skip; i < end; i++) {

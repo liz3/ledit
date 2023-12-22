@@ -288,6 +288,8 @@ public:
     } else if (shift_pressed && mode == VimMode::VISUAL) {
       st.fold();
       ActionResult r;
+      r.type = ResultType::Emit;
+      r.action_name = "ESC";
       r.allowCoords = false;
       return r;
     }

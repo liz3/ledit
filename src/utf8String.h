@@ -302,6 +302,12 @@ public:
     this->base.insert(p.first, temp.getStrRef());
 
   }
+  uint32_t getIdx(){
+    return idx;
+  }
+  void setIdx(uint32_t v){
+    idx = v;
+  }
 private:
   std::string unicodeToUtf8(std::vector<char32_t> &in) {
     std::string out = "";
@@ -538,7 +544,7 @@ private:
   }
   std::string base;
   size_t character_length = 0;
-  size_t idx;
+  uint32_t idx = 0;
 };
 
 #endif
