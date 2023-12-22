@@ -742,7 +742,7 @@ public:
     y = y == lines.size() ? y - 1 : y;
     for (int64_t l = 0; l < ll.size(); l++) {
       out += ll[l];
-      if (l < ll.size() - 1)
+      if (l < ll.size() - 1 || ll.size() == 1)
         out += U"\n";
     }
     return out;
