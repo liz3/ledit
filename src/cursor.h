@@ -400,12 +400,20 @@ public:
       lines[ySmall] =
           lines[ySmall].substr(0, isStart ? selection.xStart : selection.xEnd);
       for (int i = 0; i < yBig - ySmall; i++) {
-        toSave.push_back(lines[ySmall + 1]);
-        if (i == yBig - ySmall - 1) {
-          x = lines[ySmall].length();
-          lines[ySmall] += lines[ySmall + 1].substr(isStart ? selection.xEnd
-                                                            : selection.xStart);
+        if (foldEntries.count(ySmall + i+1)) {
+          for (auto entry : foldEntries[ySmall + i+1].lines) {
+            toSave.push_back(entry);
+          }
+          foldEntries.erase(ySmall + i+1);
+        } else {
+          toSave.push_back(lines[ySmall + 1]);
+          if (i == yBig - ySmall - 1) {
+            x = lines[ySmall].length();
+            lines[ySmall] += lines[ySmall + 1].substr(
+                isStart ? selection.xEnd : selection.xStart);
+          }
         }
+
         lines.erase(lines.begin() + ySmall + 1);
       }
       y = ySmall;
@@ -424,16 +432,44 @@ public:
       int ySmall = selection.getYSmaller();
       int yBig = selection.getYBigger();
       bool isStart = ySmall == selection.yStart;
-      ss << convert_str(
-          lines[ySmall].substr(isStart ? selection.xStart : selection.xEnd));
+      if (foldEntries.count(ySmall)) {
+        auto &entry = foldEntries[ySmall];
+        for (size_t j = 0; j < entry.lines.size(); j++) {
+          ss << entry.lines[j].getStr();
+          if (j < entry.lines.size() - 1)
+            ss << "\n";
+        }
+      } else {
+        ss << convert_str(
+            lines[ySmall].substr(isStart ? selection.xStart : selection.xEnd));
+      }
+
       ss << "\n";
       for (int i = ySmall + 1; i < yBig; i++) {
-        ss << convert_str(lines[i]);
+        if (foldEntries.count(i)) {
+          auto &entry = foldEntries[i];
+          for (size_t j = 0; j < entry.lines.size(); j++) {
+            ss << entry.lines[j].getStr();
+            if (j < entry.lines.size() - 1)
+              ss << "\n";
+          }
+        } else {
+          ss << convert_str(lines[i]);
+        }
         if (i != yBig)
           ss << "\n";
       }
-      ss << convert_str(
-          lines[yBig].substr(0, isStart ? selection.xEnd : selection.xStart));
+      if (foldEntries.count(yBig)) {
+        auto &entry = foldEntries[yBig];
+        for (size_t j = 0; j < entry.lines.size(); j++) {
+          ss << entry.lines[j].getStr();
+          if (j < entry.lines.size() - 1)
+            ss << "\n";
+        }
+      } else {
+        ss << convert_str(
+            lines[yBig].substr(0, isStart ? selection.xEnd : selection.xStart));
+      }
     }
     return ss.str();
   }
@@ -448,7 +484,12 @@ public:
       if (w == selection.getYSmaller() || w == selection.getYBigger()) {
         continue;
       }
-      offset += lines[w].length() + 1;
+      if (foldEntries.count(w)) {
+        for (auto &entry : foldEntries[w].lines)
+          offset += entry.length() + 1;
+      } else {
+        offset += lines[w].length() + 1;
+      }
     }
     return offset;
   }
@@ -864,8 +905,17 @@ public:
       start++;
       am--;
     }
-    for (size_t l = start; l < start + am; l++)
-      ll.push_back(lines[l]);
+    for (size_t l = start; l < start + am; l++) {
+      if (foldEntries.count(l)) {
+        auto &f = foldEntries[l];
+        for (auto &e : f.lines)
+          ll.push_back(e);
+        foldEntries.erase(l);
+      } else {
+
+        ll.push_back(lines[l]);
+      }
+    }
     y = start;
     x = 0;
     if (del) {
