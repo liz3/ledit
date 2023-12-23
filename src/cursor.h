@@ -394,6 +394,9 @@ public:
     } else {
       int ySmall = selection.getYSmaller();
       int yBig = selection.getYBigger();
+      if(foldEntries.count(ySmall) || foldEntries.count(yBig))
+        //this is currently not save
+        return;
       bool isStart = ySmall == selection.yStart;
       Utf8String save = lines[ySmall];
       std::vector<Utf8String> toSave;
