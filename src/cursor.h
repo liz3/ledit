@@ -133,6 +133,7 @@ public:
     entry.idx = idx_c;
     idx_c++;
     n[y] = entry;
+      center(y);
     foldEntries = n;
     lines.erase(lines.begin() + y + 1, lines.begin() + y + 1 + (count - 1));
   }
@@ -140,6 +141,7 @@ public:
     if (foldEntries.count(y)) {
       auto &entry = foldEntries[y];
       lines[y] = entry.lines[0];
+      center(y);
       for (size_t i = 1; i < entry.lines.size(); i++) {
         lines.insert(lines.begin() + y + i, entry.lines[i]);
       }
@@ -163,6 +165,8 @@ public:
     if (foldEntries.count(y)) {
       auto &entry = foldEntries[y];
       lines[y] = entry.lines[0];
+            center(y);
+
       for (size_t i = 1; i < entry.lines.size(); i++) {
         lines.insert(lines.begin() + y + i, entry.lines[i]);
       }
@@ -222,6 +226,7 @@ public:
       lines.erase(lines.begin() + y + 1, lines.begin() + y + 1 + (count - 1));
       historyPush(60, 0, U"");
       selection.stop();
+      center(y);
       return U"Folded: " + Utf8String(std::to_string(entry.lines.size()));
     }
     return U"";

@@ -496,7 +496,7 @@ int window_func(Window *instance) {
           biggestLine = 0;
           auto endLines = maxLines - (cursor->y - cursor->skip);
           for (int i = (cursor->y - cursor->skip) * -1; i < endLines; i++) {
-            int v = i == 0 ? cursor->y + 1 : (i < 0 ? i * -1 : i);
+            int v = i == 0 ? cursor->y + 1 + cursor->getFoldOffset(cursor->y) : (i < 0 ? i * -1 : i);
             if (v > biggestLine)
               biggestLine = v;
           }
@@ -543,7 +543,7 @@ int window_func(Window *instance) {
           biggestLine = 0;
           auto endLines = (cursor->maxLines - (cursor->y - cursor->skip));
           for (int i = (cursor->y - cursor->skip) * -1; i < endLines; i++) {
-            int v = i == 0 ? cursor->y + 1 : (i < 0 ? i * -1 : i);
+            int v = i == 0 ? cursor->y + 1 + cursor->getFoldOffset(cursor->y) : (i < 0 ? i * -1 : i);
             if (v > biggestLine)
               biggestLine = v;
           }
