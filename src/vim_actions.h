@@ -197,12 +197,22 @@ public:
       return;
     }
     if (content == ":bd") {
+      if (c->edited) {
+        state.status =
+            create(state.path.length() ? state.path : "New File") + U" edited";
+          vim->setSpecialCase(true);
+        return;
+      }
+      state.deleteActive();
+      return;
+    }
+    if (content == ":bd!") {
       state.deleteActive();
       return;
     }
     if (content.find(":w") == 0) {
-      vim->getState().save();
-      if (vim->getState().mode != 0 && content.find("!") == std::string::npos)
+      state.save();
+      if (vim->getState().mode != 0)
         return;
     }
 
@@ -238,7 +248,9 @@ public:
           }
         }
       }
+      return;
     }
+    state.status = U"Unknown commmand " + Utf8String(content);
   }
 };
 class TabAction : public Action {
