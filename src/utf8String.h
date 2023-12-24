@@ -98,10 +98,12 @@ public:
 
   Utf8String(Utf8String &other) {
     this->base = other.base;
+    this->idx = other.idx;
     setState();
   }
   Utf8String(const Utf8String &other) {
     this->base = other.base;
+    this->idx = other.idx;
     setState();
   }
 

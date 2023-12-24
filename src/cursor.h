@@ -202,7 +202,7 @@ public:
       y = yStart;
       x = 0;
       auto count = (yEnd - yStart);
-      if (selection.getYBigger() == lines.size() - 1)
+      if (selection.getYBigger() == lines.size() - 1 && selection.getXBigger() == lines[lines.size()-1].length())
         count++;
       FoldEntry entry;
       entry.lines.resize(count);
