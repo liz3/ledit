@@ -240,6 +240,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       if (action == GLFW_PRESS && key == GLFW_KEY_0) {
         gState->changeFont();
       }
+      if (action == GLFW_PRESS && key == GLFW_KEY_PERIOD) {
+        gState->shellCommand();
+      }
       if (action == GLFW_PRESS && key == GLFW_KEY_K) {
         gState->switchBuffer();
       }

@@ -767,7 +767,7 @@ public:
         Utf8String ref = i == iny ? lines[i].substr(0, inx + 1) : lines[i];
         auto res = findAnyOfLastInclusive(ref, what);
         if (res != -1) {
-          return std::pair(ref.length() - 1 - res, i);
+          return std::pair(ref.length() == res ? 0 : ref.length() - 1 - res, i);
         }
       }
     } else {

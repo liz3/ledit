@@ -168,6 +168,7 @@ public:
       return;
     } else if (content.find(":mode ") == 0 && content.length() > 6) {
       state.directlyEnableLanguage(content.substr(6));
+      return;
     }
     if (content == ":e") {
       state.open();
@@ -181,6 +182,16 @@ public:
       return;
     } else if (content.find(":win ") == 0 && content.length() > 3) {
       add_window(content.substr(5));
+      return;
+    }
+    if(content == ":sh"){
+      state.shellCommand();
+      return;
+    }
+    if(content.find(":sh ") == 0){
+      if(state.execCommand(content.substr(4))) {
+        state.lastCmd = content.substr(4);
+      }
       return;
     }
 

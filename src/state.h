@@ -138,6 +138,7 @@ public:
     } else {
       activateCursor(offset - cursors.begin());
     }
+    lastCommandOutCursor.cursor.edited = false;
   }
   void killCommand() {
     if (!isCommandRunning) {
@@ -163,6 +164,14 @@ public:
       status = U"[" + create(path) + U"]: Changed on disk, reload?";
       cursor->bindTo(&dummyBuf);
     }
+  }
+    void shellCommand() {
+    if (mode != 0)
+      return;
+    miniBuf = U"";
+    status = U"Shell: ";
+    cursor->bindTo(&miniBuf);
+    mode = 45;
   }
   void switchMode() {
     if (mode != 0)
@@ -336,20 +345,13 @@ public:
     round = 0;
     status = U"cmd: ";
   }
-  void runCommand(std::string cmd) {
-    if (!cmd.size())
-      return;
-    if (!provider.commands.count(cmd)) {
-      status = U"Unregistered Command";
-      return;
-    }
+  bool execCommand(std::string command) {
     if (provider.command_running) {
       status = U"cmd: [" + Utf8String(lastCmd) + U"]: is running";
-      return;
+      return false;
     }
     std::map<std::string, std::string> replaces;
 
-    std::string command = provider.commands[cmd];
     if (path.length()) {
       fs::path file(path);
       std::string extension = file.extension().generic_string();
@@ -382,10 +384,22 @@ public:
     }
     if (provider.saveBeforeCommand && path.length())
       save();
-    lastCmd = cmd;
     isCommandRunning = true;
     provider.runCommand(command);
-    status = U"cmd: [" + Utf8String(cmd) + U"]: executing";
+    return true;
+  }
+  void runCommand(std::string cmd) {
+    if (!cmd.size())
+      return;
+    if (!provider.commands.count(cmd)) {
+      status = U"Unregistered Command";
+      return;
+    }
+    std::string command = provider.commands[cmd];
+    if (execCommand(command)) {
+      lastCmd = cmd;
+      status = U"cmd: [" + Utf8String(cmd) + U"]: executing";
+    }
   }
   void reHighlight() {
     if (hasHighlighting)
@@ -592,6 +606,10 @@ public:
       } else if (mode == 42) {
         if (provider.loadTheme(miniBuf.getStr()))
           status = U"Theme: " + miniBuf;
+      } else if (mode == 45){
+        if(miniBuf.length()){
+          execCommand(miniBuf.getStr());
+        }
       }
     } else {
       status = U"Aborted";
@@ -674,13 +692,16 @@ public:
         x == cursor->getCurrentLineLength() + 1 && x > 1)
       x--;
 
-    status = (vim ? Utf8String(vim->getModeName()) + U" " : U"") +
-             numberToString(cursor->y + 1 + cursor->getFoldOffset(cursor->y)) +
-             U":" + numberToString(x) + branch + U" [" + fileName + U": " +
-             (hasHighlighting    ? highlighter.languageName
-              : cursor->isFolder ? U"Dir"
-                                 : U"Text") +
-             U"]";
+    status =
+        (vim ? Utf8String(vim->getModeName()) + U" " : U"") +
+        numberToString(cursor->y + 1 + cursor->getFoldOffset(cursor->y)) +
+        U":" + numberToString(x) + branch + U" [" +
+        (cursor->isFolder && !fileName.length() ? Utf8String(path) : fileName) +
+        U": " +
+        (hasHighlighting    ? highlighter.languageName
+         : cursor->isFolder ? U"Dir"
+                            : U"Text") +
+        U"]";
     if (cursor->selection.active)
       status +=
           U" Selected: [" + numberToString(cursor->getSelectionSize()) + U"]";
