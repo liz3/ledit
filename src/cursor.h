@@ -199,7 +199,9 @@ public:
       }
       y = yStart;
       x = 0;
-      auto count = yEnd - yStart;
+      auto count = (yEnd - yStart);
+      if(selection.yStart < selection.yEnd && selection.xEnd == lines[selection.yEnd].size())
+        count++;
       FoldEntry entry;
       entry.lines.resize(count);
       for (size_t c = 0; c < count; c++) {
