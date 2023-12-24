@@ -214,7 +214,17 @@ public:
     return std::string::npos;
   }
 
-  size_t find(Utf8String &other) { return base.find(other.getStr()); }
+  size_t find(Utf8String &other) const {
+      if(other.length() == 1)
+          return find(other[0]);
+      if(character_length < other.length())
+        return std::string::npos;
+      for(size_t i = 0; i < character_length; i++){
+        if(this->substr(i, other.length()) == other)
+            return i;
+      }
+      return std::string::npos;
+   }
 
   iterator begin() { return iterator(this); }
 
