@@ -608,7 +608,8 @@ public:
           status = U"Theme: " + miniBuf;
       } else if (mode == 45){
         if(miniBuf.length()){
-          execCommand(miniBuf.getStr());
+          if(execCommand(miniBuf.getStr()))
+              lastCmd = miniBuf.getStr();
         }
       }
     } else {
