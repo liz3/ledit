@@ -212,7 +212,7 @@ public:
     }
     if (content.find(":w") == 0) {
       state.save();
-      if (vim->getState().mode != 0)
+      if (vim->getState().mode != 0 || content == ":w")
         return;
     }
 
