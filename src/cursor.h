@@ -133,7 +133,7 @@ public:
     entry.idx = idx_c;
     idx_c++;
     n[y] = entry;
-      center(y);
+    center(y);
     foldEntries = n;
     lines.erase(lines.begin() + y + 1, lines.begin() + y + 1 + (count - 1));
   }
@@ -151,6 +151,7 @@ public:
           continue;
         if (other.first > y) {
           n[other.first + entry.lines.size() - 1] = other.second;
+          lines[other.first + entry.lines.size() - 1].setIdx(other.second.idx);
         } else {
           n[other.first] = other.second;
         }
@@ -165,7 +166,7 @@ public:
     if (foldEntries.count(y)) {
       auto &entry = foldEntries[y];
       lines[y] = entry.lines[0];
-            center(y);
+      center(y);
 
       for (size_t i = 1; i < entry.lines.size(); i++) {
         lines.insert(lines.begin() + y + i, entry.lines[i]);
@@ -177,6 +178,7 @@ public:
           continue;
         if (other.first > y) {
           n[other.first + entry.lines.size() - 1] = other.second;
+          lines[other.first + entry.lines.size() - 1].setIdx(other.second.idx);
         } else {
           n[other.first] = other.second;
         }
@@ -200,7 +202,7 @@ public:
       y = yStart;
       x = 0;
       auto count = (yEnd - yStart);
-      if(selection.yStart < selection.yEnd && selection.xEnd == lines[selection.yEnd].size())
+      if (selection.getYBigger() == lines.size() - 1)
         count++;
       FoldEntry entry;
       entry.lines.resize(count);
@@ -401,8 +403,8 @@ public:
     } else {
       int ySmall = selection.getYSmaller();
       int yBig = selection.getYBigger();
-      if(foldEntries.count(ySmall) || foldEntries.count(yBig))
-        //this is currently not save
+      if (foldEntries.count(ySmall) || foldEntries.count(yBig))
+        // this is currently not save
         return;
       bool isStart = ySmall == selection.yStart;
       Utf8String save = lines[ySmall];
@@ -410,11 +412,11 @@ public:
       lines[ySmall] =
           lines[ySmall].substr(0, isStart ? selection.xStart : selection.xEnd);
       for (int i = 0; i < yBig - ySmall; i++) {
-        if (foldEntries.count(ySmall + i+1)) {
-          for (auto entry : foldEntries[ySmall + i+1].lines) {
+        if (foldEntries.count(ySmall + i + 1)) {
+          for (auto entry : foldEntries[ySmall + i + 1].lines) {
             toSave.push_back(entry);
           }
-          foldEntries.erase(ySmall + i+1);
+          foldEntries.erase(ySmall + i + 1);
         } else {
           toSave.push_back(lines[ySmall + 1]);
           if (i == yBig - ySmall - 1) {
