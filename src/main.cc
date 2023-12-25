@@ -346,17 +346,17 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       if (gState->mode != 0)
         gState->provideComplete(shift_pressed);
       else {
-        if(shift_pressed) {
-            gState->fold();
+        if (shift_pressed) {
+          gState->fold();
         } else {
-        bool useSpaces = gState->provider.useSpaces;
-        auto am = gState->provider.tabWidth;
-        if (useSpaces)
-          cursor->append(std::string(am, ' '));
-        else
-          cursor->append('\t');
+          bool useSpaces = gState->provider.useSpaces;
+          auto am = gState->provider.tabWidth;
+          if (useSpaces)
+            cursor->append(std::string(am, ' '));
+          else
+            cursor->append('\t');
+        }
       }
-    }
     }
     if (isPress && key == GLFW_KEY_BACKSPACE) {
       if (alt_pressed) {
@@ -499,7 +499,8 @@ int window_func(Window *instance) {
           biggestLine = 0;
           auto endLines = maxLines - (cursor->y - cursor->skip);
           for (int i = (cursor->y - cursor->skip) * -1; i < endLines; i++) {
-            int v = i == 0 ? cursor->y + 1 + cursor->getFoldOffset(cursor->y) : (i < 0 ? i * -1 : i);
+            int v = i == 0 ? cursor->y + 1 + cursor->getFoldOffset(cursor->y)
+                           : (i < 0 ? i * -1 : i);
             if (v > biggestLine)
               biggestLine = v;
           }
@@ -546,7 +547,8 @@ int window_func(Window *instance) {
           biggestLine = 0;
           auto endLines = (cursor->maxLines - (cursor->y - cursor->skip));
           for (int i = (cursor->y - cursor->skip) * -1; i < endLines; i++) {
-            int v = i == 0 ? cursor->y + 1 + cursor->getFoldOffset(cursor->y) : (i < 0 ? i * -1 : i);
+            int v = i == 0 ? cursor->y + 1 + cursor->getFoldOffset(cursor->y)
+                           : (i < 0 ? i * -1 : i);
             if (v > biggestLine)
               biggestLine = v;
           }
@@ -594,13 +596,26 @@ int window_func(Window *instance) {
       auto highlighter = state.highlighter;
       int lineOffset = cursor->skip;
       auto *colored = state.highlighter.get();
+
+      if (lineOffset > 0) {
+        for (int t = lineOffset; t >= 0; t--) {
+          if (highlighter.lineIndex.count(t)) {
+            auto entry = highlighter.lineIndex[t];
+            auto start = colored->begin();
+            std::advance(start, entry.second - 1);
+            color = start->second;
+
+            break;
+          }
+        }
+      }
       int cOffset = cursor->getTotalOffset();
       int cxOffset = cursor->xOffset;
       auto heightRemaining = renderHeight;
       //        std::cout << cxOffset << ":" << lineOffset << "\n";
 
       for (size_t x = 0; x < allLines->size(); x++) {
-        const bool isFold = cursor->foldEntries.count(x+cursor->skip);
+        const bool isFold = cursor->foldEntries.count(x + cursor->skip);
         auto content = (*allLines)[x].second;
         auto hasColorIndex = highlighter.lineIndex.count(x + lineOffset);
         if (content.length())
@@ -692,7 +707,7 @@ int window_func(Window *instance) {
       auto heightRemaining = renderHeight;
 
       for (size_t x = 0; x < allLines->size(); x++) {
-        const bool isFold = cursor->foldEntries.count(x+cursor->skip);
+        const bool isFold = cursor->foldEntries.count(x + cursor->skip);
         auto content = (*allLines)[x].second;
         for (c = content.begin(); c != content.end(); c++) {
           if (*c != '\t')
