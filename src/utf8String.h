@@ -301,8 +301,10 @@ public:
       return false;
     if(other.length() == character_length)
       return other.getStrRef() == getStrRef();
-    const auto sub = substr(character_length - other.length());
-    return sub == other;
+   const auto& ref = other.getStrRef();
+   if(ref.length() > base.length())
+      return false;
+    return ref == base.substr(base.length()-ref.length());
   }
   void set(size_t idx, char32_t cc){
     Utf8String temp;
