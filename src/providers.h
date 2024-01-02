@@ -63,7 +63,7 @@ public:
   std::string theme = "default";
   std::string highlightLine = "full";
   std::atomic_bool command_running = false;
-  std::atomic_uint32_t command_pid = 0;
+  std::atomic_int32_t command_pid = 0;
   std::string lastCommand = "";
   std::thread command_thread;
   Provider() {
@@ -190,7 +190,7 @@ public:
     BOOL result = TerminateProcess(processHandle, 9);
     CloseHandle(processHandle);
 #else
-    auto out = kill(command_pid, SIGKILL);
+    auto out = kill(-command_pid, SIGKILL);
 #endif
     return true;
   }
@@ -316,6 +316,7 @@ public:
         dup2(pipefd[1], STDOUT_FILENO);
         dup2(pipefd[1], STDERR_FILENO);
         close(pipefd[1]);
+        setsid();
         execlp("/bin/sh", "sh", "-c", command.c_str(), NULL);
         exit(EXIT_FAILURE);
       } else {
