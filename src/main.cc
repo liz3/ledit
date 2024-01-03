@@ -454,6 +454,17 @@ int window_func(Window *instance) {
 
     if (state.provider.highlightLine == "full" ||
         (state.showLineNumbers && state.provider.highlightLine == "small")) {
+      if(state.provider.relativeLineNumbers){
+          int biggestLine = 0;
+          auto endLines = maxLines - (cursor->y - cursor->skip);
+          for (int i = (cursor->y - cursor->skip) * -1; i < endLines; i++) {
+            int v = i == 0 ? cursor->y + 1 + cursor->getFoldOffset(cursor->y)
+                           : (i < 0 ? i * -1 : i);
+            if (v > biggestLine)
+              biggestLine = v;
+          }
+          maxLineAdvance = atlas.getAdvance(std::to_string(biggestLine));
+      }
       selection_shader.use();
       glBindVertexArray(state.highlight_vao);
       auto color = state.provider.colors.highlight_color;
