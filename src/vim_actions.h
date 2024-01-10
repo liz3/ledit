@@ -697,6 +697,7 @@ public:
           str.erase(cursor->x, length);
           cursor->historyPush(3, w.length(), w);
         }
+        *ptr += w;
       } else if (state.direction == Direction::UP) {
         auto out =
             cursor->deleteLines(cursor->y - state.count, 1 + state.count, !co);
@@ -1461,6 +1462,29 @@ public:
 private:
   Finder *finder;
 };
+class DDAction : public Action {
+
+public:
+  DDAction(DAction *finder_) : finder(finder_) {}
+  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override {
+
+    return {};
+  }
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override {
+    if (!vim->activeAction() && mode == VimMode::NORMAL) {
+      MotionState st;
+      st.isInital = false;
+      st.action = "$";
+      return finder->execute(mode, st, cursor, vim);
+    }
+    return {};
+  }
+
+private:
+  DAction *finder;
+};
 class XAction : public Action {
 
 public:
@@ -1496,6 +1520,36 @@ public:
 
 private:
   bool control = false;
+};
+class CCAction : public Action {
+
+public:
+  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override {
+
+    return {};
+  }
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override {
+    if (!vim->activeAction() && mode == VimMode::NORMAL) {
+
+      if(cursor->x < cursor->lines[cursor->y].length()){
+        Utf8String &str = cursor->lines[cursor->y];
+        auto length = str.size() - cursor->x;
+        Utf8String w = str.substr(cursor->x, length);
+        vim->getState().tryCopyInput(w);
+        str.erase(cursor->x, length);
+        cursor->historyPush(3, w.length(), w);
+      }
+      auto a = withType(ResultType::Emit);
+      a.action_name = "i";
+      return a;
+
+    }
+    return withType(ResultType::Silent);
+  }
+
+
 };
 class CtrlUAction : public Action {
 
@@ -1620,10 +1674,12 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new OAction(), "o", 'o');
   vim.registerTrieChar(new OOAction(), "O", 'O');
   vim.registerTrieChar(d, "d", 'd');
+  vim.registerTrieChar(new DDAction(d), "D", 'D');
   vim.registerTrieChar(new UAction(), "u", 'u');
   vim.registerTrieChar(new XAction(false), "x", 'x');
   vim.registerTrieChar(new VAction(), "v", 'v');
   vim.registerTrieChar(new CAction(), "c", 'c');
+  vim.registerTrieChar(new CCAction(), "C", 'C');
   vim.registerTrieChar(new DollarAction(false), "$", '$');
   vim.registerTrieChar(new ZeroAction(false), "0", '0');
   vim.registerTrieChar(new ColonAction(), ":", ':');
