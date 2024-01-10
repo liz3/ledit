@@ -1230,6 +1230,7 @@ public:
     }
     case 53: {
       y = entry.y;
+      lines[y] = entry.content;
       x = entry.x;
       lines.erase(lines.begin() + 1 + y, lines.begin() + y + 1 + entry.length);
       break;
@@ -1631,12 +1632,20 @@ public:
         contentLines.erase(contentLines.begin() + (contentLines.size() - 1),
                            contentLines.begin() + (contentLines.size()));
       auto off = getCurrentLineLength() ? 1 : 0;
-      historyPush(off == 1 ? 53 : 54, contentLines.size(), U"");
-
+      if(off ==1 && x > 0) {
+          auto off = lines[y].substr(x);
+          contentLines.push_back(off);
+      }
+      historyPush(off == 1 ? 53 : 54, contentLines.size(), off == 1 ?  lines[y] : U"");
+      if(off ==1 && x > 0) {
+          lines[y] = lines[y].substr(0, x);
+      }
       for (auto &l : contentLines) {
         lines.insert(lines.begin() + y + off, l);
         y++;
       }
+      if(x > lines[y].length())
+          x = lines[y].size();
       return;
     }
     int saveX = 0;
