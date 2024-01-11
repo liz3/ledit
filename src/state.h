@@ -165,7 +165,7 @@ public:
       cursor->bindTo(&dummyBuf);
     }
   }
-    void shellCommand() {
+  void shellCommand() {
     if (mode != 0)
       return;
     miniBuf = U"";
@@ -320,6 +320,15 @@ public:
       return;
     this->openNewWindow = inNewWindow;
     miniBuf = U"./";
+    if (path.length()) {
+      if (cursor->isFolder)
+        miniBuf = Utf8String(path);
+      else {
+        auto p = fs::path(path);
+        miniBuf = Utf8String(p.parent_path().generic_string());
+      }
+    }
+    miniBuf += fs::path::preferred_separator;
     provider.lastProvidedFolder = "";
     cursor->bindTo(&miniBuf);
     mode = 4;
@@ -606,10 +615,10 @@ public:
       } else if (mode == 42) {
         if (provider.loadTheme(miniBuf.getStr()))
           status = U"Theme: " + miniBuf;
-      } else if (mode == 45){
-        if(miniBuf.length()){
-          if(execCommand(miniBuf.getStr()))
-              lastCmd = miniBuf.getStr();
+      } else if (mode == 45) {
+        if (miniBuf.length()) {
+          if (execCommand(miniBuf.getStr()))
+            lastCmd = miniBuf.getStr();
         }
       }
     } else {
