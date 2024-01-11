@@ -327,8 +327,8 @@ public:
         auto p = fs::path(path);
         miniBuf = Utf8String(p.parent_path().generic_string());
       }
+      miniBuf += fs::path::preferred_separator;
     }
-    miniBuf += fs::path::preferred_separator;
     provider.lastProvidedFolder = "";
     cursor->bindTo(&miniBuf);
     mode = 4;
@@ -368,6 +368,7 @@ public:
       std::string basename =
           filename.substr(0, filename.length() - extension.length());
       replaces["$file_path"] = path;
+      replaces["$file_parent"] = file.parent_path().generic_string();
       replaces["$file_name"] = filename;
       replaces["$file_basename"] = basename;
       replaces["$file_extension"] = extension;

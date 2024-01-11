@@ -215,6 +215,7 @@ Then using `C-:` you can invoke the command name which will run the respective s
 
 The shell command can contain certain Placeholders which will then be replaced at runtime:
 * `$file_path` - This will will be replaced with the relative path to the file path of the active buffer, relative to the cwd of the current ledit instance.
+* `$file_parent` - Files parent(directory), or empty string.
 * `$file_name` - File basename, or empty string.
 * `$file_extension` - File extension, or empty string.
 * `$file_basename` - File basename without extension, or empty string.
