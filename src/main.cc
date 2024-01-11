@@ -454,16 +454,16 @@ int window_func(Window *instance) {
 
     if (state.provider.highlightLine == "full" ||
         (state.showLineNumbers && state.provider.highlightLine == "small")) {
-      if(state.provider.relativeLineNumbers){
-          int biggestLine = 0;
-          auto endLines = maxLines - (cursor->y - cursor->skip);
-          for (int i = (cursor->y - cursor->skip) * -1; i < endLines; i++) {
-            int v = i == 0 ? cursor->y + 1 + cursor->getFoldOffset(cursor->y)
-                           : (i < 0 ? i * -1 : i);
-            if (v > biggestLine)
-              biggestLine = v;
-          }
-          maxLineAdvance = atlas.getAdvance(std::to_string(biggestLine));
+      if (state.provider.relativeLineNumbers) {
+        int biggestLine = 0;
+        auto endLines = maxLines - (cursor->y - cursor->skip);
+        for (int i = (cursor->y - cursor->skip) * -1; i < endLines; i++) {
+          int v = i == 0 ? cursor->y + 1 + cursor->getFoldOffset(cursor->y)
+                         : (i < 0 ? i * -1 : i);
+          if (v > biggestLine)
+            biggestLine = v;
+        }
+        maxLineAdvance = atlas.getAdvance(std::to_string(biggestLine));
       }
       selection_shader.use();
       glBindVertexArray(state.highlight_vao);
@@ -1043,8 +1043,9 @@ Window *create_window(std::string path, bool isFirst = false) {
     return nullptr;
   }
 #ifdef LEDIT_WIN_MAIN
-  hIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1),
-                           IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
+  HICON hIcon =
+      (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1),
+                       IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
   if (hIcon) {
 
     IconData iconData = ExtractIconData(hIcon);
@@ -1073,10 +1074,13 @@ Window *create_window(std::string path, bool isFirst = false) {
   glfwSetDropCallback(window, drop_callback);
   GLFWcursor *mouseCursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
   glfwSetCursor(window, mouseCursor);
-  if(state.provider.titleBarColorSet){
+#ifdef __APPLE__
+  if (state.provider.titleBarColorSet) {
     auto e = state.provider.titleBarColor;
-  glfwSetWindowTitlebarColor(window, 255 * e.x, 255 * e.y, 255 * e.z, 255 * e.w);
-}
+    glfwSetWindowTitlebarColor(window, 255 * e.x, 255 * e.y, 255 * e.z,
+                               255 * e.w);
+  }
+#endif
   if (isFirst) {
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
       std::cout << "Failed to initialize GLAD" << std::endl;

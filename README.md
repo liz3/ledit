@@ -105,7 +105,7 @@ A file contains the following values:
 ```jsonc
    {
     "titlebar_color": [
-      127, 127, 127, 127 // Color for the titlebar color(mac and windows only atm, i tried finding something general for wayland and x but was unable too), in RGBA (0-255)
+      127, 127, 127, 127 // Color for the titlebar color(mac only atm, i tried finding something general for wayland and x but was unable too, windows apparently has this api but it doesn't work), in RGBA (0-255)
     ],
     "fold_color": [
       127, 127, 127, 127 // Color for folds, in RGBA (0-255)

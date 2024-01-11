@@ -48,8 +48,10 @@ public:
   std::string lastCommandOutput;
   int commandExitCode = 0;
   int fontSize = 25;
+#ifdef __APPLE__
   bool titleBarColorSet = false;
   Vec4f titleBarColor;
+#endif
   int32_t tabWidth = 2;
   bool useSpaces = true;
   bool autoReload = false;
@@ -177,11 +179,15 @@ public:
           configColors, "cursor_color", colors.cursor_color_standard);
       colors.cursor_color_vim = getVecOrDefault(
           configColors, "vim_cursor_color", colors.cursor_color_vim);
-      if(configColors.contains("titlebar_color")) {
+#ifdef __APPLE__
+      if (configColors.contains("titlebar_color")) {
         titleBarColorSet = true;
-         titleBarColor = getVecOrDefault(
-          configColors, "titlebar_color", titleBarColor);
+        titleBarColor =
+            getVecOrDefault(configColors, "titlebar_color", titleBarColor);
+      } else {
+        titleBarColorSet = false;
       }
+#endif
       theme = name;
       return true;
     }
