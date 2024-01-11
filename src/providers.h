@@ -48,6 +48,8 @@ public:
   std::string lastCommandOutput;
   int commandExitCode = 0;
   int fontSize = 25;
+  bool titleBarColorSet = false;
+  Vec4f titleBarColor;
   int32_t tabWidth = 2;
   bool useSpaces = true;
   bool autoReload = false;
@@ -175,6 +177,11 @@ public:
           configColors, "cursor_color", colors.cursor_color_standard);
       colors.cursor_color_vim = getVecOrDefault(
           configColors, "vim_cursor_color", colors.cursor_color_vim);
+      if(configColors.contains("titlebar_color")) {
+        titleBarColorSet = true;
+         titleBarColor = getVecOrDefault(
+          configColors, "titlebar_color", titleBarColor);
+      }
       theme = name;
       return true;
     }

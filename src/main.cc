@@ -1073,6 +1073,10 @@ Window *create_window(std::string path, bool isFirst = false) {
   glfwSetDropCallback(window, drop_callback);
   GLFWcursor *mouseCursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
   glfwSetCursor(window, mouseCursor);
+  if(state.provider.titleBarColorSet){
+    auto e = state.provider.titleBarColor;
+  glfwSetWindowTitlebarColor(window, 255 * e.x, 255 * e.y, 255 * e.z, 255 * e.w);
+}
   if (isFirst) {
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
       std::cout << "Failed to initialize GLAD" << std::endl;

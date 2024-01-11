@@ -104,6 +104,9 @@ Colors can be a json-array of 0-255 values or a rgba hex string like `#aabbccff`
 A file contains the following values:
 ```jsonc
    {
+    "titlebar_color": [
+      127, 127, 127, 127 // Color for the titlebar color(mac and windows only atm, i tried finding something general for wayland and x but was unable too), in RGBA (0-255)
+    ],
     "fold_color": [
       127, 127, 127, 127 // Color for folds, in RGBA (0-255)
     ],
