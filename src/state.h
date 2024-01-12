@@ -372,6 +372,8 @@ public:
       replaces["$file_name"] = filename;
       replaces["$file_basename"] = basename;
       replaces["$file_extension"] = extension;
+      if(replaces["$file_parent"].length() == 0)
+      replaces["$file_parent"] = ".";
     }
     replaces["$cwd"] = provider.getCwdFormatted();
     if (cursor->selection.active) {

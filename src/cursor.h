@@ -1632,12 +1632,12 @@ public:
         contentLines.erase(contentLines.begin() + (contentLines.size() - 1),
                            contentLines.begin() + (contentLines.size()));
       auto off = getCurrentLineLength() ? 1 : 0;
-      if(off ==1 && x > 0) {
+      if(off ==1 && x > 0 && contentLines.size() >1) {
           auto off = lines[y].substr(x);
           contentLines.push_back(off);
       }
       historyPush(off == 1 ? 53 : 54, contentLines.size(), off == 1 ?  lines[y] : U"");
-      if(off ==1 && x > 0) {
+      if(off ==1 && x > 0 && contentLines.size() > 1) {
           lines[y] = lines[y].substr(0, x);
       }
       for (auto &l : contentLines) {
