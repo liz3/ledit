@@ -16,6 +16,7 @@ After starting to experiment a bit i decided to call this a small side Project a
 * Be open, ledit and all its dependencies(freetype2, glfw, libpng, nhlohmann json, zlib) all have copyleft licenses, this does not include the Operating system it runs under.
 * **Solve the problem of text editing**, above all goals ledit is there to solve the problem of editing text based files. and solving it decently well.
 
+**Screenshot Theme: [Tokyo-night](assets/tokyo-night.json)**
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot.png?raw=true)
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot2.png?raw=true)
 ![image](https://github.com/liz3/ledit/blob/master/assets/screenshot3.png?raw=true)

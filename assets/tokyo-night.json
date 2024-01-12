@@ -1,0 +1,18 @@
+{
+  "titlebar_color": "#16161e",
+  "background_color": "#1a1b26",
+  "comment_color": "#51597d",
+  "fold_color": "#41487d",
+  "default_color": "#a9b1d6",
+  "minibuffer_color": "#787c99",
+  "status_color": "#787c99",
+  "highlight_color": "#1e202e",
+  "keyword_color": "#bb9af7",
+  "number_color": "#ff9e64",
+  "selection_color": "#28344a60",
+  "special_color": "#7aa2f7",
+  "string_color": "#9ece6a",
+  "line_number_color": "#363b54",
+  "cursor_color": "#c0caf5",
+  "vim_cursor_color": "#c0caf565"
+}
