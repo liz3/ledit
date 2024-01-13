@@ -712,6 +712,7 @@ public:
     if (theme != "default")
       config["theme"] = theme;
     config["font_face"] = fontPath;
+    config["vim_mode"] = vim_emulation;
     config["window_transparency"] = allowTransparency;
     config["use_spaces"] = useSpaces;
     config["font_size"] = fontSize;
@@ -721,6 +722,13 @@ public:
     config["auto_open_cmd_output"] = autoOpenCommandOut;
     config["relative_line_numbers"] = relativeLineNumbers;
     config["tab_width"] = tabWidth;
+    if(commands.size()) {
+      json cmdO;
+      for(auto& entry : commands) {
+        cmdO[entry.first] = entry.second;
+      }
+      config["commands"] = cmdO;
+    }
     if (extraFonts.size()) {
       json extra_fonts;
       for (auto &f : extraFonts) {
