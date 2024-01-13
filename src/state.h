@@ -326,6 +326,8 @@ public:
       else {
         auto p = fs::path(path);
         miniBuf = Utf8String(p.parent_path().generic_string());
+        if(!miniBuf.length())
+            miniBuf = U".";
       }
       miniBuf += fs::path::preferred_separator;
     }
