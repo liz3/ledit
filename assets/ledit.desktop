@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Ledit
+GenericName=Simple Text editor
+Comment=Simple GPU rendered Text Editor
+Exec=/usr/bin/ledit %F
+Terminal=false
+MimeType=text/plain;inode/directory;
+Icon=led
+Categories=TextEditor;Development;
+StartupNotify=true
