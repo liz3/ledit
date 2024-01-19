@@ -39,6 +39,9 @@ struct Language {
   std::string whitespace = DEFAULT_WHITESPACE_CHARS;
   bool keywords_case_sensitive = true;
   bool special_case_sensitive = true;
+  bool tabIndent = false;
+  std::string indentStr = "{";
+  std::string outdentStr = "}";
 };
 struct LanguageExpanded {
   Utf8String modeName;
@@ -51,6 +54,9 @@ struct LanguageExpanded {
   char32_t escapeChar;
   bool keywords_case_sensitive = true;
   bool special_case_sensitive = true;
+  bool tabIndent = false;
+  Utf8String indentStr;
+  Utf8String outdentStr;
 };
 struct HighlighterState {
   int start;
@@ -79,6 +85,7 @@ public:
   }
   std::map<int, Vec4f> cached;
   std::map<int, std::pair<int, int>> lineIndex;
+  std::map<int, int> indentLevels;
   Vec4f lastEntry;
   int lastSkip = 0;
   int lastMax = 0;
@@ -87,11 +94,11 @@ public:
   SavedState savedState;
   bool wasCached = false;
   bool wasEntire = false;
- std::string lowerCase(const std::string& str) {
-      std::string out = str;
+  std::string lowerCase(const std::string &str) {
+    std::string out = str;
 
-      std::transform(out.begin(), out.end(), out.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
+    std::transform(out.begin(), out.end(), out.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
     return out;
   }
   void setLanguage(Language lang, std::string name) {
@@ -101,7 +108,7 @@ public:
     language.keyWords.clear();
     for (auto &entry : lang.keyWords) {
       if (!lang.keywords_case_sensitive) {
-            language.keyWords[lowerCase(entry)] =1;
+        language.keyWords[lowerCase(entry)] = 1;
       } else {
         language.keyWords[entry] = 1;
       }
@@ -133,7 +140,9 @@ public:
     for (auto c : whitespaceChars) {
       language.whitespace[c] = true;
     }
-
+    language.tabIndent = lang.tabIndent;
+    language.indentStr = Utf8String(lang.indentStr);
+    language.outdentStr = Utf8String(lang.outdentStr);
     languageName = create(name);
     wasCached = false;
   }
@@ -167,6 +176,7 @@ public:
     int startIndex = 0;
     int y = 0;
     lineIndex.clear();
+    indentLevels.clear();
     Vec4f string_color = colors->string_color;
     Vec4f default_color = colors->default_color;
     Vec4f keyword_color = colors->keyword_color;
@@ -176,12 +186,27 @@ public:
     char32_t last = 0;
     size_t i;
     size_t lCount = 0;
+    int indent = 0;
     int last_entry = -1;
     bool wasTriggered = false;
     auto vec = raw.getCodePoints();
     for (i = 0; i < raw.length(); i++) {
       char32_t current = vec[i];
+            if (!state.busy &&
+          (hasEnding(state.buffer, language.indentStr) ||
+           hasEnding(state.buffer + current, language.outdentStr))) {
+        if (hasEnding(state.buffer, language.indentStr) && !hasEnding(state.buffer, language.outdentStr)) {
+          indentLevels[y] = indent;
+          indent++;
+        } else if (hasEnding(state.buffer + current, language.outdentStr) &&
+                   indent > 0) {
+          indent--;
+          indentLevels[y] = indent;
+        }
+      }
       if (current == '\n') {
+        if(!indentLevels.count(y))
+        indentLevels[y] = indent;
         int endIndex = entries.size();
         lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);
         startIndex = endIndex;
@@ -199,6 +224,7 @@ public:
         entries[i] = default_color;
         last_entry = i;
       }
+
       if (language.stringCharacters.find(current) != std::string::npos &&
           (last != language.escapeChar ||
            (last == language.escapeChar && i > 1 &&
@@ -248,22 +274,26 @@ public:
         state.buffer = U"";
       } else if (isNonChar(current) && !state.busy && state.buffer.length() &&
                  !state.wasReset) {
-
-        if (language.keyWords.count(language.keywords_case_sensitive ? state.buffer.getStrRef() : lowerCase(state.buffer.getStrRef()))) {
+        if (language.keyWords.count(
+                language.keywords_case_sensitive
+                    ? state.buffer.getStrRef()
+                    : lowerCase(state.buffer.getStrRef()))) {
 
           entries[state.start] = keyword_color;
           entries[i] = default_color;
           last_entry = i;
           state.wasReset = true;
           state.buffer = U"";
-        } else if (language.specialWords.count(language.special_case_sensitive ? state.buffer.getStrRef() : lowerCase(state.buffer.getStrRef()))) {
+        } else if (language.specialWords.count(
+                       language.special_case_sensitive
+                           ? state.buffer.getStrRef()
+                           : lowerCase(state.buffer.getStrRef()))) {
           entries[state.start] = special_color;
           entries[i] = default_color;
           last_entry = i;
           state.wasReset = true;
           state.buffer = U"";
         }
-
       } else if (isNumber(current) && isNonChar(last) && !state.busy) {
         state.mode = 6;
         if (current == '0' && i < raw.length() - 1 &&
@@ -303,11 +333,16 @@ public:
     //        std::cout << "lol: " << state.buffer << "end\n";
     if (state.buffer.length()) {
 
-      if (language.keyWords.count(language.keywords_case_sensitive ? state.buffer.getStrRef() : lowerCase(state.buffer.getStrRef()))) {
+      if (language.keyWords.count(language.keywords_case_sensitive
+                                      ? state.buffer.getStrRef()
+                                      : lowerCase(state.buffer.getStrRef()))) {
         entries[state.start] = keyword_color;
         entries[i] = default_color;
         state.wasReset = true;
-      } else if (language.specialWords.count(language.special_case_sensitive ? state.buffer.getStrRef() : lowerCase(state.buffer.getStrRef()))) {
+      } else if (language.specialWords.count(
+                     language.special_case_sensitive
+                         ? state.buffer.getStrRef()
+                         : lowerCase(state.buffer.getStrRef()))) {
         entries[state.start] = special_color;
         entries[i] = default_color;
         state.wasReset = true;

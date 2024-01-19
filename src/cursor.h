@@ -202,7 +202,8 @@ public:
       y = yStart;
       x = 0;
       auto count = (yEnd - yStart);
-      if (selection.getYBigger() == lines.size() - 1 && selection.getXBigger() == lines[lines.size()-1].length())
+      if (selection.getYBigger() == lines.size() - 1 &&
+          selection.getXBigger() == lines[lines.size() - 1].length())
         count++;
       FoldEntry entry;
       entry.lines.resize(count);
@@ -878,6 +879,34 @@ public:
 
     return count;
   }
+  int indent(std::map<int, int> &map, int start, int end, Utf8String prefix) {
+    int currentY = y;
+    int changed = 0;
+    y = start;
+    std::vector<Utf8String> old;
+    for (int i = start; i < end; i++) {
+      if (i >= lines.size() || i < 0)
+        break;
+      Utf8String &line = lines[i];
+      old.push_back(line);
+      int start = getFirstNonWhitespace(i);
+      if (start == -1 || !map.count(i))
+        continue;
+      Utf8String p;
+      for (size_t t = 0; t < map[i]; t++)
+        p += prefix;
+      if (line.length() < p.length() || start < p.length() ||
+          line.substr(0, start) != p) {
+        changed++;
+        lines[i] = p + line.substr(start);
+      }
+    }
+    if (changed > 0) {
+      historyPushWithExtra(64, 0, U"", old);
+    }
+    y = currentY;
+    return changed;
+  }
   Utf8String clearLine() {
     if (bind || foldEntries.count(y))
       return U"";
@@ -948,6 +977,17 @@ public:
         out += U"\n";
     }
     return out;
+  }
+  int getFirstNonWhitespace(int y) {
+    if (y >= lines.size())
+      return -1;
+    auto entries = lines[y].getCodePoints();
+    for (size_t i = 0; i < entries.size(); i++) {
+      char32_t e = entries[i];
+      if (e != ' ' && e != '\t' && e != '\r')
+        return i;
+    }
+    return -1;
   }
   Utf8String deleteWord() {
     if (foldEntries.count(y))
@@ -1251,6 +1291,11 @@ public:
       y = entry.y;
       x = entry.x;
       foldWithCount(entry.length);
+      break;
+    }
+    case 64: {
+      for (size_t i = 0; i < entry.extra.size(); i++)
+        lines[entry.y + i] = entry.extra[i];
       break;
     }
     default:
@@ -1632,20 +1677,21 @@ public:
         contentLines.erase(contentLines.begin() + (contentLines.size() - 1),
                            contentLines.begin() + (contentLines.size()));
       auto off = getCurrentLineLength() ? 1 : 0;
-      if(off ==1 && x > 0 && contentLines.size() >1) {
-          auto off = lines[y].substr(x);
-          contentLines.push_back(off);
+      if (off == 1 && x > 0 && contentLines.size() > 1) {
+        auto off = lines[y].substr(x);
+        contentLines.push_back(off);
       }
-      historyPush(off == 1 ? 53 : 54, contentLines.size(), off == 1 ?  lines[y] : U"");
-      if(off ==1 && x > 0 && contentLines.size() > 1) {
-          lines[y] = lines[y].substr(0, x);
+      historyPush(off == 1 ? 53 : 54, contentLines.size(),
+                  off == 1 ? lines[y] : U"");
+      if (off == 1 && x > 0 && contentLines.size() > 1) {
+        lines[y] = lines[y].substr(0, x);
       }
       for (auto &l : contentLines) {
         lines.insert(lines.begin() + y + off, l);
         y++;
       }
-      if(x > lines[y].length())
-          x = lines[y].size();
+      if (x > lines[y].length())
+        x = lines[y].size();
       return;
     }
     int saveX = 0;

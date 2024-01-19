@@ -184,12 +184,12 @@ public:
       add_window(content.substr(5));
       return;
     }
-    if(content == ":sh"){
+    if (content == ":sh") {
       state.shellCommand();
       return;
     }
-    if(content.find(":sh ") == 0){
-      if(state.execCommand(content.substr(4))) {
+    if (content.find(":sh ") == 0) {
+      if (state.execCommand(content.substr(4))) {
         state.lastCmd = content.substr(4);
       }
       return;
@@ -211,7 +211,7 @@ public:
       if (c->edited) {
         state.status =
             create(state.path.length() ? state.path : "New File") + U" edited";
-          vim->setSpecialCase(true);
+        vim->setSpecialCase(true);
         return;
       }
       state.deleteActive();
@@ -966,7 +966,7 @@ public:
 
     if (!vim->activeAction() && mode == VimMode::NORMAL ||
         mode == VimMode::VISUAL) {
-     vim->getState().tryPaste();
+      vim->getState().tryPaste();
       if (mode == VimMode::VISUAL) {
         vim->setMode(VimMode::NORMAL);
       }
@@ -1531,7 +1531,7 @@ public:
                     Vim *vim) override {
     if (!vim->activeAction() && mode == VimMode::NORMAL) {
 
-      if(cursor->x < cursor->lines[cursor->y].length()){
+      if (cursor->x < cursor->lines[cursor->y].length()) {
         Utf8String &str = cursor->lines[cursor->y];
         auto length = str.size() - cursor->x;
         Utf8String w = str.substr(cursor->x, length);
@@ -1542,12 +1542,9 @@ public:
       auto a = withType(ResultType::Emit);
       a.action_name = "i";
       return a;
-
     }
     return withType(ResultType::Silent);
   }
-
-
 };
 class CtrlUAction : public Action {
 
@@ -1607,7 +1604,6 @@ private:
 class SimpleCopy : public Action {
 
 public:
-public:
   SimpleCopy(bool copy_) : copy(copy_) {}
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
@@ -1637,6 +1633,105 @@ public:
 
 private:
   bool copy = false;
+};
+
+class IndentAction : public Action {
+public:
+  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override {
+    int res = 0;
+    State &st = vim->getState();
+    auto useSpaces = st.provider.useSpaces;
+    auto tabWidth = st.provider.tabWidth;
+    if (st.hasHighlighting) {
+      auto pref = useSpaces ? Utf8String(std::string(tabWidth, ' '))
+                            : Utf8String(std::string(1, '\t'));
+      auto &m = st.highlighter.indentLevels;
+      if (state.isInital) {
+        res = cursor->indent(m, cursor->y, cursor->y + 1, pref);
+
+      } else if (state.action.length() == 1) {
+        for (auto &pair : PAIRS) {
+          if (state.action[0] == pair.first || state.action[0] == pair.second) {
+            Utf8String in(state.action);
+            bool isClosing = state.action[0] == pair.second;
+
+            auto result =
+                cursor->findGlobal(!isClosing, in, cursor->x, cursor->y);
+            if (result.first == -1 && result.second == -1) {
+              return {};
+            }
+            cursor->x = result.first;
+
+            cursor->y = result.second;
+
+            if (state.replaceMode == ReplaceMode::ALL && !isClosing)
+              cursor->selection.activate(cursor->x == 0 ? 0 : cursor->x,
+                                         cursor->y);
+            else
+              cursor->selection.activate(state.replaceMode == ReplaceMode::ALL
+                                             ? cursor->x + 1
+                                             : cursor->x,
+                                         cursor->y);
+            {
+              if (st.hasHighlighting)
+                cursor->jumpMatching(st.highlighter.language.stringCharacters,
+                                     st.highlighter.language.escapeChar);
+              else {
+                cursor->jumpMatching(U"\"", '\\');
+              }
+            }
+            res = cursor->indent(m, cursor->selection.getYSmaller(),
+                                 cursor->selection.getYBigger(), pref);
+            cursor->selection.stop();
+            break;
+          }
+        }
+      } else if (state.direction == Direction::UP ||
+                 state.direction == Direction::DOWN) {
+        if (state.count) {
+          if (state.direction == Direction::UP) {
+            res = cursor->indent(m, cursor->y - state.count, cursor->y, pref);
+          } else {
+            res = cursor->indent(m, cursor->y, cursor->y + state.count, pref);
+          }
+        }
+      }
+    }
+    if (res) {
+      st.status = U"Indented: " + Utf8String(std::to_string(res));
+      ActionResult r = {};
+      r.allowCoords = false;
+      return r;
+    }
+    return {};
+  }
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override {
+    if (vim->activeAction() == nullptr && mode == VimMode::NORMAL)
+      return withType(ResultType::SetSelf);
+    if (vim->activeAction() == nullptr && mode == VimMode::VISUAL) {
+      State &st = vim->getState();
+      auto useSpaces = st.provider.useSpaces;
+      auto tabWidth = st.provider.tabWidth;
+      if (st.hasHighlighting) {
+        auto pref = useSpaces ? Utf8String(std::string(tabWidth, ' '))
+                              : Utf8String(std::string(1, '\t'));
+        int res = cursor->indent(st.highlighter.indentLevels,
+                                 cursor->selection.getYSmaller(),
+                                 cursor->selection.getYBigger(), pref);
+        if (res) {
+          st.status = U"Indented: " + Utf8String(std::to_string(res));
+          ActionResult r = {};
+          r.allowCoords = false;
+          return r;
+        }
+      }
+    }
+    if (vim->activeAction() && vim->activeAction()->action_name == "=")
+      return execute(mode, state, cursor, vim);
+    return {};
+  }
 };
 
 void register_vim_commands(Vim &vim, State &state) {
@@ -1698,6 +1793,7 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new QuoteAction("`"), "`", '`');
   vim.registerTrieChar(new SlashAction(), "/", '/');
   vim.registerTrieChar(new RAction(), "r", 'r');
+  vim.registerTrieChar(new IndentAction(), "=", '=');
   vim.registerTrieChar(new FindAction(finder, false, false), "f", 'f');
   vim.registerTrieChar(new FindAction(finder, false, true), "t", 't');
   vim.registerTrieChar(new FindAction(finder, true, false), "F", 'F');

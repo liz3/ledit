@@ -196,9 +196,10 @@ public:
 
 private:
   bool exec(ActionTrie *trie) {
-    if (activeTrie && trie != activeTrie)
-      state.isInital = false;
+
     auto result = trie->action->peek(mode, state, cursor, this);
+    if (activeTrie && trie != activeTrie && result.type != ResultType::Silent)
+      state.isInital = false;
     last = trie->action_name;
     if (result.type == ResultType::ExecuteSet) {
       if (activeTrie) {

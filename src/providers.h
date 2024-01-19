@@ -654,6 +654,12 @@ public:
     }
     if (entry.contains("seperator_characters"))
       language.whitespace = entry["seperator_characters"];
+    if (entry.contains("tab_ident"))
+      language.tabIndent = entry["tab_ident"];
+    if (entry.contains("indent_str"))
+      language.indentStr = entry["indent_str"];
+    if (entry.contains("outdent_str"))
+      language.outdentStr = entry["outdent_str"];
     if (entry.contains("file_extensions") &&
         entry["file_extensions"].is_array()) {
       for (auto &word : entry["file_extensions"])
@@ -722,9 +728,9 @@ public:
     config["auto_open_cmd_output"] = autoOpenCommandOut;
     config["relative_line_numbers"] = relativeLineNumbers;
     config["tab_width"] = tabWidth;
-    if(commands.size()) {
+    if (commands.size()) {
       json cmdO;
-      for(auto& entry : commands) {
+      for (auto &entry : commands) {
         cmdO[entry.first] = entry.second;
       }
       config["commands"] = cmdO;

@@ -182,6 +182,10 @@ public:
     return this->getStrRef() == other.getStrRef();
   }
 
+   bool operator!=(const Utf8String &other) const {
+    return this->getStrRef() != other.getStrRef();
+  }
+
   bool operator==(const char32_t input[]) {
     std::u32string str(input);
     std::string n = unicodeToUtf8(str);

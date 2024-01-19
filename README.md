@@ -201,6 +201,8 @@ A file in languages supports the properties shown in the following CMake example
     ],
     "single_line_comment": "#",
     "multi_line_comment": ["#[[", "]]"],
+    "indent_str": "{",
+    "outdent_str": "}",
     "escape_character": "\\",
     "file_extensions": [
       "CMakeLists.txt",
