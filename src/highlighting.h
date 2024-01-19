@@ -192,21 +192,22 @@ public:
     auto vec = raw.getCodePoints();
     for (i = 0; i < raw.length(); i++) {
       char32_t current = vec[i];
-            if (!state.busy &&
+      if (!state.busy &&
           (hasEnding(state.buffer, language.indentStr) ||
-           hasEnding(state.buffer + current, language.outdentStr))) {
-        if (hasEnding(state.buffer, language.indentStr) && !hasEnding(state.buffer, language.outdentStr)) {
+           hasEnding(state.buffer, language.outdentStr))) {
+        if (hasEnding(state.buffer, language.indentStr) &&
+            !hasEnding(state.buffer, language.outdentStr)) {
           indentLevels[y] = indent;
           indent++;
-        } else if (hasEnding(state.buffer + current, language.outdentStr) &&
+        } else if (hasEnding(state.buffer, language.outdentStr) &&
                    indent > 0) {
           indent--;
           indentLevels[y] = indent;
         }
       }
       if (current == '\n') {
-        if(!indentLevels.count(y))
-        indentLevels[y] = indent;
+        if (!indentLevels.count(y))
+          indentLevels[y] = indent;
         int endIndex = entries.size();
         lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);
         startIndex = endIndex;
