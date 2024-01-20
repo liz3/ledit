@@ -143,6 +143,11 @@ public:
       state.toggleLineWrapping();
       return;
     }
+    if(content.find(":tw ") == 0 && content.length() >4){
+      state.provider.tabWidth = std::stoi(content.substr(4));
+      state.status = U"Tab Width: " + Utf8String(content.substr(4));
+      return;
+    }
     if (content == ":hl") {
       state.switchLineHighlightMode();
       return;

@@ -257,6 +257,7 @@ There are some commands where direct arguments are supported though,
 :mode <extension> - switch to a mode given the extension like js/cpp/sh...
 :theme - switch theme
 :theme <name> - switch to a theme given its name
+:tw <number> - Set tab width
 :e - open new file
 :win - Open new window with path or without
 :e <path> - directly open new path
