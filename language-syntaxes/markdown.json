@@ -7,8 +7,8 @@
     "####"
   ],
   "special_words": [
-    "**",
     "_",
+    "~",
     "*",
     "-",
     ">"
@@ -21,6 +21,7 @@
   "file_extensions": [
       "md", "markdown"
   ],
-  "string_characters": "`"
+  "string_characters": "`",
+  "seperator_characters": " \t\n[]{}();:.,/"
 
  }
