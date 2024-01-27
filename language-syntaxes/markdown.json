@@ -1,0 +1,26 @@
+{
+  "mode_name": "Markdown",
+  "key_words": [
+    "#",
+    "##",
+    "###",
+    "####"
+  ],
+  "special_words": [
+    "**",
+    "_",
+    "*",
+    "-",
+    ">"
+  ],
+  "multi_line_comment": [
+    "<!--",
+    "-->"
+  ],
+  "escape_character": "\\",
+  "file_extensions": [
+      "md", "markdown"
+  ],
+  "string_characters": "`"
+
+ }
