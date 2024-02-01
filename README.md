@@ -117,6 +117,9 @@ A file contains the following values:
     "default_color": [
       242, 242, 242, 242 // Default color for text, in RGBA (0-255)
     ],
+    "symbol_color": [
+      180, 180, 180, 255 // Symbols color, matches symbols from the language definition, in RGBA (0-255)
+    ],
     "keyword_color": [
       153, 25, 51, 255 // Keyword color if a active mode is present, in RGBA (0-255)
     ],
@@ -167,6 +170,7 @@ A file in languages supports the properties shown in the following CMake example
   {
     "mode_name": "CMake",
     "seperator_characters": " \t\n[]{}();:.,*-+/",
+    "symbols": "+-/*()[]{};:=<>.,:",
     "keywords_case_sensitive": true,
     "special_case_sensitive": true,
     "key_words": [

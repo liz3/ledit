@@ -16,6 +16,7 @@ struct EditorColors {
   Vec4f keyword_color = vec4f(0.6, 0.1, 0.2, 1.0);
   Vec4f special_color = vec4f(0.2, 0.2, 0.8, 1.0);
   Vec4f number_color = vec4f(0.2, 0.2, 0.6, 1.0);
+  Vec4f symbol_color = vec4fs(0.67);
   Vec4f comment_color = vec4fs(0.5);
   Vec4f fold_color = vec4fs(0.5);
   Vec4f background_color = vec4f(0, 0, 0, 1.0);
@@ -40,6 +41,7 @@ struct Language {
   bool keywords_case_sensitive = true;
   bool special_case_sensitive = true;
   bool tabIndent = false;
+  std::string symbols = "+-/*()[]{};:=<>.,:";
   std::string indentStr = "{";
   std::string outdentStr = "}";
 };
@@ -57,6 +59,7 @@ struct LanguageExpanded {
   bool tabIndent = false;
   Utf8String indentStr;
   Utf8String outdentStr;
+  Utf8String symbols;
 };
 struct HighlighterState {
   int start;
@@ -65,6 +68,7 @@ struct HighlighterState {
   int mode;
   Utf8String buffer;
   char stringChar;
+  bool lastOperator;
 };
 struct SavedState {
   HighlighterState state;
@@ -140,6 +144,7 @@ public:
     for (auto c : whitespaceChars) {
       language.whitespace[c] = true;
     }
+    language.symbols = Utf8String(lang.symbols);
     language.tabIndent = lang.tabIndent;
     language.indentStr = Utf8String(lang.indentStr);
     language.outdentStr = Utf8String(lang.outdentStr);
@@ -172,7 +177,7 @@ public:
       wasEntire = !wasCached;
     }
 
-    HighlighterState state = {0, false, false, 0, U"", 0};
+    HighlighterState state = {0, false, false, 0, U"", 0, false};
     int startIndex = 0;
     int y = 0;
     lineIndex.clear();
@@ -183,6 +188,7 @@ public:
     Vec4f special_color = colors->special_color;
     Vec4f comment_color = colors->comment_color;
     Vec4f number_color = colors->number_color;
+    Vec4f symbol_color = colors->symbol_color;
     char32_t last = 0;
     size_t i;
     size_t lCount = 0;
@@ -192,15 +198,13 @@ public:
     auto vec = raw.getCodePoints();
     for (i = 0; i < raw.length(); i++) {
       char32_t current = vec[i];
-      if (!state.busy &&
-          (hasEnding(state.buffer, language.indentStr) ||
-           hasEnding(state.buffer, language.outdentStr))) {
+      if (!state.busy && (hasEnding(state.buffer, language.indentStr) ||
+                          hasEnding(state.buffer, language.outdentStr))) {
         if (hasEnding(state.buffer, language.indentStr) &&
             !hasEnding(state.buffer, language.outdentStr)) {
           indentLevels[y] = indent;
           indent++;
-        } else if (hasEnding(state.buffer, language.outdentStr) &&
-                   indent > 0) {
+        } else if (hasEnding(state.buffer, language.outdentStr) && indent > 0) {
           indent--;
           indentLevels[y] = indent;
         }
@@ -217,6 +221,8 @@ public:
       if (skip > 0 && wasCached && lCount < skip - 1) {
         continue;
       }
+      bool isSymbol = !state.lastOperator && !state.busy &&
+                      language.symbols.find(current) != std::string::npos;
       if (state.busy && (state.mode == 6 || state.mode == 7) &&
           isNumberEnd(current, state.mode == 7)) {
         state.buffer = U"";
@@ -308,7 +314,20 @@ public:
         state.buffer = U"";
         state.start = i;
       }
-
+      if (isSymbol) {
+        if (last_entry != i || vec4f_eq(entries[last_entry], default_color)) {
+          entries[i] = symbol_color;
+          last_entry = i;
+          state.lastOperator = true;
+        }
+      } else if (state.lastOperator &&
+                 language.symbols.find(current) == std::string::npos) {
+        if (!state.busy && last_entry != i) {
+          entries[i] = default_color;
+          last_entry = i;
+        }
+        state.lastOperator = false;
+      }
       state.buffer += current;
       last = current;
       if (current == '\n') {
@@ -331,7 +350,6 @@ public:
       }
     }
 
-    //        std::cout << "lol: " << state.buffer << "end\n";
     if (state.buffer.length()) {
 
       if (language.keyWords.count(language.keywords_case_sensitive

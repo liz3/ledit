@@ -131,3 +131,6 @@ float lerpf(float a, float b, float t)
 {
     return a + (b - a) * t;
 }
+bool vec4f_eq(Vec4f a, Vec4f b) {
+    return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
+}

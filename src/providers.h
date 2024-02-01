@@ -161,6 +161,8 @@ public:
           getVecOrDefault(configColors, "comment_color", colors.comment_color);
       colors.fold_color =
           getVecOrDefault(configColors, "fold_color", colors.fold_color);
+      colors.symbol_color =
+          getVecOrDefault(configColors, "symbol_color", colors.symbol_color);
       colors.background_color = getVecOrDefault(
           configColors, "background_color", colors.background_color);
       colors.highlight_color = getVecOrDefault(configColors, "highlight_color",
@@ -660,6 +662,8 @@ public:
       language.indentStr = entry["indent_str"];
     if (entry.contains("outdent_str"))
       language.outdentStr = entry["outdent_str"];
+    if (entry.contains("symbols"))
+      language.symbols = entry["symbols"];
     if (entry.contains("file_extensions") &&
         entry["file_extensions"].is_array()) {
       for (auto &word : entry["file_extensions"])
