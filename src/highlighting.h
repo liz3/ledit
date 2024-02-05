@@ -221,8 +221,7 @@ public:
       if (skip > 0 && wasCached && lCount < skip - 1) {
         continue;
       }
-      bool isSymbol = !state.lastOperator && !state.busy &&
-                      language.symbols.find(current) != std::string::npos;
+
       if (state.busy && (state.mode == 6 || state.mode == 7) &&
           isNumberEnd(current, state.mode == 7)) {
         state.buffer = U"";
@@ -314,6 +313,8 @@ public:
         state.buffer = U"";
         state.start = i;
       }
+      bool isSymbol = !state.lastOperator && !state.busy &&
+                      language.symbols.find(current) != std::string::npos;
       if (isSymbol) {
         if (last_entry != i || vec4f_eq(entries[last_entry], default_color)) {
           entries[i] = symbol_color;
