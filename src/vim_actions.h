@@ -243,7 +243,7 @@ public:
           if (edited) {
             state.status =
                 create(edited->path.length() ? edited->path : "New File") +
-                U" edited, press ESC again to exit";
+                U" edited, use :qa! again to exit";
             vim->setSpecialCase(true);
           } else {
             state.exitFlag = true;
@@ -251,9 +251,9 @@ public:
           }
         }
       } else {
-        if (c->edited) {
+        if (c->edited && !forced) {
           state.status = create(state.path.length() ? state.path : "New File") +
-                         U" edited, press ESC again to exit";
+                         U" edited, use :q! again to exit";
           vim->setSpecialCase(true);
         } else {
           if (state.cursors.size() == 1) {
