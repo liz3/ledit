@@ -70,10 +70,17 @@ public:
   std::atomic_int32_t command_pid = 0;
   std::string lastCommand = "";
   std::thread command_thread;
+
+  fs::path getConfigDir(fs::path& base) {
+     fs::path configDir = base / ".config" / "ledit";
+     if(fs::exists(configDir))
+      return configDir;
+    return base / ".ledit";
+  }
   Provider() {
     fs::path *homeDir = getHomeFolder();
     if (homeDir) {
-      fs::path configDir = *homeDir / ".ledit";
+      fs::path configDir = getConfigDir(*homeDir);
       if (fs::exists(configDir)) {
         fs::path configFile = configDir / "config.json";
         configPath = configFile.generic_string();
@@ -117,7 +124,7 @@ public:
     fs::path *homeDir = getHomeFolder();
     if (!homeDir)
       return "";
-    fs::path config = (*homeDir) / ".ledit" / "config.json";
+    fs::path config = getConfigDir(*homeDir) / "config.json";
     auto str = config.generic_string();
     delete homeDir;
     return str;
@@ -139,7 +146,7 @@ public:
     if (!homeDir)
       return false;
 
-    fs::path configDir = *homeDir / ".ledit";
+    fs::path configDir = getConfigDir(*homeDir);
     std::string fullName =
         name.find(".json") == std::string::npos ? name + ".json" : name;
     fs::path p = configDir / "themes" / fullName;
