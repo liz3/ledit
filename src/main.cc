@@ -135,13 +135,15 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
     return;
   gState->invalidateCache();
   if (gState->vim) {
+        if(gState->provider.useCapsAsEscape && key == GLFW_KEY_CAPS_LOCK)
+          key = GLFW_KEY_ESCAPE;
     auto r = gState->vim->processKey(key, scancode, action, mods);
 
     if (r && gState->vim->shouldRenderCoords())
       gState->renderCoords();
     return;
   }
-  if (key == GLFW_KEY_ESCAPE) {
+  if (key == GLFW_KEY_ESCAPE || (gState->provider.useCapsAsEscape && key == GLFW_KEY_CAPS_LOCK)) {
     if (action == GLFW_PRESS) {
       if (gState->cursor->selection.active) {
         gState->cursor->selection.stop();

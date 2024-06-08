@@ -86,6 +86,7 @@ For the font face either remove it completely or make sure its a valid path.
   "auto_open_cmd_output": false, // automatically trigger command output
   "line_numbers": true, // display line numbers
   "line_wrapping": false, // experimental line wrapping
+  "caps_as_escape": false, // use caps as escape key, fix until i find the energy to fix this in GLFW.
   "highlight_active_line": "full", // highlight active line, can be full, small(requires line numbers to be enabled) or off
   "theme": "default", // see themes section
   "font_size": 25, // font size

@@ -64,6 +64,7 @@ public:
   bool autoOpenCommandOut = false;
   bool commandHadOutput = false;
   bool relativeLineNumbers = false;
+  bool useCapsAsEscape = false;
   std::string theme = "default";
   std::string highlightLine = "full";
   std::atomic_bool command_running = false;
@@ -710,6 +711,8 @@ public:
     lineNumbers = getBoolOrDefault(*configRoot, "line_numbers", lineNumbers);
     relativeLineNumbers = getBoolOrDefault(*configRoot, "relative_line_numbers",
                                            relativeLineNumbers);
+    useCapsAsEscape = getBoolOrDefault(*configRoot, "caps_as_escape",
+                                           useCapsAsEscape);
     lineWrapping = getBoolOrDefault(*configRoot, "line_wrapping", lineWrapping);
     highlightLine =
         getStringOrDefault(*configRoot, "highlight_active_line", highlightLine);
@@ -738,6 +741,7 @@ public:
     config["highlight_active_line"] = highlightLine;
     config["auto_open_cmd_output"] = autoOpenCommandOut;
     config["relative_line_numbers"] = relativeLineNumbers;
+    config["caps_as_escape"] = useCapsAsEscape;
     config["tab_width"] = tabWidth;
     if (commands.size()) {
       json cmdO;
