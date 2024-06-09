@@ -68,6 +68,7 @@ void drop_callback(GLFWwindow *window, int count, const char **paths) {
 void mouse_button_callback(GLFWwindow *window, int button, int action,
                            int mods) {
   auto *gState = g_windows->windows[window]->state;
+   glfwMakeContextCurrent(gState->window);
 
   if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
     gState->invalidateCache();
@@ -86,7 +87,7 @@ void mouse_button_callback(GLFWwindow *window, int button, int action,
 
 void character_callback(GLFWwindow *window, unsigned int codepoint) {
   auto *gState = g_windows->windows[window]->state;
-
+ glfwMakeContextCurrent(gState->window);
   gState->invalidateCache();
   gState->exitFlag = false;
   if (gState->exitLoop) {
@@ -130,6 +131,7 @@ void character_callback(GLFWwindow *window, unsigned int codepoint) {
 void key_callback(GLFWwindow *window, int key, int scancode, int action,
                   int mods) {
   auto *gState = g_windows->windows[window]->state;
+ glfwMakeContextCurrent(gState->window);
 
   if (gState == nullptr)
     return;

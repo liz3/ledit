@@ -176,15 +176,15 @@ public:
   }
   void changeScale(int diff) {
 
-    if ((virtual_fs <= 15 && diff == -1) || (virtual_fs >= 100 && diff == 1))
+    if ((virtual_fs <= 5 && diff == -1) || (virtual_fs >= 400 && diff == 1))
       return;
 
     virtual_fs += diff;
     scale = (float)virtual_fs / (float)fs;
 
-    if ((diff == -1 && scale < 0.6 && fs > 20) ||
-        (scale > 2.5 && diff == 1 && fs < 35)) {
-      auto newSize = virtual_fs < 20 ? 20 : virtual_fs > 35 ? 35 : virtual_fs;
+    if ((diff == -1 && scale < 0.6 && fs > 18) ||
+        (scale > 2.5 && diff == 1 && fs < 128)) {
+      auto newSize = virtual_fs < 18 ? 18 : virtual_fs > 128 ? 128 : virtual_fs;
       for (auto &face : faces) {
         if (face->hasColor)
           FT_Select_Size(face->face, fontSelectSize(newSize, face->face));
