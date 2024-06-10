@@ -220,7 +220,7 @@ public:
     return std::string::npos;
   }
 
-  size_t find(Utf8String &other) const {
+  size_t find(const Utf8String &other) const {
       if(other.length() == 1)
           return find(other[0]);
       if(character_length < other.length())
@@ -236,7 +236,7 @@ public:
 
   iterator end() { return iterator(this, true, character_length); }
 
-  char32_t operator[](int i) { return getCharacterAt(i); }
+  char32_t operator[](int i) const { return getCharacterAt(i); }
 
   size_t length() const { return this->character_length; }
   size_t size() const { return this->character_length; }
@@ -272,7 +272,7 @@ public:
     setState();
   }
 
-  void insert(size_t index, Utf8String &other) { appendAt(other, index); }
+  void insert(size_t index, const Utf8String &other) { appendAt(other, index); }
   void append(const Utf8String &other) {
     this->base += other.base;
     this->character_length += other.character_length;
@@ -286,7 +286,7 @@ public:
     character_length += cps.size();
     this->base += value;
   }
-  void appendAt(Utf8String &other, size_t start) {
+  void appendAt(const Utf8String &other, size_t start) {
     auto p = this->calculateByteLength(start);
     this->base.insert(p.first, other.base);
     this->character_length += other.character_length;

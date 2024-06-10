@@ -1,18 +1,18 @@
 #ifndef CURSOR_H
 #define CURSOR_H
 
-#include <string>
-#include <map>
-#include <unordered_map>
-#include <vector>
-#include <sstream>
-#include <fstream>
 #include "font_atlas.h"
 #include "selection.h"
-#include <deque>
 #include "u8String.h"
 #include "utf8String.h"
 #include "utils.h"
+#include <deque>
+#include <fstream>
+#include <map>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <vector>
 #ifndef __APPLE__
 #include <filesystem>
 #endif
@@ -1548,7 +1548,7 @@ public:
     edited = false;
     return true;
   }
-  bool openFile(std::string oldPath, std::string path) {
+  bool openFile(const std::string& oldPath, const std::string& path) {
 
     if (oldPath.length()) {
       PosEntry entry;
@@ -1656,7 +1656,7 @@ public:
       x++;
     }
   }
-  void appendWithLines(Utf8String content, bool isVim = false) {
+  void appendWithLines(const Utf8String& content, bool isVim = false) {
     if (bind) {
       append(content);
       return;
@@ -1731,7 +1731,7 @@ public:
     }
     center(y);
   }
-  void append(Utf8String content) {
+  void append(const Utf8String& content) {
     if (!bind && foldEntries.count(y))
       return;
     auto *target = bind ? bind : &lines[y];
