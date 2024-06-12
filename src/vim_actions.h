@@ -1248,9 +1248,11 @@ public:
 class MoveAction : public Action {
 private:
   Direction direction;
+  bool need_ctrl = true;
 
 public:
   MoveAction(Direction v) : direction(v) {}
+  MoveAction(Direction v, bool ctrl) : direction(v), need_ctrl(ctrl) {}
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
@@ -1258,13 +1260,12 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
-
     auto window = vim->getState().window;
     auto mods = vim->getKeyState().mods;
     bool ctrl_pressed =
         glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
         glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS ||
-        mods & GLFW_MOD_CONTROL;
+        mods & GLFW_MOD_CONTROL || !need_ctrl;
     if (cursor->bind && ctrl_pressed) {
       if (direction == Direction::RIGHT)
         cursor->moveRight();
@@ -1272,7 +1273,7 @@ public:
         cursor->moveLeft();
       return withType(ResultType::Silent);
     }
-    if (vim->activeAction() || mode != VimMode::INSERT) {
+    if (vim->activeAction() || (mode != VimMode::INSERT && need_ctrl)) {
       return withType(ResultType::Silent);
     }
 
@@ -1760,6 +1761,10 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrie(new MoveAction(Direction::RIGHT), "M_RIGHT", GLFW_KEY_F);
   vim.registerTrie(new MoveAction(Direction::DOWN), "M_DOWN", GLFW_KEY_N);
   vim.registerTrie(new MoveAction(Direction::LEFT), "M_LEFT", GLFW_KEY_B);
+  vim.registerTrie(new MoveAction(Direction::UP, false), "M_ARROW_UP", GLFW_KEY_UP);
+  vim.registerTrie(new MoveAction(Direction::RIGHT, false), "M_ARROW_RIGHT", GLFW_KEY_RIGHT);
+  vim.registerTrie(new MoveAction(Direction::DOWN, false), "M_ARROW_DOWN", GLFW_KEY_DOWN);
+  vim.registerTrie(new MoveAction(Direction::LEFT, false), "M_ARROW_LEFT", GLFW_KEY_LEFT);
   vim.registerTrieChar(new IAction(), "i", 'i');
   vim.registerTrieChar(new HAction(), "h", 'h');
   vim.registerTrieChar(new JAction(), "j", 'j');

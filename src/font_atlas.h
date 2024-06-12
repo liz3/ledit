@@ -85,10 +85,8 @@ public:
       return;
     }
     virtual_fs = fontSize;
-    if (fontSize % 5 != 0)
-      fontSize -= (fontSize % 5);
-    if (fontSize < 15)
-      fontSize = 15;
+    if (fontSize < 18)
+      fontSize = 18;
     readFont(path, fontSize, true);
   }
   size_t fontSelectSize(uint32_t size, FT_Face face) {
