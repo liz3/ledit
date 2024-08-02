@@ -334,7 +334,7 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
-    if (vim->activeAction()) {
+    if (vim->activeAction() || mode == VimMode::VISUAL) {
       if (state.replaceMode == ReplaceMode::UNSET)
         state.replaceMode = ReplaceMode::INNER;
       return withType(ResultType::Silent);
@@ -439,7 +439,7 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
-    if (vim->activeAction()) {
+    if (vim->activeAction() || mode == VimMode::VISUAL) {
       if (state.replaceMode == ReplaceMode::UNSET)
         state.replaceMode = ReplaceMode::ALL;
       return withType(ResultType::Silent);
@@ -562,12 +562,13 @@ public:
 class DAction : public Action {
 private:
   bool onlyCopy = false;
+  bool onlyMark = false;
 
 public:
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
-    if (state.isInital) {
+    if (state.isInital && mode != VimMode::VISUAL) {
       auto out = cursor->deleteLines(cursor->y, 1);
       vim->getState().tryCopyInput(out);
     } else {
@@ -625,6 +626,8 @@ public:
               cursor->x--;
               cursor->selection.diffX(cursor->x);
             }
+            if(onlyMark)
+              return withType(ResultType::Silent);
             Utf8String cc(cursor->getSelection());
             vim->getState().tryCopyInput(cc);
             if (!onlyCopy) {
@@ -660,6 +663,8 @@ public:
                                      ? resultRight.first + 1
                                      : resultRight.first,
                                  resultRight.second);
+          if(onlyMark)
+            return withType(ResultType::Silent);
           Utf8String cc(cursor->getSelection());
           vim->getState().tryCopyInput(cc);
           if (!onlyCopy)
@@ -763,6 +768,13 @@ public:
     this->onlyCopy = false;
     cursor->x = x;
     cursor->y = y;
+    return out;
+  }
+    ActionResult markOnly(VimMode mode, MotionState &state, Cursor *cursor,
+                        Vim *vim) {
+    this->onlyMark = true;
+    auto out = execute(mode, state, cursor, vim);
+    this->onlyMark = false;
     return out;
   }
 };
@@ -1045,7 +1057,9 @@ public:
       cursor->gotoLine(state.count);
       return {};
     }
-
+    if(cursor->y == cursor->lines.size()-1)
+      cursor->jumpEnd();
+    else
     cursor->gotoLine(cursor->lines.size());
     return {};
   }
@@ -1073,9 +1087,10 @@ public:
 class ParagraphAction : public Action {
 private:
   std::string symbol;
+  DAction* d;
 
 public:
-  ParagraphAction(std::string symbol) { this->symbol = symbol; }
+  ParagraphAction(std::string symbol, DAction* d) { this->symbol = symbol; this->d = d; }
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
@@ -1083,8 +1098,10 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
-    if (vim->activeAction()) {
+    if (vim->activeAction() || mode == VimMode::VISUAL) {
       state.action = symbol;
+      if(mode == VimMode::VISUAL)
+        return d->markOnly(mode, state, cursor, vim);
       return withType(ResultType::ExecuteSet);
     }
     if (symbol == "{") {
@@ -1130,9 +1147,10 @@ public:
 class BracketAction : public Action {
 private:
   std::string symbol;
+  DAction* d;
 
 public:
-  BracketAction(std::string symbol) { this->symbol = symbol; }
+  BracketAction(std::string symbol, DAction* d) { this->symbol = symbol; this->d = d; }
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
@@ -1140,8 +1158,10 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
-    if (vim->activeAction()) {
+    if (vim->activeAction() || mode == VimMode::VISUAL) {
       state.action = symbol;
+      if(mode == VimMode::VISUAL)
+        return d->markOnly(mode, state, cursor, vim);
       return withType(ResultType::ExecuteSet);
     }
     return {};
@@ -1150,9 +1170,10 @@ public:
 class ParenAction : public Action {
 private:
   std::string symbol;
+  DAction* d;
 
 public:
-  ParenAction(std::string symbol) { this->symbol = symbol; }
+  ParenAction(std::string symbol, DAction* d) { this->symbol = symbol; this->d = d; }
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
@@ -1160,8 +1181,10 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
-    if (vim->activeAction()) {
+    if (vim->activeAction() || mode == VimMode::VISUAL) {
       state.action = symbol;
+      if(mode == VimMode::VISUAL)
+        return d->markOnly(mode, state, cursor, vim);
       return withType(ResultType::ExecuteSet);
     }
     return {};
@@ -1170,9 +1193,10 @@ public:
 class QuoteAction : public Action {
 private:
   std::string symbol;
+  DAction* d;
 
 public:
-  QuoteAction(std::string symbol) { this->symbol = symbol; }
+  QuoteAction(std::string symbol, DAction* d) { this->symbol = symbol; this->d = d; }
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
                        Vim *vim) override {
 
@@ -1180,8 +1204,10 @@ public:
   }
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override {
-    if (vim->activeAction()) {
+    if (vim->activeAction() || mode == VimMode::VISUAL) {
       state.action = symbol;
+      if(mode == VimMode::VISUAL)
+        return d->markOnly(mode, state, cursor, vim);
       return withType(ResultType::ExecuteSet);
     }
     return {};
@@ -1792,15 +1818,15 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new IIAction(), "I", 'I');
   vim.registerTrieChar(new GAction(), "g", 'g');
   vim.registerTrieChar(new GGAction(), "G", 'G');
-  vim.registerTrieChar(new ParagraphAction("{"), "{", '{');
-  vim.registerTrieChar(new ParagraphAction("}"), "}", '}');
-  vim.registerTrieChar(new BracketAction("["), "[", '[');
-  vim.registerTrieChar(new BracketAction("]"), "]", ']');
-  vim.registerTrieChar(new ParenAction("("), "(", '(');
-  vim.registerTrieChar(new ParenAction(")"), ")", ')');
-  vim.registerTrieChar(new QuoteAction("\""), "\"", '\"');
-  vim.registerTrieChar(new QuoteAction("'"), "'", '\'');
-  vim.registerTrieChar(new QuoteAction("`"), "`", '`');
+  vim.registerTrieChar(new ParagraphAction("{", d), "{", '{');
+  vim.registerTrieChar(new ParagraphAction("}", d), "}", '}');
+  vim.registerTrieChar(new BracketAction("[", d), "[", '[');
+  vim.registerTrieChar(new BracketAction("]", d), "]", ']');
+  vim.registerTrieChar(new ParenAction("(", d), "(", '(');
+  vim.registerTrieChar(new ParenAction(")", d), ")", ')');
+  vim.registerTrieChar(new QuoteAction("\"", d), "\"", '\"');
+  vim.registerTrieChar(new QuoteAction("'", d), "'", '\'');
+  vim.registerTrieChar(new QuoteAction("`", d), "`", '`');
   vim.registerTrieChar(new SlashAction(), "/", '/');
   vim.registerTrieChar(new RAction(), "r", 'r');
   vim.registerTrieChar(new IndentAction(), "=", '=');
