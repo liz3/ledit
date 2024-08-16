@@ -2,7 +2,7 @@
 #
 # Process this file with autoconf to produce a configure script.
 #
-# Copyright (C) 2001-2021 by
+# Copyright (C) 2001-2024 by
 # David Turner, Robert Wilhelm, and Werner Lemberg.
 #
 # This file is part of the FreeType project, and may only be used, modified,
@@ -11,13 +11,13 @@
 # indicate that you have read the license and understand and accept it
 # fully.
 
-AC_INIT([FreeType], [2.11], [freetype@nongnu.org], [freetype])
+AC_INIT([FreeType], [2.13.3], [freetype@nongnu.org], [freetype])
 AC_CONFIG_SRCDIR([ftconfig.h.in])
 
 
 # Don't forget to update `docs/VERSIONS.TXT'!
 
-version_info='24:0:18'
+version_info='26:2:20'
 AC_SUBST([version_info])
 ft_version=`echo $version_info | tr : .`
 AC_SUBST([ft_version])
@@ -50,7 +50,7 @@ if test ${cross_compiling} = yes; then
 
   AC_MSG_CHECKING([for suffix of native executables])
   rm -f a.* b.* a_out.exe conftest.*
-  echo > conftest.c "int main() { return 0;}"
+  echo > conftest.c "int main(void) { return 0;}"
   ${CC_BUILD} conftest.c || AC_MSG_ERROR([native C compiler is not working])
   rm -f conftest.c
   if test -x a.out -o -x b.out -o -x conftest; then
@@ -103,78 +103,6 @@ AC_CHECK_HEADERS([fcntl.h unistd.h])
 # checks for typedefs, structures, and compiler characteristics
 
 AC_C_CONST
-AC_CHECK_SIZEOF([int])
-AC_CHECK_SIZEOF([long])
-AC_TYPE_LONG_LONG_INT
-
-
-# check whether cpp computation of size of int and long in ftconfig.h.in works
-
-AC_MSG_CHECKING([whether cpp computation of bit length in ftconfig.h.in works])
-orig_CPPFLAGS="${CPPFLAGS}"
-CPPFLAGS="-I${srcdir} -I. -I${srcdir}/../../include ${CPPFLAGS}"
-
-ac_clean_files=
-if test ! -f ft2build.h; then
-  ac_clean_files=ft2build.h
-  touch ft2build.h
-fi
-
-cat > conftest.c <<\_ACEOF
-#include <limits.h>
-#define FT_CONFIG_OPTIONS_H <freetype/config/ftoption.h>
-#define FT_CONFIG_STANDARD_LIBRARY_H <freetype/config/ftstdlib.h>
-#define FT_UINT_MAX  UINT_MAX
-#define FT_ULONG_MAX ULONG_MAX
-#include "ftconfig.h.in"
-_ACEOF
-echo >> conftest.c "#if FT_SIZEOF_INT == "${ac_cv_sizeof_int}
-echo >> conftest.c "ac_cpp_ft_sizeof_int="${ac_cv_sizeof_int}
-echo >> conftest.c "#endif"
-echo >> conftest.c "#if FT_SIZEOF_LONG == "${ac_cv_sizeof_long}
-echo >> conftest.c "ac_cpp_ft_sizeof_long="${ac_cv_sizeof_long}
-echo >> conftest.c "#endif"
-
-${CPP} ${CPPFLAGS} conftest.c | ${GREP} ac_cpp_ft > conftest.sh
-eval `cat conftest.sh`
-rm -f conftest.* $ac_clean_files
-
-if test x != "x${ac_cpp_ft_sizeof_int}" \
-   -a x != x"${ac_cpp_ft_sizeof_long}"; then
-  unset ft_use_autoconf_sizeof_types
-else
-  ft_use_autoconf_sizeof_types=yes
-fi
-
-AC_ARG_ENABLE(biarch-config,
-[  --enable-biarch-config  install biarch ftconfig.h to support multiple
-                          architectures by single file], [], [])
-
-case :${ft_use_autoconf_sizeof_types}:${enable_biarch_config}: in
-  :yes:yes:)
-    AC_MSG_RESULT([broken but use it])
-    unset ft_use_autoconf_sizeof_types
-    ;;
-  ::no:)
-    AC_MSG_RESULT([works but ignore it])
-    ft_use_autoconf_sizeof_types=yes
-    ;;
-  ::yes: | :::)
-    AC_MSG_RESULT([yes])
-    unset ft_use_autoconf_sizeof_types
-    ;;
-  *)
-    AC_MSG_RESULT([no])
-    ft_use_autoconf_sizeof_types=yes
-    ;;
-esac
-
-if test x"${ft_use_autoconf_sizeof_types}" = xyes; then
-  AC_DEFINE([FT_USE_AUTOCONF_SIZEOF_TYPES], [],
-            [Define if autoconf sizeof types should be used.])
-fi
-
-CPPFLAGS="${orig_CPPFLAGS}"
 
 AC_ARG_ENABLE([freetype-config],
   AS_HELP_STRING([--enable-freetype-config], [install freetype-config]),
@@ -233,9 +161,6 @@ if test -z "$FTSYS_SRC"; then
   FTSYS_SRC='$(BASE_DIR)/ftsystem.c'
 fi
 AC_SUBST([FTSYS_SRC])
-
-
-AC_CHECK_FUNCS([memcpy memmove])
 
 
 # get compiler flags right
@@ -389,6 +314,12 @@ if test x"$with_zlib" = xyes -a "$have_zlib" = no; then
   AC_MSG_ERROR([external zlib support requested but library not found])
 fi
 
+SYSTEM_ZLIB=
+if test "$have_zlib" != no; then
+  SYSTEM_ZLIB=yes
+fi
+AC_SUBST([SYSTEM_ZLIB])
+
 
 # check for system libbz2
 
@@ -472,16 +403,12 @@ if test x"$with_png" = xyes -o x"$with_png" = xauto; then
       have_libpng="yes (LIBPNG_CFLAGS and LIBPNG_LIBS)"
     else
       # fall back to config script
-      AC_MSG_CHECKING([for libpng-config])
-      if which libpng-config > /dev/null 2>&1; then
+      AC_CHECK_PROG(have_libpng, [libpng-config], [yes (libpng-config)], [no])
+      if test "$have_libpng" != no; then
         LIBPNG_CFLAGS=`libpng-config --cflags`
         LIBPNG_LIBS=`libpng-config --ldflags`
         libpng_libspriv=`libpng-config --static --ldflags`
         libpng_libsstaticconf="$libpng_libspriv"
-        have_libpng="yes (libpng-config)"
-        AC_MSG_RESULT([yes])
-      else
-        AC_MSG_RESULT([no])
       fi
     fi
   fi
@@ -580,19 +507,48 @@ if test x"$with_brotli" = xyes -a "$have_brotli" = no; then
 fi
 
 
-# check for librt
+# Checks for the demo programs.
 #
-# We need `clock_gettime' for the `ftbench' demo program.
-#
-# The code is modeled after gnulib's file `clock_time.m4', ignoring
-# very old Solaris systems.
+# FreeType doesn't need this.  However, since the demo program repository
+# doesn't come with a `configure` script of its own, we integrate the tests
+# here for simplicity.
 
+# We need `clock_gettime` from 'librt' for the `ftbench` demo program.
+#
+# The code is modeled after gnulib's file `clock_time.m4`, ignoring
+# very old Solaris systems.
 LIB_CLOCK_GETTIME=
 AC_SEARCH_LIBS([clock_gettime],
                [rt],
                [test "$ac_cv_search_clock_gettime" = "none required" \
                 || LIB_CLOCK_GETTIME=$ac_cv_search_clock_gettime])
-AC_SUBST([LIB_CLOCK_GETTIME])
+
+FT_DEMO_CFLAGS=""
+FT_DEMO_LDFLAGS="$LIB_CLOCK_GETTIME"
+
+# 'librsvg' is needed to demonstrate SVG support.
+AC_ARG_WITH([librsvg],
+  [AS_HELP_STRING([--with-librsvg=@<:@yes|no|auto@:>@],
+                  [support OpenType SVG fonts in FreeType demo programs @<:@default=auto@:>@])],
+  [], [with_librsvg=auto])
+
+have_librsvg=no
+if test x"$with_librsvg" = xyes -o x"$with_librsvg" = xauto; then
+  PKG_CHECK_MODULES([LIBRSVG], [librsvg-2.0 >= 2.46.0],
+                    [have_librsvg="yes (pkg-config)"], [:])
+
+  if test "$have_librsvg" != no; then
+    FT_DEMO_CFLAGS="$FT_DEMO_CFLAGS $LIBRSVG_CFLAGS -DHAVE_LIBRSVG"
+    FT_DEMO_LDFLAGS="$FT_DEMO_LDFLAGS $LIBRSVG_LIBS"
+  fi
+fi
+
+if test x"$with_librsvg" = xyes -a "$have_librsvg" = no; then
+  AC_MSG_ERROR([librsvg support requested but library not found])
+fi
+
+AC_SUBST([FT_DEMO_CFLAGS])
+AC_SUBST([FT_DEMO_LDFLAGS])
 
 
 # Some options handling SDKs/archs in CFLAGS should be copied
@@ -1010,14 +966,14 @@ esac
 AX_PTHREAD([have_pthread=yes], [have_pthread=no])
 
 # Check for Python and docwriter
-
+PYTHON_MIN_VERSION=3.5
 have_py3=no
 have_docwriter=no
 PIP=pip
 
 AC_CHECK_PROGS([PYTHON], [python3 python], [missing])
 if test "x$PYTHON" != "xmissing"; then
-  AX_PROG_PYTHON_VERSION([3.5], [have_py3=yes], [])
+  AX_PROG_PYTHON_VERSION([$PYTHON_MIN_VERSION], [have_py3=yes], [])
 
   if test "x$have_py3" = "xyes"; then
     PIP="$PYTHON -m $PIP"
@@ -1034,32 +990,32 @@ fi
 
 
 # entries in Requires.private are separated by commas
-REQUIRES_PRIVATE="$zlib_reqpriv,     \
-                  $bzip2_reqpriv,    \
-                  $libpng_reqpriv,   \
-                  $harfbuzz_reqpriv, \
-                  $brotli_reqpriv"
+PKGCONFIG_REQUIRES_PRIVATE="$zlib_reqpriv,     \
+                            $bzip2_reqpriv,    \
+                            $libpng_reqpriv,   \
+                            $harfbuzz_reqpriv, \
+                            $brotli_reqpriv"
 # beautify
-REQUIRES_PRIVATE=`echo "$REQUIRES_PRIVATE" \
-                  | sed -e 's/^  *//'      \
-                        -e 's/  *$//'      \
-                        -e 's/, */,/g'     \
-                        -e 's/,,*/,/g'     \
-                        -e 's/^,*//'       \
-                        -e 's/,*$//'       \
-                        -e 's/,/, /g'`
+PKGCONFIG_REQUIRES_PRIVATE=`echo "$PKGCONFIG_REQUIRES_PRIVATE" \
+                            | sed -e 's/^  *//'      \
+                                  -e 's/  *$//'      \
+                                  -e 's/, */,/g'     \
+                                  -e 's/,,*/,/g'     \
+                                  -e 's/^,*//'       \
+                                  -e 's/,*$//'       \
+                                  -e 's/,/, /g'`
 
-LIBS_PRIVATE="$zlib_libspriv     \
-              $bzip2_libspriv    \
-              $libpng_libspriv   \
-              $harfbuzz_libspriv \
-              $brotli_libspriv   \
-              $ft2_extra_libs"
+PKGCONFIG_LIBS_PRIVATE="$zlib_libspriv     \
+                        $bzip2_libspriv    \
+                        $libpng_libspriv   \
+                        $harfbuzz_libspriv \
+                        $brotli_libspriv   \
+                        $ft2_extra_libs"
 # beautify
-LIBS_PRIVATE=`echo "$LIBS_PRIVATE"  \
-              | sed -e 's/^  *//'   \
-                    -e 's/  *$//'   \
-                    -e 's/  */ /g'`
+PKGCONFIG_LIBS_PRIVATE=`echo "$PKGCONFIG_LIBS_PRIVATE"  \
+                        | sed -e 's/^  *//'   \
+                              -e 's/  *$//'   \
+                              -e 's/  */ /g'`
 
 LIBSSTATIC_CONFIG="-lfreetype               \
                    $zlib_libsstaticconf     \
@@ -1077,10 +1033,28 @@ LIBSSTATIC_CONFIG=`echo "$LIBSSTATIC_CONFIG"          \
                          -e 's/  *$//'                \
                          -e 's/  */ /g'`
 
+# If FreeType gets installed with `--disable-shared', don't use
+# 'private' fields.  `pkg-config' only looks into `.pc' files and is
+# completely agnostic to whether shared libraries are actually present
+# or not.  As a consequence, the user had to specify `--static' while
+# calling `pkg-config', which configure scripts are normally not
+# prepared for.
+
+PKGCONFIG_REQUIRES=
+PKGCONFIG_LIBS='-L${libdir} -lfreetype'
+
+if test $enable_shared = "no"; then
+  PKGCONFIG_REQUIRES="$PKGCONFIG_REQUIRES $PKGCONFIG_REQUIRES_PRIVATE"
+  PKGCONFIG_REQUIRES_PRIVATE=
+  PKGCONFIG_LIBS="$PKGCONFIG_LIBS $PKGCONFIG_LIBS_PRIVATE"
+  PKGCONFIG_LIBS_PRIVATE=
+fi
 
 AC_SUBST([ftmac_c])
-AC_SUBST([REQUIRES_PRIVATE])
-AC_SUBST([LIBS_PRIVATE])
+AC_SUBST([PKGCONFIG_REQUIRES])
+AC_SUBST([PKGCONFIG_LIBS])
+AC_SUBST([PKGCONFIG_REQUIRES_PRIVATE])
+AC_SUBST([PKGCONFIG_LIBS_PRIVATE])
 AC_SUBST([LIBSSTATIC_CONFIG])
 
 AC_SUBST([hardcode_libdir_flag_spec])
@@ -1188,7 +1162,7 @@ if test $have_docwriter = no; then
   `make refdoc' will fail since pip package `docwriter' is not installed.
   To install, run `$PIP install docwriter', or to use a Python
   virtual environment, run `make refdoc-venv' (requires pip package
-  `virtualenv').  These operations require Python >= 3.5.
+  `virtualenv').  These operations require Python >= $PYTHON_MIN_VERSION.
   ])
 fi
 

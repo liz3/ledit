@@ -4,7 +4,7 @@
  *
  *   Windows-specific FreeType low-level system interface (body).
  *
- * Copyright (C) 2021 by
+ * Copyright (C) 2021-2024 by
  * David Turner, Robert Wilhelm, and Werner Lemberg.
  *
  * This file is part of the FreeType project, and may only be used,
@@ -25,10 +25,9 @@
 #include <freetype/fttypes.h>
 #include <freetype/internal/ftstream.h>
 
-  /* memory-mapping includes and definitions */
+  /* memory mapping and allocation includes and definitions */
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-
-#include <stdlib.h>
 
 
   /**************************************************************************
@@ -69,9 +68,7 @@
   ft_alloc( FT_Memory  memory,
             long       size )
   {
-    FT_UNUSED( memory );
-
-    return malloc( size );
+    return HeapAlloc( memory->user, 0, size );
   }
 
 
@@ -105,10 +102,9 @@
               long       new_size,
               void*      block )
   {
-    FT_UNUSED( memory );
     FT_UNUSED( cur_size );
 
-    return realloc( block, new_size );
+    return HeapReAlloc( memory->user, 0, block, new_size );
   }
 
 
@@ -131,9 +127,7 @@
   ft_free( FT_Memory  memory,
            void*      block )
   {
-    FT_UNUSED( memory );
-
-    free( block );
+    HeapFree( memory->user, 0, block );
   }
 
 
@@ -176,7 +170,7 @@
 
     stream->descriptor.pointer = NULL;
     stream->size               = 0;
-    stream->base               = 0;
+    stream->base               = NULL;
   }
 
 
@@ -194,12 +188,131 @@
   FT_CALLBACK_DEF( void )
   ft_close_stream_by_free( FT_Stream  stream )
   {
-    ft_free( NULL, stream->descriptor.pointer );
+    ft_free( stream->memory, stream->descriptor.pointer );
 
     stream->descriptor.pointer = NULL;
     stream->size               = 0;
-    stream->base               = 0;
+    stream->base               = NULL;
   }
+
+
+  /* support for Universal Windows Platform UWP, formerly WinRT */
+#ifdef _WINRT_DLL
+
+#define PACK_DWORD64( hi, lo )  ( ( (DWORD64)(hi) << 32 ) | (DWORD)(lo) )
+
+#define CreateFileMapping( a, b, c, d, e, f )                          \
+          CreateFileMappingFromApp( a, b, c, PACK_DWORD64( d, e ), f )
+#define MapViewOfFile( a, b, c, d, e )                                 \
+          MapViewOfFileFromApp( a, b, PACK_DWORD64( c, d ), e )
+
+  FT_LOCAL_DEF( HANDLE )
+  CreateFileA( LPCSTR                 lpFileName,
+               DWORD                  dwDesiredAccess,
+               DWORD                  dwShareMode,
+               LPSECURITY_ATTRIBUTES  lpSecurityAttributes,
+               DWORD                  dwCreationDisposition,
+               DWORD                  dwFlagsAndAttributes,
+               HANDLE                 hTemplateFile )
+  {
+    int     len;
+    LPWSTR  lpFileNameW;
+
+    CREATEFILE2_EXTENDED_PARAMETERS  createExParams = {
+      sizeof ( CREATEFILE2_EXTENDED_PARAMETERS ),
+      dwFlagsAndAttributes & 0x0000FFFF,
+      dwFlagsAndAttributes & 0xFFF00000,
+      dwFlagsAndAttributes & 0x000F0000,
+      lpSecurityAttributes,
+      hTemplateFile };
+
+
+    /* allocate memory space for converted path name */
+    len = MultiByteToWideChar( CP_ACP, MB_ERR_INVALID_CHARS,
+                               lpFileName, -1, NULL, 0 );
+
+    lpFileNameW = (LPWSTR)_alloca( len * sizeof ( WCHAR ) );
+
+    if ( !len || !lpFileNameW )
+    {
+      FT_ERROR(( "FT_Stream_Open: cannot convert file name to LPWSTR\n" ));
+      return INVALID_HANDLE_VALUE;
+    }
+
+    /* now it is safe to do the translation */
+    MultiByteToWideChar( CP_ACP, MB_ERR_INVALID_CHARS,
+                         lpFileName, -1, lpFileNameW, len );
+
+    /* open the file */
+    return CreateFile2( lpFileNameW, dwDesiredAccess, dwShareMode,
+                        dwCreationDisposition, &createExParams );
+  }
+
+#endif  /* _WINRT_DLL */
+
+
+  /* support for Windows CE */
+#ifdef _WIN32_WCE
+
+  /* malloc.h provides implementation of alloca()/_alloca() */
+  #include <malloc.h>
+
+  FT_LOCAL_DEF( HANDLE )
+  CreateFileA( LPCSTR                 lpFileName,
+               DWORD                  dwDesiredAccess,
+               DWORD                  dwShareMode,
+               LPSECURITY_ATTRIBUTES  lpSecurityAttributes,
+               DWORD                  dwCreationDisposition,
+               DWORD                  dwFlagsAndAttributes,
+               HANDLE                 hTemplateFile )
+  {
+    int     len;
+    LPWSTR  lpFileNameW;
+
+
+    /* allocate memory space for converted path name */
+    len = MultiByteToWideChar( CP_ACP, MB_ERR_INVALID_CHARS,
+                               lpFileName, -1, NULL, 0 );
+
+    lpFileNameW = (LPWSTR)_alloca( len * sizeof ( WCHAR ) );
+
+    if ( !len || !lpFileNameW )
+    {
+      FT_ERROR(( "FT_Stream_Open: cannot convert file name to LPWSTR\n" ));
+      return INVALID_HANDLE_VALUE;
+    }
+
+    /* now it is safe to do the translation */
+    MultiByteToWideChar( CP_ACP, MB_ERR_INVALID_CHARS,
+                         lpFileName, -1, lpFileNameW, len );
+
+    /* open the file */
+    return CreateFileW( lpFileNameW, dwDesiredAccess, dwShareMode,
+                        lpSecurityAttributes, dwCreationDisposition,
+                        dwFlagsAndAttributes, hTemplateFile );
+  }
+
+#endif  /* _WIN32_WCE */
+
+  /* support for really old Windows */
+#if defined( _WIN32_WCE ) || defined ( _WIN32_WINDOWS ) || \
+    !defined( _WIN32_WINNT ) || _WIN32_WINNT <= 0x0400
+
+  FT_LOCAL_DEF( BOOL )
+  GetFileSizeEx( HANDLE          hFile,
+                 PLARGE_INTEGER  lpFileSize )
+  {
+    lpFileSize->u.LowPart = GetFileSize( hFile,
+                                         (DWORD *)&lpFileSize->u.HighPart );
+
+    if ( lpFileSize->u.LowPart == INVALID_FILE_SIZE &&
+         GetLastError() != NO_ERROR                 )
+      return FALSE;
+    else
+      return TRUE;
+  }
+
+#endif  /* _WIN32_WCE || _WIN32_WINDOWS || _WIN32_WINNT <= 0x0400 */
 
 
   /* documentation is in ftobjs.h */
@@ -217,8 +330,8 @@
       return FT_THROW( Invalid_Stream_Handle );
 
     /* open the file */
-    file = CreateFileA( filepathname, GENERIC_READ, FILE_SHARE_READ, NULL,
-                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0 );
+    file = CreateFileA( (LPCSTR)filepathname, GENERIC_READ, FILE_SHARE_READ,
+                        NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0 );
     if ( file == INVALID_HANDLE_VALUE )
     {
       FT_ERROR(( "FT_Stream_Open:" ));
@@ -274,13 +387,13 @@
       FT_ERROR(( "FT_Stream_Open:" ));
       FT_ERROR(( " could not `mmap' file `%s'\n", filepathname ));
 
-      stream->base = (unsigned char*)ft_alloc( NULL, stream->size );
+      stream->base = (unsigned char*)ft_alloc( stream->memory, stream->size );
 
       if ( !stream->base )
       {
         FT_ERROR(( "FT_Stream_Open:" ));
         FT_ERROR(( " could not `alloc' memory\n" ));
-        goto Fail_Map;
+        goto Fail_Open;
       }
 
       total_read_count = 0;
@@ -311,7 +424,7 @@
     stream->descriptor.pointer = stream->base;
     stream->pathname.pointer   = (char*)filepathname;
 
-    stream->read = 0;
+    stream->read = NULL;
 
     FT_TRACE1(( "FT_Stream_Open:" ));
     FT_TRACE1(( " opened `%s' (%ld bytes) successfully\n",
@@ -320,10 +433,7 @@
     return FT_Err_Ok;
 
   Fail_Read:
-    ft_free( NULL, stream->base );
-
-  Fail_Map:
-    CloseHandle( file );
+    ft_free( stream->memory, stream->base );
 
   Fail_Open:
     CloseHandle( file );
@@ -352,13 +462,17 @@
   FT_BASE_DEF( FT_Memory )
   FT_New_Memory( void )
   {
+    HANDLE     heap;
     FT_Memory  memory;
 
 
-    memory = (FT_Memory)malloc( sizeof ( *memory ) );
+    heap   = GetProcessHeap();
+    memory = heap ? (FT_Memory)HeapAlloc( heap, 0, sizeof ( *memory ) )
+                  : NULL;
+
     if ( memory )
     {
-      memory->user    = 0;
+      memory->user    = heap;
       memory->alloc   = ft_alloc;
       memory->realloc = ft_realloc;
       memory->free    = ft_free;
