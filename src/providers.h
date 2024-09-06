@@ -732,6 +732,7 @@ public:
     if (theme != "default")
       config["theme"] = theme;
     config["font_face"] = fontPath;
+    config["save_before_command"] = saveBeforeCommand;
     config["vim_mode"] = vim_emulation;
     config["window_transparency"] = allowTransparency;
     config["use_spaces"] = useSpaces;
@@ -740,6 +741,7 @@ public:
     config["line_numbers"] = lineNumbers;
     config["highlight_active_line"] = highlightLine;
     config["auto_open_cmd_output"] = autoOpenCommandOut;
+    config["auto_reload"] = autoReload;
     config["relative_line_numbers"] = relativeLineNumbers;
     config["caps_as_escape"] = useCapsAsEscape;
     config["tab_width"] = tabWidth;
