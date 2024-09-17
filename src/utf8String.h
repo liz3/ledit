@@ -452,6 +452,7 @@ private:
         character_pos++;
         if (started_recording)
           byte_len += 4;
+        continue;
       }
       break;
     }
