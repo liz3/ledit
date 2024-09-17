@@ -254,6 +254,8 @@ public:
     if (character_length == 0)
       return 0;
     auto p = calculateByteLength(index, 1);
+    if(!p.second)
+      return 0;
     std::string sub = this->base.substr(p.first, p.second);
     std::vector<char32_t> entries = toCodePoints(sub);
     return entries[0];
@@ -451,6 +453,7 @@ private:
         if (started_recording)
           byte_len += 4;
       }
+      break;
     }
     if (character_start > 0 && character_pos == character_start &&
         byte_offset == 0) {
@@ -498,7 +501,9 @@ private:
         l -= 4;
         offset += 4;
         character_len++;
+        continue;
       }
+      return character_len + l;
     }
     return character_len;
   }
@@ -556,7 +561,9 @@ private:
                            (u2 - 128) * 64 + (u3 - 128));
         l -= 4;
         character_pos++;
+        continue;
       }
+      break;
     }
     return points;
   }
