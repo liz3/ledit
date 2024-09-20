@@ -5,6 +5,7 @@
 #include "../third-party/glfw/include/GLFW/glfw3.h"
 #include "shader.h"
 #include <unordered_map>
+#include "fcxit5/ibus.h"
 
 struct MidState {
     float WIDTH = 0, HEIGHT = 0;
@@ -17,6 +18,7 @@ struct Window {
     FontAtlas* fontAtlas = nullptr;
     std::map<std::string, Shader*> shaders;
     MidState midState;
+    LeditIBus fcxitBus;
     ~Window(){
         if(window) {
             glfwDestroyWindow(window);

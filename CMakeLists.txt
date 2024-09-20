@@ -14,7 +14,18 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND WIN32)
   add_executable(ledit WIN32 src/glad.c src/la.cc src/main.cc)
   target_sources(ledit PRIVATE assets/appicon.rc)
 else()
-    add_executable(ledit src/glad.c src/la.cc src/main.cc)
+    if(UNIX AND NOT APPLE AND NOT GLFW_USE_WAYLAND)
+        find_package(PkgConfig REQUIRED) # Include functions provided by PkgConfig module.
+
+pkg_check_modules(DBUS REQUIRED dbus-1) # This calls pkgconfig with appropriate arguments
+# Use results of pkg_check_modules() call.
+include_directories(${DBUS_INCLUDE_DIRS})
+link_directories(${DBUS_LIBRARY_DIRS})
+        add_executable(ledit src/glad.c src/la.cc src/main.cc src/fcxit5/dbus.cc src/main.cc src/fcxit5/ibus.cc)
+        target_link_libraries(ledit PRIVATE ${DBUS_LIBRARIES})
+    else()
+        add_executable(ledit src/glad.c src/la.cc src/main.cc)
+    endif()
 endif()
 add_subdirectory(third-party/zlib)
 set(ZLIB_LIBRARY zlibstatic)

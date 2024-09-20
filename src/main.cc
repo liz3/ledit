@@ -44,7 +44,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 }
 void window_focus_callback(GLFWwindow *window, int focused) {
   auto *gState = g_windows->windows[window]->state;
-
+g_windows->windows[window]->fcxitBus.setFocused(focused);
   gState->invalidateCache();
   gState->focused = focused;
   if (focused) {
@@ -134,6 +134,8 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
  glfwMakeContextCurrent(gState->window);
 
   if (gState == nullptr)
+    return;
+  if(g_windows->windows[window]->fcxitBus.sendKey(key, scancode, mods, action))
     return;
   gState->invalidateCache();
   if (gState->vim) {
@@ -375,6 +377,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
 }
 
 int window_func(Window *instance) {
+  instance->fcxitBus.dispatch();
   float &WIDTH = instance->midState.WIDTH;
   float &HEIGHT = instance->midState.HEIGHT;
   auto &state = *instance->state;
@@ -1065,6 +1068,7 @@ Window *create_window(std::string path, bool isFirst = false) {
   instance->window = window;
   if (state.provider.vim_emulation)
     state.registerVim();
+  instance->fcxitBus.connect();
   state.window = window;
   state.addCursor(path);
 
