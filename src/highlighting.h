@@ -198,13 +198,13 @@ public:
     auto vec = raw.getCodePoints();
     for (i = 0; i < raw.length(); i++) {
       char32_t current = vec[i];
-      if (!state.busy && (hasEnding(state.buffer, language.indentStr) ||
-                          hasEnding(state.buffer, language.outdentStr))) {
-        if (hasEnding(state.buffer, language.indentStr) &&
-            !hasEnding(state.buffer, language.outdentStr)) {
+      int indentRes = checkIndent(vec, i);
+      if (!state.busy && indentRes > 0) {
+        if (indentRes == 1) {
           indentLevels[y] = indent;
           indent++;
-        } else if (hasEnding(state.buffer, language.outdentStr) && indent > 0) {
+        } else if (indentRes == 2) {
+          if(indent > 0)
           indent--;
           indentLevels[y] = indent;
         }
@@ -217,6 +217,8 @@ public:
           break;
       }
       if (skip > 0 && wasCached && lCount < skip - 1) {
+        if (current == '\n') 
+          y++;
         continue;
       }
 
@@ -395,6 +397,31 @@ public:
   }
 
 private:
+  int checkIndent(const std::vector<char32_t>& raw, size_t i) const {
+    if(!language.indentStr.length() && !language.outdentStr.length())
+      return 0;
+    auto indentVec = language.indentStr.getCodePoints();
+    auto outdentVec = language.outdentStr.getCodePoints();
+    int indentOffset = 0;
+    int outdentOffset = 0;
+    for(size_t s = i; s < raw.size(); s+=1){
+        if(indentOffset == -1 && outdentOffset == -1) 
+          return 0;
+        if(indentOffset != -1 && raw[i] == indentVec[indentOffset++]){
+          if(indentOffset == indentVec.size())
+            return 1;
+        } else {
+          indentOffset = -1;
+        }
+       if(outdentOffset != -1 && raw[i] == outdentVec[outdentOffset++]){
+          if(outdentOffset == outdentVec.size())
+            return 2;
+        } else {
+          outdentOffset = -1;
+        }
+    }
+    return 0;
+  }
   bool nextIsValid(Utf8String str, int i) {
     return i >= str.length() - 1 || isNonChar(str[i + 1]);
   }
