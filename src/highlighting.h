@@ -212,9 +212,7 @@ public:
       if (current == '\n') {
         if (!indentLevels.count(y))
           indentLevels[y] = indent;
-        int endIndex = entries.size();
-        lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);
-        startIndex = endIndex;
+
         if (lCount++ > skip + maxLines && wasCached)
           break;
       }
@@ -332,6 +330,9 @@ public:
       state.buffer += current;
       last = current;
       if (current == '\n') {
+        int endIndex = entries.size();
+        lineIndex[y++] = std::pair<int, int>(startIndex, endIndex);
+        startIndex = endIndex;
         bool cont = false;
         if (skip > 0) {
           if (lCount == skip) {
