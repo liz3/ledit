@@ -768,6 +768,7 @@ public:
     this->onlyCopy = false;
     cursor->x = x;
     cursor->y = y;
+    out.allowCoords = false;
     return out;
   }
     ActionResult markOnly(VimMode mode, MotionState &state, Cursor *cursor,
@@ -948,6 +949,9 @@ public:
       auto l = cursor->lines[cursor->y];
       l += U"\n";
       vim->getState().tryCopyInput(l);
+      auto out = withType(ResultType::Done);
+      out.allowCoords = false;
+      return out;
     } else {
       return d->copyOnly(mode, state, cursor, vim);
     }

@@ -279,6 +279,7 @@ public:
   void tryCopyInput(Utf8String &in) {
     const std::string &content = in.getStrRef();
     glfwSetClipboardString(NULL, content.c_str());
+    status = U"Copied " + numberToString(in.length()) + U" Characters";
   }
   void save() {
     if (mode != 0 && mode != 40)
