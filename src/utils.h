@@ -1,52 +1,14 @@
 #ifndef UTILS_H
 #define UTILS_H
 #include "utf8String.h"
-#include <iomanip>
-#include <sstream>
 const Utf8String wordSeperator = U" \t\n[]{}/\\*()=_-+,.\"";
 const Utf8String wordSeperator2 = U" \t";
 const std::vector<std::pair<char32_t, char32_t>> PAIRS = {
      {'{', '}'}, {'(', ')'}, {'[', ']'}};
-std::string file_to_string(std::string path) {
-  std::ifstream stream(path);
-  std::stringstream ss;
-  ss << stream.rdbuf();
-  stream.close();
-  return ss.str();
-}
-std::string toFixed(double number, int precision) {
-    std::stringstream out;
-    out << std::fixed << std::setprecision(precision) << number;
-    return out.str();
-}
-bool hasEnding(Utf8String fullString, Utf8String ending) {
-  if (fullString.length() >= ending.length()) {
-    return fullString.endsWith(ending);
-  } else {
-    return false;
-  }
-}
-bool hasEnding(std::string fullString, std::string ending) {
-  if (fullString.length() >= ending.length()) {
-    return (0 == fullString.compare(fullString.length() - ending.length(),
-                                    ending.length(), ending));
-  } else {
-    return false;
-  }
-}
-bool isSafeNumber(std::string value) {
-  for (const char &c : value) {
-    if (c < '0' || c > '9')
-      return false;
-  }
-  return true;
-}
-bool string_to_file(std::string path, std::string content) {
-  std::ofstream stream(path);
-  if (!stream.is_open())
-    return false;
-  stream << content;
-  stream.close();
-  return true;
-}
+std::string file_to_string(std::string path);
+std::string toFixed(double number, int precision);
+bool hasEnding(Utf8String fullString, Utf8String ending);
+bool hasEnding(std::string fullString, std::string ending);
+bool isSafeNumber(std::string value);
+bool string_to_file(std::string path, std::string content);
 #endif

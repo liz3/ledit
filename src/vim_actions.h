@@ -1,8 +1,8 @@
 #ifndef LEDIT_VIM_ACTIONS_H
 #define LEDIT_VIM_ACTIONS_H
 
-#include "GLFW/glfw3.h"
 #include "cursor.h"
+#include "GLFW/glfw3.h"
 #include "state.h"
 #include "utf8String.h"
 #include "utils.h"

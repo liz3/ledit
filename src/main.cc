@@ -24,9 +24,8 @@
 #include "cursor.h"
 #include "shaders.h"
 #include "highlighting.h"
-#include "languages.h"
-#include "vim_actions.h"
 #include "windows.h"
+#include "u8String.h"
 #ifdef LEDIT_WIN_MAIN
 #include "win32_icon_utils.h"
 #endif
