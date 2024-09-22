@@ -6,6 +6,7 @@
 #include "shader.h"
 #include <unordered_map>
 
+
 struct MidState {
     float WIDTH = 0, HEIGHT = 0;
     int maxRenderWidth = 0, fontSize = 0;

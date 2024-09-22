@@ -65,6 +65,7 @@ public:
   bool commandHadOutput = false;
   bool relativeLineNumbers = false;
   bool useCapsAsEscape = false;
+  bool enableAccents = true;
   std::string theme = "default";
   std::string highlightLine = "full";
   std::atomic_bool command_running = false;
@@ -716,6 +717,7 @@ public:
     lineWrapping = getBoolOrDefault(*configRoot, "line_wrapping", lineWrapping);
     highlightLine =
         getStringOrDefault(*configRoot, "highlight_active_line", highlightLine);
+    enableAccents = getBoolOrDefault(*configRoot, "enable_accents", enableAccents);
   }
   json vecToJson(Vec4f value) {
     json j;
@@ -745,6 +747,7 @@ public:
     config["relative_line_numbers"] = relativeLineNumbers;
     config["caps_as_escape"] = useCapsAsEscape;
     config["tab_width"] = tabWidth;
+    config["enable_accents"] = enableAccents;
     if (commands.size()) {
       json cmdO;
       for (auto &entry : commands) {

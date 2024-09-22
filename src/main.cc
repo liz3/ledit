@@ -87,6 +87,10 @@ void mouse_button_callback(GLFWwindow *window, int button, int action,
 
 void character_callback(GLFWwindow *window, unsigned int codepoint) {
   auto *gState = g_windows->windows[window]->state;
+  if(gState->provider.enableAccents && gState->accentManager.blockCp(codepoint)){
+     gState->renderCoords();
+    return;
+  }
  glfwMakeContextCurrent(gState->window);
   gState->invalidateCache();
   gState->exitFlag = false;
@@ -136,13 +140,20 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
   if (gState == nullptr)
     return;
   gState->invalidateCache();
+  if(gState->provider.enableAccents && gState->accentManager.checkBlock(key, action)) {
+     gState->accentManager.processEvent(window, key, scancode, action, mods);
+        gState->renderCoords();
+     return;
+  }
   if (gState->vim) {
         if(gState->provider.useCapsAsEscape && key == GLFW_KEY_CAPS_LOCK)
           key = GLFW_KEY_ESCAPE;
-    auto r = gState->vim->processKey(key, scancode, action, mods);
+      auto r = gState->vim->processKey(key, scancode, action, mods);
+      if (r && gState->vim->shouldRenderCoords())
+        gState->renderCoords();
+      if(gState->provider.enableAccents && gState->vim->getMode() == VimMode::INSERT)
+       gState->accentManager.processEvent(window, key, scancode, action, mods);
 
-    if (r && gState->vim->shouldRenderCoords())
-      gState->renderCoords();
     return;
   }
   if (key == GLFW_KEY_ESCAPE || (gState->provider.useCapsAsEscape && key == GLFW_KEY_CAPS_LOCK)) {
@@ -369,6 +380,8 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
         cursor->removeOne();
       }
     }
+    if(gState->provider.enableAccents)
+      gState->accentManager.processEvent(window, key, scancode, action, mods);
     if (isPress)
       gState->renderCoords();
   }
@@ -1030,6 +1043,7 @@ int window_func(Window *instance) {
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glfwSwapBuffers(window);
+    state.accentManager.interrupt();
     state.cacheValid = true;
     return 1;
   } while (0);

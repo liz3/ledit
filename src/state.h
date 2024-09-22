@@ -17,6 +17,7 @@
 #include "utf8String.h"
 #include "utils.h"
 #include "vim.h"
+#include "accent.h"
 void add_window(std::string p);
 void register_vim_commands(Vim &vim, State &state);
 struct CursorEntry {
@@ -52,6 +53,7 @@ public:
   Utf8String status;
   Utf8String miniBuf;
   Utf8String dummyBuf;
+  Accent accentManager;
   std::string lastCmd;
   bool showLineNumbers = true;
   bool lineWrapping = false;
@@ -696,6 +698,10 @@ public:
   void renderCoords() {
     if (mode != 0)
       return;
+    if(accentManager.shouldBlock()){
+      status = accentManager.getStatus();
+      return;
+    }
     // if(hasHighlighting)
     // highlighter.highlight(cursor->lines, &provider.colors, cursor->skip,
     // cursor->maxLines, cursor->y);
@@ -781,6 +787,7 @@ public:
     activeIndex = cursorIndex;
     std::string path = entry->path;
     this->cursor = &(entry->cursor);
+    accentManager.cursor = this->cursor;
     if (vim)
       vim->setCursor(this->cursor);
     this->path = path;
