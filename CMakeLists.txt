@@ -8,7 +8,68 @@ set(DISABLE_PACKAGE_CONFIG_AND_INSTALL ON)
 set(SKIP_INSTALL_ALL ON)
 set(PNG_EXECUTABLES OFF)
 set(PNG_SHARED OFF)
-set(LEDIT_SOURCES src/glad.c src/la.cc src/accent.cc src/cursor.cc src/font_atlas.cc src/highlighting.cc src/providers.cc src/selection.cc src/shader.cc src/state.cc src/utf8String.cc src/utils.cc src/vim.cc src/main.cc)
+set(LEDIT_SOURCES src/glad.c
+ src/la.cc 
+ src/accent.cc
+  src/cursor.cc 
+  src/font_atlas.cc 
+  src/highlighting.cc
+   src/providers.cc 
+   src/selection.cc 
+   src/shader.cc 
+   src/state.cc 
+   src/utf8String.cc 
+   src/utils.cc 
+   src/vim.cc 
+   src/main.cc
+    src/vim_actions/EscapeAction.cc
+    src/vim_actions/register.cc
+src/vim_actions/BackspaceAction.cc
+src/vim_actions/EnterAction.cc
+src/vim_actions/TabAction.cc
+src/vim_actions/IAction.cc
+src/vim_actions/HAction.cc
+src/vim_actions/JAction.cc
+src/vim_actions/KAction.cc
+src/vim_actions/LAction.cc
+src/vim_actions/AAction.cc
+src/vim_actions/AAAction.cc
+src/vim_actions/WAction.cc
+src/vim_actions/BAction.cc
+src/vim_actions/OAction.cc
+src/vim_actions/OOAction.cc
+src/vim_actions/DAction.cc
+src/vim_actions/UAction.cc
+src/vim_actions/VAction.cc
+src/vim_actions/CAction.cc
+src/vim_actions/DollarAction.cc
+src/vim_actions/ZeroAction.cc
+src/vim_actions/ColonAction.cc
+src/vim_actions/YAction.cc
+src/vim_actions/PAction.cc
+src/vim_actions/PercentAction.cc
+src/vim_actions/IIAction.cc
+src/vim_actions/GGAction.cc
+src/vim_actions/GAction.cc
+src/vim_actions/ParagraphAction.cc
+src/vim_actions/BracketAction.cc
+src/vim_actions/ParenAction.cc
+src/vim_actions/QuoteAction.cc
+src/vim_actions/SlashAction.cc
+src/vim_actions/FontSizeAction.cc
+src/vim_actions/MoveAction.cc
+src/vim_actions/RAction.cc
+src/vim_actions/Finder.cc
+src/vim_actions/FindAction.cc
+src/vim_actions/SemicolonAction.cc
+src/vim_actions/CommaAction.cc
+src/vim_actions/DDAction.cc
+src/vim_actions/XAction.cc
+src/vim_actions/CCAction.cc
+src/vim_actions/CtrlUAction.cc
+src/vim_actions/CommentAction.cc
+src/vim_actions/SimpleCopy.cc
+src/vim_actions/IndentAction.cc)
 if(CMAKE_BUILD_TYPE STREQUAL "Release" AND WIN32)
   set(CMAKE_C_FLAGS_RELEASE "-mwindows")
   add_definitions(-DLEDIT_WIN_MAIN)
