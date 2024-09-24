@@ -102,7 +102,7 @@ bool Accent::shouldBlock() { return state >= 2; }
   }
 Utf8String Accent::getStatus() {
     char in = getCharFromKey(lastKey);
-    Utf8String content("Accents:");
+    Utf8String content("Accents: ");
     const auto &vec = accented_characters[in];
     for (size_t i = 0; i < vec.size(); i++) {
       content += vec[i];
