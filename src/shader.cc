@@ -1,5 +1,6 @@
 #include "shader.h"
 #include <iostream>
+#include <cstring>
 
 CharacterEntry::CharacterEntry() {
   

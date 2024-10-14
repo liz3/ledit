@@ -1,5 +1,6 @@
 #include "highlighting.h"
 #include "u8String.h"
+#include <algorithm>
 
 bool Highlighter::isNonChar(char32_t c) { return language.whitespace.count(c); }
 bool Highlighter::isNumber(char32_t c) { return c >= '0' && c <= '9'; }

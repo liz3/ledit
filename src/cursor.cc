@@ -4,6 +4,8 @@
 #include <iostream>
 #include <sstream>
 #include "utils.h"
+#include <cmath>
+#include <algorithm>
 
 Cursor::Cursor() { lines.push_back(U""); }
 Cursor::Cursor(std::string path) {
