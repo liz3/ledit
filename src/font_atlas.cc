@@ -294,9 +294,10 @@ void FontAtlas::lazyLoad(char32_t c) {
   auto old_width = atlas_width;
   auto old_height = atlas_height;
   atlas_width += bm.width;
+  bool isBigger = bm.rows > atlas_height_absolute;
   atlas_height_absolute =
       bm.rows > atlas_height_absolute ? bm.rows : atlas_height_absolute;
-  if (!entry.hasColor) {
+  if (!entry.hasColor && isBigger) {
     atlas_height = atlas_height_absolute;
     atlas_height_original = atlas_height;
     atlas_height *= scale;
