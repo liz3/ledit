@@ -211,7 +211,7 @@ std::map<int, Vec4f>* Highlighter::highlight(Utf8String &raw, EditorColors *colo
           state.wasReset = true;
           state.buffer = U"";
         }
-      } else if (isNumber(current) && isNonChar(last) && !state.busy) {
+      } else if (isNumber(current) && (isNonChar(last) || state.lastOperator) && !state.busy) {
         state.mode = 6;
         if (current == '0' && i < raw.length() - 1 &&
             (vec[i + 1] == 'x' || vec[i + 1] == 'X'))
