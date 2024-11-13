@@ -110,7 +110,7 @@ ActionResult DAction::execute(VimMode mode, MotionState &state, Cursor *cursor,
       Utf8String outBuffer;
       auto co = onlyCopy;
       Utf8String *ptr = &outBuffer;
-      if (state.action == "w") {
+      if (state.action == "w" || state.action == "e") {
         if (state.replaceMode == ReplaceMode::ALL) {
           vim->iterate([cursor, ptr, co]() {
             *ptr += cursor->deleteWordVim(true, !co);

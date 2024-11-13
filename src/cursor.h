@@ -107,7 +107,7 @@ public:
   std::pair<int, int> findGlobal(bool backwards, Utf8String what, int inx,
                                  int iny);
 
-  void advanceWord();
+  void advanceWord(bool end = false);
   std::pair<float, float> getPosLineWrapped(FontAtlas &atlas, float xBase,
                                             float yBase, float maxRenderWidth,
                                             float lineHeight, int x, int y);

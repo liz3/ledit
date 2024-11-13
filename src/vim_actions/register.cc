@@ -42,6 +42,7 @@ void register_vim_commands(Vim &vim, State &state) {
   vim.registerTrieChar(new AAction(), "a", 'a');
   vim.registerTrieChar(new AAAction(), "A", 'A');
   vim.registerTrieChar(new WAction(), "w", 'w');
+  vim.registerTrieChar(new EAction(), "e", 'e');
   vim.registerTrieChar(new BAction(), "b", 'b');
   vim.registerTrieChar(new OAction(), "o", 'o');
   vim.registerTrieChar(new OOAction(), "O", 'O');

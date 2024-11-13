@@ -753,9 +753,10 @@ std::pair<int, int> Cursor::findGlobal(bool backwards, Utf8String what, int inx,
 
   return std::pair(-1, -1);
 }
-void Cursor::advanceWord() {
+void Cursor::advanceWord(bool end) {
   Utf8String *target = bind ? bind : &lines[y];
   int offset = findAnyOf(target->substr(x), wordSeperator);
+
   bool currentWs = offset != -1 && wordSeperator2.find((*target)[x + offset]) !=
                                        std::string::npos;
   auto currentX = x;
@@ -775,6 +776,9 @@ void Cursor::advanceWord() {
       wordSeperator2.find((*target)[x]) != std::string::npos) {
     advanceWord();
   }
+  if(end && currentX != x && x != currentX+1 && x > 0)
+    x--;
+  
 }
 std::pair<float, float> Cursor::getPosLineWrapped(FontAtlas &atlas, float xBase,
                                                   float yBase,

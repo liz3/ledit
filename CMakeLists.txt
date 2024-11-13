@@ -35,6 +35,7 @@ src/vim_actions/LAction.cc
 src/vim_actions/AAction.cc
 src/vim_actions/AAAction.cc
 src/vim_actions/WAction.cc
+src/vim_actions/EAction.cc
 src/vim_actions/BAction.cc
 src/vim_actions/OAction.cc
 src/vim_actions/OOAction.cc

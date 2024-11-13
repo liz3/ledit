@@ -96,6 +96,13 @@ public:
   ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
                     Vim *vim) override;
 };
+class EAction : public Action {
+public:
+  ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
+                       Vim *vim) override;
+  ActionResult peek(VimMode mode, MotionState &state, Cursor *cursor,
+                    Vim *vim) override;
+};
 class BAction : public Action {
 public:
   ActionResult execute(VimMode mode, MotionState &state, Cursor *cursor,
