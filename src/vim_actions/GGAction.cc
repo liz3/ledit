@@ -13,9 +13,11 @@ ActionResult GGAction::peek(VimMode mode, MotionState &state, Cursor *cursor,
       cursor->gotoLine(state.count);
       return {};
     }
-    if (cursor->y == cursor->lines.size() - 1)
+    if (cursor->y == cursor->lines.size() - 1) 
       cursor->jumpEnd();
-    else
+    else{
       cursor->gotoLine(cursor->lines.size());
+       cursor->jumpEnd();
+    }
     return {};
   }
