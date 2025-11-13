@@ -1,0 +1,50 @@
+{
+  "mode_name": "Typst",
+  "key_words": [
+    "#import",
+    "#let",
+    "#show",
+    "#set",
+    "#context",
+    "import",
+    "let",
+    "show",
+    "set",
+    "context"
+
+  ],
+  "special_words": [
+    "lorem",
+    "page",
+    "conf",
+    "document",
+    "list",
+    "enum",
+    "outline",
+    "heading",
+    "text",
+    "footnote",
+    "bibliography",
+    "pagebreak",
+    "figure",
+    "image",
+    "table",
+    "block",
+    "lower",
+    "upper",
+    "underline",
+    "strike"
+  ],
+  "multi_line_comment": [
+    "/*",
+    "*\\"
+  ],
+  "symbols": "$=[]{}-+()@:<>#",
+  "escape_character": "\\",
+  "file_extensions": [
+      "typ"
+  ],
+  "string_characters": "\"*`",
+  "seperator_characters": " \t\n[]{}();:.,/#"
+
+ }
