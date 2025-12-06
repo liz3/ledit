@@ -1816,8 +1816,8 @@ void Cursor::moveLeft() {
   selection.diff(x, y);
 }
 bool Cursor::saveTo(std::string path) {
-  if (!hasEnding(path, ".md"))
-    trimTrailingWhiteSpaces();
+  // if (!hasEnding(path, ".md"))
+  //   trimTrailingWhiteSpaces();
   if (path == "-") {
     auto &stream = std::cout;
     for (size_t i = 0; i < lines.size(); i++) {
