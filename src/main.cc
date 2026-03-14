@@ -341,6 +341,8 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
       gState->renderCoords();
     }
   } else {
+    if(isPress && key == GLFW_KEY_F11)
+      gState->toggleFullscreen();
     if (isPress && key == GLFW_KEY_RIGHT)
       cursor->moveRight();
     if (isPress && key == GLFW_KEY_LEFT)

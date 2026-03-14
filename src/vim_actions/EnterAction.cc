@@ -93,6 +93,10 @@ void EnterAction::commandParser(Utf8String &buffer, Vim *vim, Cursor *c){
       state.changeFont();
       return;
     }
+        if (content == ":fullscreen") {
+      state.toggleFullscreen();
+      return;
+    }
     if (content == ":config") {
       state.addCursor(state.provider.getConfigPath());
       return;

@@ -21,6 +21,9 @@ struct ReplaceBuffer {
   Utf8String search = U"";
   Utf8String replace = U"";
 };
+struct StoredWindowState {
+  int x,y,w,h;
+};
 class State {
 public:
   GLuint vao, vbo;
@@ -57,6 +60,7 @@ public:
   int round = 0;
   int fontSize;
   Vim *vim = nullptr;
+  StoredWindowState storedWindowState;
   State();
   State(float w, float h, int fontSize);
 
@@ -81,6 +85,7 @@ public:
   void tryCopy();
   void tryCopyInput(Utf8String &in);
   void save();
+  void toggleFullscreen();
   void saveNew();
   void switchLineHighlightMode();
   void changeFont();

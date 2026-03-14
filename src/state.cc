@@ -855,6 +855,30 @@ void State::renderCoords() {
                                             : "New File");
     glfwSetWindowTitle(window, window_name.c_str());
   }
+  void State::toggleFullscreen() {
+    int maximised = glfwGetWindowAttrib(window, GLFW_MAXIMIZED);
+    int x,y,w,h;
+    auto* mon = glfwGetWindowMonitor(window);
+    if(mon) {
+        w = storedWindowState.w;
+        h = storedWindowState.h;
+        x = storedWindowState.x;
+        y = storedWindowState.y;
+       mon = NULL;
+      status = U"Window restored";
+    } else {
+      glfwGetWindowSize(window, &storedWindowState.w, &storedWindowState.h);
+      glfwGetWindowPos(window, &storedWindowState.x, &storedWindowState.y);
+      mon = glfwGetPrimaryMonitor();
+
+    glfwGetMonitorWorkarea(mon, &x, &y, &w, &h);
+      status = U"Window maximised";
+    }
+
+    glfwSetWindowMonitor(window, mon,x,y,w,h, GLFW_DONT_CARE);
+
+
+  }
   void State::addCursor(std::string path) {
 
     if (path.length())
