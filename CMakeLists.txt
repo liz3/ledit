@@ -1,13 +1,25 @@
 cmake_minimum_required(VERSION 3.16)
 project("ledit")
 set(CMAKE_CXX_STANDARD 17)
+
+# cmake/FindZLIB.cmake and cmake/FindPNG.cmake redirect find_package(ZLIB) and
+# find_package(PNG) at the copies we build from third-party/.  libpng and
+# FreeType both call find_package() internally, so this has to be on the module
+# path before either of them is added.
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(DISABLE_PACKAGE_CONFIG_AND_INSTALL ON)
 set(SKIP_INSTALL_ALL ON)
-set(PNG_TOOLS OFF)
-set(PNG_SHARED OFF)
+# We link the static libpng, so don't spend time on the shared library, the
+# tools or the test suite.  CACHE/FORCE because these are option() in libpng.
+set(PNG_TOOLS OFF CACHE BOOL "" FORCE)
+set(PNG_TESTS OFF CACHE BOOL "" FORCE)
+set(PNG_SHARED OFF CACHE BOOL "" FORCE)
+set(PNG_STATIC ON CACHE BOOL "" FORCE)
+set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(LEDIT_SOURCES src/glad.c
  src/la.cc 
  src/accent.cc
@@ -71,27 +83,35 @@ src/vim_actions/CtrlUAction.cc
 src/vim_actions/CommentAction.cc
 src/vim_actions/SimpleCopy.cc
 src/vim_actions/IndentAction.cc)
-if(CMAKE_BUILD_TYPE STREQUAL "Release" AND WIN32)
-  set(CMAKE_C_FLAGS_RELEASE "-mwindows")
-  add_definitions(-DLEDIT_WIN_MAIN)
-  add_executable(ledit WIN32 ${LEDIT_SOURCES})
-  target_sources(ledit PRIVATE assets/appicon.rc)
-else()
-    add_executable(ledit ${LEDIT_SOURCES})
-endif()
-add_subdirectory(third-party/zlib)
-set(PNG_FRAMEWORK OFF)
-set(ZLIB_INCLUDE_DIRS  ${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib ${CMAKE_CURRENT_BINARY_DIR}/third-party/zlib)
-set(ZLIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib ${CMAKE_CURRENT_BINARY_DIR}/third-party/zlib)
+add_executable(ledit ${LEDIT_SOURCES})
+
 if(WIN32)
-    set(ZLIB_LIBRARY "${CMAKE_CURRENT_BINARY_DIR}/third-party/zlib/Release/zlibstatic.lib")
+  # On Windows a Release build is a GUI-subsystem program: no console window, a
+  # WinMain entry point and the application icon.  All of it is expressed with
+  # per-config generator expressions rather than an if() on CMAKE_BUILD_TYPE,
+  # because that variable is empty for multi-config generators -- under Visual
+  # Studio the old if() never fired and `--build --config Release` produced a
+  # console executable without an icon.
+  set_target_properties(ledit PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
+  target_compile_definitions(ledit PRIVATE $<$<CONFIG:Release>:LEDIT_WIN_MAIN>)
+  target_sources(ledit PRIVATE
+    $<$<CONFIG:Release>:${CMAKE_CURRENT_SOURCE_DIR}/assets/appicon.rc>)
+  # -mwindows is a GCC driver flag and only means anything to MinGW; MSVC takes
+  # the subsystem from WIN32_EXECUTABLE above.  It also has to be a link option
+  # on this target only: it used to be assigned over the whole of
+  # CMAKE_C_FLAGS_RELEASE before the third-party subdirectories were added,
+  # which dropped /O2 and /DNDEBUG from zlib, libpng, FreeType and GLFW.
+  if(MINGW)
+    target_link_options(ledit PRIVATE $<$<CONFIG:Release>:-mwindows>)
+  endif()
 endif()
+# Order matters: each subproject looks up the ones before it through
+# find_package(), which cmake/Find{ZLIB,PNG}.cmake answer with the targets
+# defined here.  Nothing needs to spell out library file names or include
+# directories -- the targets carry both, for every configuration and generator.
+add_subdirectory(third-party/zlib)
+set(PNG_FRAMEWORK OFF CACHE BOOL "" FORCE)
 add_subdirectory(third-party/lpng1639)
-set(PNG_LIBRARIES png_static)
-set(PNG_LIBRARY png_static)
-set(PNG_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/third-party/lpng1639 ${CMAKE_CURRENT_BINARY_DIR}/third-party/lpng1639/)
-set(PNG_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/lpng1639 ${CMAKE_CURRENT_BINARY_DIR}/third-party/lpng1639/)
-set(PNG_PNG_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/lpng1639 ${CMAKE_CURRENT_BINARY_DIR}/third-party/lpng1639/)
 if(UNIX AND NOT APPLE)
     if(GLFW_USE_WAYLAND OR GLFW_BUILD_WAYLAND)
         set(GLFW_BUILD_X11 OFF)
@@ -103,7 +123,12 @@ if(UNIX AND NOT APPLE)
 endif()
 add_subdirectory(third-party/glfw)
 
-set(FT_WITH_PNG ON)
+# FT_WITH_PNG was renamed in FreeType 2.11; the current spelling is
+# FT_REQUIRE_PNG/FT_REQUIRE_ZLIB.  Requiring them turns a broken lookup into a
+# configure error instead of silently building a FreeType without colour-bitmap
+# support.
+set(FT_REQUIRE_PNG ON CACHE BOOL "" FORCE)
+set(FT_REQUIRE_ZLIB ON CACHE BOOL "" FORCE)
 
 add_subdirectory(third-party/freetype2)
 if (NOT WIN32 AND NOT APPLE)
