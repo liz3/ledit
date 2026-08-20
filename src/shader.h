@@ -8,17 +8,17 @@
 
 
 struct CharacterEntry {
-  float width;
-  float height;
-  float top;
-  float left;
-  float advance;
-  float advanceY;
-  float offset;
+  float width = 0;
+  float height = 0;
+  float top = 0;
+  float left = 0;
+  float advance = 0;
+  float advanceY = 0;
+  float offset = 0;
   uint8_t *data = nullptr;
-  int xPos;
-  char32_t c;
-  bool hasColor;
+  int xPos = 0;
+  char32_t c = 0;
+  bool hasColor = false;
   CharacterEntry();
   ~CharacterEntry();
   CharacterEntry(const CharacterEntry &other);

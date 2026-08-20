@@ -607,7 +607,7 @@ bool State::execCommand(std::string command) {
       } else if (mode == 15) {
         atlas->readFont(convert_str(miniBuf), fontSize, true);
         for (auto entry : provider.extraFonts) {
-          atlas->readFont(path, fontSize);
+          atlas->readFont(entry, fontSize);
         }
         provider.fontPath = convert_str(miniBuf);
         provider.writeConfig();

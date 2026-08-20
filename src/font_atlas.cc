@@ -1,4 +1,5 @@
 #include "font_atlas.h"
+#include "freetype/ftcolor.h"
 #include <iostream>
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -24,14 +25,12 @@ RenderChar FontAtlas::render(char32_t c, float x, float y, Vec4f color) {
   float x2 = x + entry->left * scale;
   float y2 = y + atlas_height;
   y2 -= ((entry->top + smallest_top * scale) * scale);
-  if (entry->hasColor) {
-    float height = entry->height * (fs / entry->height);
-    y2 += ((entry->top) - ((height) - (fs) * 0.15)) * scale;
-  }
+  const float colorHeight = (float)fs;
+  if (entry->hasColor)
+    y2 += ((entry->top) - (colorHeight - (fs) * 0.15)) * scale;
   r.pos = vec2f(x2, -y2);
   if (entry->hasColor) {
-    float height = entry->height * (fs / entry->height);
-    r.size = vec2f(((float)fs) * scale, (-height) * scale);
+    r.size = vec2f(((float)fs) * scale, (-colorHeight) * scale);
 
   } else
     r.size = vec2f(entry->width * scale, (-entry->height) * scale);
@@ -66,7 +65,40 @@ size_t FontAtlas::fontSelectSize(uint32_t size, FT_Face face) {
       return i;
     }
   }
-  return i;
+
+  return face->num_fixed_sizes > 0 ? (size_t)face->num_fixed_sizes - 1 : 0;
+}
+ColorKind FontAtlas::classifyColorKind(FT_Face face) {
+  if (!FT_HAS_COLOR(face))
+    return ColorKind::None;
+  if (face->num_fixed_sizes > 0)
+    return ColorKind::Strike;
+  FT_UInt glyph_index = 0;
+  FT_ULong c = FT_Get_First_Char(face, &glyph_index);
+  while (glyph_index) {
+    FT_UInt layer_glyph, layer_color;
+    FT_LayerIterator it;
+    it.p = nullptr;
+    if (FT_Get_Color_Glyph_Layer(face, glyph_index, &layer_glyph, &layer_color,
+                                 &it))
+      return ColorKind::ScalableCOLR;
+    c = FT_Get_Next_Char(face, c, &glyph_index);
+  }
+  return ColorKind::None;
+}
+FT_Error FontAtlas::setFaceSize(FontFace *entry, uint32_t px) {
+  if (entry->kind == ColorKind::Strike) {
+    FT_Error e =
+        FT_Select_Size(entry->face, (FT_Int)fontSelectSize(px, entry->face));
+    if (!e)
+      return 0;
+  }
+  
+  FT_Error e = FT_Set_Pixel_Sizes(entry->face, 0, px);
+  if (e)
+    errors.push_back(U"Failed to set pixel size for font " +
+                     Utf8String(entry->path));
+  return e;
 }
 void FontAtlas::readFont(std::string path, uint32_t fontSize,
                          bool shouldRender) {
@@ -105,11 +137,16 @@ void FontAtlas::readFont(std::string path, uint32_t fontSize,
           continue;
         }
         face->path = path;
-        face->hasColor = isColorEmojiFont(face->face);
-        if (face->hasColor)
-          FT_Select_Size(face->face, fontSelectSize(fontSize, face->face));
-        else
-          FT_Set_Pixel_Sizes(face->face, 0, fontSize);
+        face->kind = classifyColorKind(face->face);
+        if (FT_HAS_COLOR(face->face) && face->kind == ColorKind::None) {
+          errors.push_back(U"Font has no drawable colour glyphs (COLRv1 or "
+                           U"OT-SVG only): " +
+                           Utf8String(path) + U" [" + std::to_string(i) + U"]");
+          FT_Done_Face(face->face);
+          delete face;
+          continue;
+        }
+        setFaceSize(face, fontSize);
         faces.push_back(face);
       }
       FT_Done_Face(gFace);
@@ -123,22 +160,25 @@ void FontAtlas::readFont(std::string path, uint32_t fontSize,
     return;
   }
   face->path = path;
-  face->hasColor = isColorEmojiFont(face->face);
-  if (face->hasColor)
-    FT_Select_Size(face->face, fontSelectSize(fontSize, face->face));
-  else
-    FT_Set_Pixel_Sizes(face->face, 0, fontSize);
+  face->kind = classifyColorKind(face->face);
+  if (FT_HAS_COLOR(face->face) && face->kind == ColorKind::None) {
+    errors.push_back(
+        U"Font has no drawable colour glyphs (COLRv1 or OT-SVG only): " +
+        Utf8String(path));
+    if (!shouldRender) {
+      FT_Done_Face(face->face);
+      delete face;
+      return;
+    }
+  }
+  setFaceSize(face, fontSize);
   faces.push_back(face);
   if (shouldRender)
     renderFont(fontSize, face);
 }
 void FontAtlas::resizeFonts(uint32_t size) {
-  for (auto &face : faces) {
-    if (face->hasColor)
-      FT_Select_Size(face->face, 0);
-    else
-      FT_Set_Pixel_Sizes(face->face, 0, size);
-  }
+  for (auto &face : faces)
+    setFaceSize(face, size);
   fs = size;
 }
 void FontAtlas::changeScale(int diff) {
@@ -152,12 +192,8 @@ void FontAtlas::changeScale(int diff) {
   if ((diff == -1 && scale < 0.6 && fs > 18) ||
       (scale > 2.5 && diff == 1 && fs < 128)) {
     auto newSize = virtual_fs < 18 ? 18 : virtual_fs > 128 ? 128 : virtual_fs;
-    for (auto &face : faces) {
-      if (face->hasColor)
-        FT_Select_Size(face->face, fontSelectSize(newSize, face->face));
-      else
-        FT_Set_Pixel_Sizes(face->face, 0, newSize);
-    }
+    for (auto &face : faces)
+      setFaceSize(face, newSize);
     renderFont(newSize, faces[0]);
     scale = (float)virtual_fs / (float)fs;
   }
@@ -195,7 +231,7 @@ void FontAtlas::renderFont(uint32_t fontSize, FontFace *faceEntry) {
     entry.left = face->glyph->bitmap_left;
     entry.advance = face->glyph->advance.x >> 6;
     entry.advanceY = face->glyph->advance.y >> 6;
-    entry.hasColor = faceEntry->hasColor;
+    entry.hasColor = faceEntry->hasColor();
     entry.c = (char32_t)i;
     entry.data = new uint8_t[(int)entry.width * (int)entry.height * 4];
     for (size_t i = 0; i < (entry.width * entry.height); i++) {
@@ -246,6 +282,16 @@ void FontAtlas::renderFont(uint32_t fontSize, FontFace *faceEntry) {
   }
   wasGenerated = true;
 }
+void FontAtlas::insertBlankEntry(char32_t c) {
+  // Cache the failure.  Without an entry lazyLoad would rerun the whole
+  // FreeType load for this codepoint on every frame that draws it.
+  CharacterEntry entry;
+  entry.c = c;
+  entry.hasColor = false;
+  entry.advance = entries.count(U' ') ? entries[U' '].advance : (float)fs;
+  entry.xPos = (int)xOffset;
+  entries.insert(std::pair<char32_t, CharacterEntry>(c, entry));
+}
 void FontAtlas::lazyLoad(char32_t c) {
   if (entries.count(c))
     return;
@@ -265,30 +311,48 @@ void FontAtlas::lazyLoad(char32_t c) {
     Utf8String errStr = U"No font file for char ";
     errStr += std::to_string((int)c);
     errors.push_back(errStr);
+    insertBlankEntry(c);
     return;
   }
   auto &face = faceEntry->face;
   auto f = FT_LOAD_RENDER;
-  if (faceEntry->hasColor)
-    f |= FT_LOAD_COLOR;
+  if (faceEntry->hasColor())
+    f |= FT_LOAD_COLOR | FT_LOAD_NO_SVG;
   else
     f |= FT_LOAD_TARGET_(FT_RENDER_MODE_SDF);
   FT_Error err = FT_Load_Char(face, c, f);
   if (err) {
-    Utf8String errStr = U"No font file for char ";
-    errStr += c;
+    Utf8String errStr = U"Failed to load char ";
+    errStr += std::to_string((int)c);
     errors.push_back(errStr);
+    insertBlankEntry(c);
+    return;
+  }
+  auto bm = face->glyph->bitmap;
+  if (!bm.width || !bm.rows || !bm.buffer) {
+    Utf8String errStr = U"Empty glyph bitmap for char ";
+    errStr += std::to_string((int)c);
+    errors.push_back(errStr);
+    insertBlankEntry(c);
+    return;
+  }
+  const int expectedPitch =
+      faceEntry->hasColor() ? (int)bm.width * 4 : (int)bm.width;
+  if (bm.pitch != expectedPitch) {
+    Utf8String errStr = U"Unexpected glyph pitch for char ";
+    errStr += std::to_string((int)c);
+    errors.push_back(errStr);
+    insertBlankEntry(c);
     return;
   }
   CharacterEntry entry;
-  auto bm = face->glyph->bitmap;
   entry.width = bm.width;
   entry.height = bm.rows;
   entry.top = face->glyph->bitmap_top;
   entry.left = face->glyph->bitmap_left;
   entry.advance = face->glyph->advance.x >> 6;
   entry.xPos = xOffset;
-  entry.hasColor = faceEntry->hasColor;
+  entry.hasColor = faceEntry->hasColor();
   if (entry.hasColor)
     entry.advance = fs;
   auto old_width = atlas_width;
@@ -390,4 +454,3 @@ std::vector<float> *FontAtlas::getAllAdvance(Utf8String &line, int y) {
   contentCache[y] = line;
   return &linesCache[y];
 }
-bool FontAtlas::isColorEmojiFont(FT_Face &face) { return FT_HAS_COLOR(face); }

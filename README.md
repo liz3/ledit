@@ -91,7 +91,17 @@ For the font face either remove it completely or make sure its a valid path.
   "highlight_active_line": "full", // highlight active line, can be full, small(requires line numbers to be enabled) or off
   "theme": "default", // see themes section
   "font_size": 25, // font size
-  // optional load additional font files
+  // Optional additional font files, used as fallbacks for codepoints the main
+  // font has no glyph for.  On Windows this defaults to Segoe UI Emoji when
+  // left empty.
+  //
+  // Colour emoji fonts must be either bitmap based ('sbix' / CBDT+CBLC, e.g.
+  // "/System/Library/Fonts/Apple Color Emoji.ttc") or COLRv0 (e.g.
+  // "C:/Windows/Fonts/seguiemj.ttf").  The COLRv1 builds of Noto Color Emoji
+  // will not render: FreeType exposes COLRv1 as a paint graph for the client
+  // to draw and ships no OT-SVG rasteriser, so such a font is rejected with an
+  // error rather than drawn blank.  Use the legacy CBDT build of Noto Color
+  // Emoji if you want Noto.
   "extra_fonts": [
   ],
   "window_transparency": true, // if the window is allowed to be transparent

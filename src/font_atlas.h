@@ -10,10 +10,21 @@
 #include <map>
 
 
+// How a face stores its colour artwork.  FT_HAS_COLOR() cannot tell these
+// apart -- sfobjs.c raises FT_FACE_FLAG_COLOR for CBLC, 'sbix', 'COLR' and
+// 'SVG' alike -- but they need completely different handling, so classify the
+// face once at load time instead.
+enum class ColorKind {
+  None,         // monochrome outlines
+  Strike,       // 'sbix' / CBDT+CBLC pre-rendered bitmaps, sized by strike
+  ScalableCOLR, // 'COLR' v0 layers, composited into BGRA by FreeType itself
+};
+
 struct FontFace {
-  bool hasColor = false;
+  ColorKind kind = ColorKind::None;
   std::string path = "";
   FT_Face face;
+  bool hasColor() const { return kind != ColorKind::None; }
 };
 class FontAtlas {
 public:
@@ -38,6 +49,7 @@ public:
   float getAdvance(char32_t c);
   FontAtlas(std::string path, uint32_t fontSize);
   size_t fontSelectSize(uint32_t size, FT_Face face);
+  FT_Error setFaceSize(FontFace *entry, uint32_t px);
   void readFont(std::string path, uint32_t fontSize,
                 bool shouldRender = false);
   void resizeFonts(uint32_t size);
@@ -48,7 +60,8 @@ public:
   float getAdvance(std::string line);
 
   std::vector<float> *getAllAdvance(Utf8String &line, int y);
-  bool isColorEmojiFont(FT_Face &face);
+  ColorKind classifyColorKind(FT_Face face);
+  void insertBlankEntry(char32_t c);
 };
 
 #endif
