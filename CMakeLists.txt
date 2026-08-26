@@ -21,18 +21,17 @@ set(PNG_SHARED OFF CACHE BOOL "" FORCE)
 set(PNG_STATIC ON CACHE BOOL "" FORCE)
 set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(LEDIT_SOURCES src/glad.c
- src/la.cc 
- src/accent.cc
-  src/cursor.cc 
-  src/font_atlas.cc 
+ src/la.cc
+  src/cursor.cc
+  src/font_atlas.cc
   src/highlighting.cc
-   src/providers.cc 
-   src/selection.cc 
-   src/shader.cc 
-   src/state.cc 
-   src/utf8String.cc 
-   src/utils.cc 
-   src/vim.cc 
+   src/providers.cc
+   src/selection.cc
+   src/shader.cc
+   src/state.cc
+   src/utf8String.cc
+   src/utils.cc
+   src/vim.cc
    src/main.cc
     src/vim_actions/EscapeAction.cc
     src/vim_actions/register.cc
@@ -135,7 +134,7 @@ if (NOT WIN32 AND NOT APPLE)
     target_link_libraries(ledit PUBLIC fontconfig dl)
 endif()
 target_link_libraries(ledit PRIVATE glfw freetype)
- 
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DLEDIT_DEBUG)
  endif()

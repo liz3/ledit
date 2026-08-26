@@ -735,10 +735,7 @@ void State::fold() { status = cursor->fold(); }
 void State::renderCoords() {
     if (mode != 0)
       return;
-    if(accentManager.shouldBlock()){
-      status = accentManager.getStatus();
-      return;
-    }
+
     // if(hasHighlighting)
     // highlighter.highlight(cursor->lines, &provider.colors, cursor->skip,
     // cursor->maxLines, cursor->y);
@@ -824,7 +821,6 @@ void State::renderCoords() {
     activeIndex = cursorIndex;
     std::string path = entry->path;
     this->cursor = &(entry->cursor);
-    accentManager.cursor = this->cursor;
     if (vim)
       vim->setCursor(this->cursor);
     this->path = path;

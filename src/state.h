@@ -10,7 +10,6 @@
 #include "providers.h"
 #include "utf8String.h"
 #include "vim.h"
-#include "accent.h"
 void add_window(std::string p);
 void register_vim_commands(Vim &vim, State &state);
 struct CursorEntry {
@@ -49,7 +48,6 @@ public:
   Utf8String status;
   Utf8String miniBuf;
   Utf8String dummyBuf;
-  Accent accentManager;
   std::string lastCmd;
   bool showLineNumbers = true;
   bool lineWrapping = false;
