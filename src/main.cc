@@ -128,6 +128,17 @@ void character_callback(GLFWwindow *window, unsigned int codepoint) {
   gState->cursor->append((char16_t)codepoint);
   gState->renderCoords();
 }
+// The text input system replaces characters it already delivered, which is how
+// the macOS accent panel swaps the plain letter for the accented one.
+void text_delete_callback(GLFWwindow *window, int count) {
+  auto *gState = g_windows->windows[window]->state;
+  glfwMakeContextCurrent(gState->window);
+  gState->invalidateCache();
+  // The replaced text is always on the current line, never join lines for it
+  for (int i = 0; i < count && gState->cursor->x > 0; i++)
+    gState->cursor->removeOne();
+}
+
 void key_callback(GLFWwindow *window, int key, int scancode, int action,
                   int mods) {
   auto *gState = g_windows->windows[window]->state;
@@ -378,6 +389,23 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
   }
 }
 
+// Publishes the caret so the platform text input system can point its panels at
+// it.  A zero size tells it we are not editing text, which on macOS keeps the
+// press and hold accent panel away and leaves key repeat alone.
+void publish_text_cursor(State &state, GLFWwindow *window, float x, float y,
+                         float height) {
+  bool editing = state.provider.enableAccents && state.focused &&
+                 state.mode == 0 &&
+                 (!state.vim || state.vim->getMode() == VimMode::INSERT);
+  if (!editing) {
+    glfwSetPreeditCursorRectangle(window, 0, 0, 0, 0);
+    return;
+  }
+  float xscale, yscale;
+  glfwGetWindowContentScale(window, &xscale, &yscale);
+  glfwSetPreeditCursorRectangle(window, (int)(x / xscale), (int)(y / yscale), 2,
+                                (int)(height / yscale));
+}
 int window_func(Window *instance) {
   float &WIDTH = instance->midState.WIDTH;
   float &HEIGHT = instance->midState.HEIGHT;
@@ -756,6 +784,25 @@ int window_func(Window *instance) {
         }
       }
     }
+    // Taken here because the selection code below grows maxRenderWidth
+    {
+      float caretX, caretBottom;
+      if (state.lineWrapping) {
+        auto out = cursor->getPosLineWrapped(
+            atlas, -maxRenderWidth, -(int32_t)(HEIGHT / 2) + 4 + toOffset,
+            maxRenderWidth, toOffset, cursor->x, cursor->y);
+        caretX = out.first;
+        caretBottom = -out.second;
+      } else {
+        caretX = -(int32_t)(WIDTH / 2) + 15 +
+                 atlas.getAdvance(cursor->getCurrentAdvance()) + linesAdvance +
+                 4 - cursor->xSkip;
+        caretBottom = (float)HEIGHT / 2 - 4 -
+                      (toOffset * ((cursor->y - cursor->skip) + 1));
+      }
+      publish_text_cursor(state, window, caretX + WIDTH / 2,
+                          (HEIGHT / 2) - (caretBottom + toOffset), toOffset);
+    }
     xpos = (-(int32_t)WIDTH / 2) + 15;
     ypos = (float)HEIGHT / 2 - toOffset - 10;
     Utf8String status = state.status;
@@ -1077,6 +1124,7 @@ Window *create_window(std::string path, bool isFirst = false) {
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
   glfwSetKeyCallback(window, key_callback);
   glfwSetCharCallback(window, character_callback);
+  glfwSetTextDeleteCallback(window, text_delete_callback);
   glfwSetMouseButtonCallback(window, mouse_button_callback);
   glfwSetWindowFocusCallback(window, window_focus_callback);
   glfwSetDropCallback(window, drop_callback);
